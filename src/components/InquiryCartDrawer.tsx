@@ -120,7 +120,7 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
                 Your Dispensary List is Empty
               </h4>
               <p className="text-xs text-[#635A4B] max-w-xs">
-                Explore our classical Ayurvedic formulations, view detailed therapeutic uses, and add medicines to consult with our Vaidya.
+                Explore our classical Ayurvedic formulations, view detailed therapeutic uses, and add medicines to consult with our Doctor.
               </p>
             </div>
           ) : (

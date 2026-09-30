@@ -120,7 +120,7 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 Consultation Request Received
               </h4>
               <p className="text-xs text-[#524B3F] max-w-sm mx-auto">
-                Thank you, <span className="font-semibold text-[#1E2922]">{formData.fullName}</span>. Our registered Ayurvedic Vaidya ({siteSettings?.headPharmacist || 'Vaidya Harshit Maan (BAMS, MD Ayu.)'}) has received your clinical query.
+                Thank you, <span className="font-semibold text-[#1E2922]">{formData.fullName}</span>. Our registered Ayurvedic Doctor ({siteSettings?.headPharmacist || 'Dr. Harshit Maan (BAMS, MD Ayu.)'}) has received your clinical query.
               </p>
             </div>
 
@@ -262,7 +262,7 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
             <div className="p-2.5 bg-[#E7EFEA]/80 border border-[#A5D6B6] rounded-lg flex items-center gap-2 text-[11px] text-[#14291D]">
               <MessageSquare className="w-4 h-4 text-[#25D366] shrink-0" />
               <span>
-                On submit, this consultation request and your additional notes will directly open in WhatsApp with our Vaidya.
+                On submit, this consultation request and your additional notes will directly open in WhatsApp with our Doctor.
               </span>
             </div>
 

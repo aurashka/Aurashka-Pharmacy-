@@ -56,18 +56,18 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onNavigateSection('dosage-uses')}
-                  className="hover:text-white transition-colors"
+                  onClick={() => onNavigateSection('contact-us')}
+                  className="hover:text-white transition-colors cursor-pointer"
                 >
-                  Dosage & Anupana Science
+                  Official Contact & Helpline Page
                 </button>
               </li>
               <li>
                 <button
                   onClick={onOpenConsultationModal}
-                  className="hover:text-white transition-colors"
+                  className="hover:text-white transition-colors cursor-pointer"
                 >
-                  Vaidya Consultation
+                  Doctor Consultation
                 </button>
               </li>
             </ul>

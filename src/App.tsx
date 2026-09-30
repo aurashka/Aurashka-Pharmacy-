@@ -11,9 +11,8 @@ import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { FrontContactBar } from './components/FrontContactBar';
 import { ProductDashboard } from './components/ProductDashboard';
-import { DosageGuideSection } from './components/DosageGuideSection';
-import { ContactSection } from './components/ContactSection';
-import { ProductDetailModal } from './components/ProductDetailModal';
+import { ProductDetailPage } from './components/ProductDetailPage';
+import { ContactPage } from './components/ContactPage';
 import { ConsultationModal } from './components/ConsultationModal';
 import { InquiryCartDrawer, CartItem } from './components/InquiryCartDrawer';
 import { FloatingContactWidget } from './components/FloatingContactWidget';
@@ -98,6 +97,7 @@ function PharmacyApp() {
 
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentView, setCurrentView] = useState<'home' | 'contact' | 'product'>('home');
   
   // Modals & Drawers state
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<HerbalProduct | null>(null);
@@ -110,6 +110,39 @@ function PharmacyApp() {
   
   // Inquiry / Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  // Hash-based routing to support unique direct links (#product/code or #contact)
+  useEffect(() => {
+    const syncHashToView = () => {
+      const hash = window.location.hash || '';
+      if (hash.startsWith('#product/')) {
+        const slug = decodeURIComponent(hash.replace('#product/', '')).trim();
+        const matched = products.find(
+          (p) =>
+            (p.customLink && p.customLink.toLowerCase() === slug.toLowerCase()) ||
+            p.id.toLowerCase() === slug.toLowerCase() ||
+            p.name.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase() ||
+            p.name.toLowerCase() === slug.toLowerCase()
+        );
+        if (matched) {
+          setSelectedProductForDetail(matched);
+          setCurrentView('product');
+          return;
+        }
+      } else if (hash === '#contact' || hash === '#contact-us') {
+        setCurrentView('contact');
+        setSelectedProductForDetail(null);
+        return;
+      } else {
+        setCurrentView('home');
+        setSelectedProductForDetail(null);
+      }
+    };
+
+    syncHashToView();
+    window.addEventListener('hashchange', syncHashToView);
+    return () => window.removeEventListener('hashchange', syncHashToView);
+  }, [products]);
 
   // Sync products, site settings, categories & forms from Firebase Realtime Database on initial mount
   useEffect(() => {
@@ -286,11 +319,44 @@ function PharmacyApp() {
     setIsConsultationModalOpen(true);
   };
 
+  const handleSelectProduct = (p: HerbalProduct) => {
+    setSelectedProductForDetail(p);
+    setCurrentView('product');
+    const slug = p.customLink || p.id;
+    window.location.hash = `#product/${slug}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateToContact = () => {
+    setSelectedProductForDetail(null);
+    setCurrentView('contact');
+    window.location.hash = '#contact';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToHome = () => {
+    setSelectedProductForDetail(null);
+    setCurrentView('home');
+    window.location.hash = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNavigateSection = (sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+    if (sectionId === 'contact-us') {
+      handleNavigateToContact();
+      return;
     }
+
+    if (currentView !== 'home') {
+      handleBackToHome();
+    }
+
+    setTimeout(() => {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   return (
@@ -355,77 +421,80 @@ function PharmacyApp() {
       )}
 
       <main className="flex-1">
-        {/* Hero Section with Minimalist Atmosphere & Deal Spotlight */}
-        <HeroSection
-          onOpenConsultationModal={() => handleOpenConsultationModal()}
-          onExploreProducts={() => handleNavigateSection('deals-catalog')}
-          onSelectProduct={(p) => setSelectedProductForDetail(p)}
-          isAdmin={isAdmin}
-          onOpenAdminPanel={() => {
-            setProductToEditInAdmin(null);
-            setIsAdminPanelOpen(true);
-          }}
-          siteSettings={siteSettings}
-          featuredDeal={products[0]}
-          products={products}
-          onAddToCart={handleAddToCart}
-          cartProductIds={cartProductIds}
-        />
+        {currentView === 'contact' ? (
+          /* Dedicated Contact Page */
+          <ContactPage
+            siteSettings={siteSettings}
+            onBack={handleBackToHome}
+            onOpenConsultationModal={() => handleOpenConsultationModal()}
+          />
+        ) : currentView === 'product' && selectedProductForDetail ? (
+          /* Full Page Product Monograph & Unique Link View */
+          <ProductDetailPage
+            product={selectedProductForDetail}
+            onBack={handleBackToHome}
+            onAddToCart={handleAddToCart}
+            isInCart={cartProductIds.has(selectedProductForDetail.id)}
+            siteSettings={siteSettings}
+            allProducts={products}
+            onSelectProduct={handleSelectProduct}
+            onOpenConsultationModal={handleOpenConsultationModal}
+          />
+        ) : (
+          /* Main Storefront Catalog Page */
+          <>
+            {/* Hero Section with Minimalist Atmosphere & Deal Spotlight */}
+            <HeroSection
+              onOpenConsultationModal={() => handleOpenConsultationModal()}
+              onExploreProducts={() => handleNavigateSection('deals-catalog')}
+              onSelectProduct={handleSelectProduct}
+              isAdmin={isAdmin}
+              onOpenAdminPanel={() => {
+                setProductToEditInAdmin(null);
+                setIsAdminPanelOpen(true);
+              }}
+              siteSettings={siteSettings}
+              featuredDeal={products[0]}
+              products={products}
+              onAddToCart={handleAddToCart}
+              cartProductIds={cartProductIds}
+            />
 
-        {/* Front-Row Direct Contact & Patient Helpline Ribbon */}
-        <FrontContactBar
-          onOpenConsultationModal={() => handleOpenConsultationModal()}
-          onScrollToContact={() => handleNavigateSection('contact-us')}
-          siteSettings={siteSettings}
-        />
+            {/* Front-Row Direct Contact & Patient Helpline Ribbon */}
+            <FrontContactBar
+              onOpenConsultationModal={() => handleOpenConsultationModal()}
+              onScrollToContact={handleNavigateToContact}
+              siteSettings={siteSettings}
+            />
 
-        {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
-        <ProductDashboard
-          products={products}
-          selectedCategory={selectedCategory}
-          onSelectCategory={(cat) => setSelectedCategory(cat)}
-          searchQuery={searchQuery}
-          onSearchChange={(q) => setSearchQuery(q)}
-          onOpenProductDetail={(prod) => setSelectedProductForDetail(prod)}
-          onAddToCart={handleAddToCart}
-          cartProductIds={cartProductIds}
-          isAdmin={isAdmin}
-          onOpenAdminPanel={() => {
-            setProductToEditInAdmin(null);
-            setIsAdminPanelOpen(true);
-          }}
-          onEditProduct={(prod) => {
-            setProductToEditInAdmin(prod);
-            setIsAdminPanelOpen(true);
-          }}
-          categories={categories}
-          forms={forms}
-          siteSettings={siteSettings}
-        />
-
-        {/* Detailed Uses, Pharmacopoeia & Anupana Science Guide */}
-        <DosageGuideSection
-          onOpenProductDetail={(prod) => setSelectedProductForDetail(prod)}
-          onOpenConsultationModal={() => handleOpenConsultationModal()}
-        />
-
-        {/* Front Contact Section with Multiple Phones, Emails, WhatsApps, Physical Address */}
-        <ContactSection
-          onOpenConsultationModal={() => handleOpenConsultationModal()}
-          siteSettings={siteSettings}
-        />
+            {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
+            <ProductDashboard
+              products={products}
+              selectedCategory={selectedCategory}
+              onSelectCategory={(cat) => setSelectedCategory(cat)}
+              searchQuery={searchQuery}
+              onSearchChange={(q) => setSearchQuery(q)}
+              onOpenProductDetail={handleSelectProduct}
+              onAddToCart={handleAddToCart}
+              cartProductIds={cartProductIds}
+              isAdmin={isAdmin}
+              onOpenAdminPanel={() => {
+                setProductToEditInAdmin(null);
+                setIsAdminPanelOpen(true);
+              }}
+              onEditProduct={(prod) => {
+                setProductToEditInAdmin(prod);
+                setIsAdminPanelOpen(true);
+              }}
+              categories={categories}
+              forms={forms}
+              siteSettings={siteSettings}
+            />
+          </>
+        )}
       </main>
 
-      {/* Apothecary Monograph / Detailed Uses Modal with Multiple Images Gallery */}
-      <ProductDetailModal
-        product={selectedProductForDetail}
-        onClose={() => setSelectedProductForDetail(null)}
-        onAddToCart={handleAddToCart}
-        isInCart={selectedProductForDetail ? cartProductIds.has(selectedProductForDetail.id) : false}
-        siteSettings={siteSettings}
-      />
-
-      {/* Free Vaidya Dosage & Prescription Consultation Modal */}
+      {/* Free Doctor Dosage & Prescription Consultation Modal */}
       <ConsultationModal
         isOpen={isConsultationModalOpen}
         onClose={() => setIsConsultationModalOpen(false)}
@@ -443,7 +512,7 @@ function PharmacyApp() {
         onClearCart={handleClearCart}
         onOpenProductDetail={(prod) => {
           setIsCartOpen(false);
-          setSelectedProductForDetail(prod);
+          handleSelectProduct(prod);
         }}
         siteSettings={siteSettings}
       />

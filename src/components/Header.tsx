@@ -99,21 +99,21 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className="hidden md:flex items-center gap-7 text-xs font-medium text-[#52493A]">
           <button
             onClick={() => onNavigateSection('deals-catalog')}
-            className="hover:text-[#14291D] transition-colors"
+            className="hover:text-[#14291D] transition-colors cursor-pointer"
           >
             Formulations & Deals
           </button>
           <button
-            onClick={() => onNavigateSection('dosage-uses')}
-            className="hover:text-[#14291D] transition-colors"
+            onClick={onOpenConsultationModal}
+            className="hover:text-[#14291D] transition-colors cursor-pointer"
           >
-            Dosage & Uses
+            Clinical Consultation
           </button>
           <button
             onClick={() => onNavigateSection('contact-us')}
-            className="hover:text-[#14291D] transition-colors font-semibold"
+            className="hover:text-[#14291D] transition-colors font-semibold px-2.5 py-1 rounded-md bg-[#FAF8F5] border border-[#DDD5C5] text-[#14291D] cursor-pointer"
           >
-            Contacts & Helpline
+            Contact Page
           </button>
         </nav>
 

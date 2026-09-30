@@ -158,7 +158,7 @@ export const HERBAL_PRODUCTS: HerbalProduct[] = [
     ],
     precautionsAndContraindications: [
       'Not indicated for individuals suffering from acute dehydrating watery diarrhea.',
-      'Pregnant women should avoid high cleansing doses without Vaidya consultation.',
+      'Pregnant women should avoid high cleansing doses without Doctor consultation.',
       'Take with warm water, never iced or refrigerated beverages.'
     ],
     storageGuideline: 'Reseal moisture-lock pouch tightly after each use. Store away from steam.',
@@ -269,7 +269,7 @@ export const HERBAL_PRODUCTS: HerbalProduct[] = [
       { herb: 'Ela (Cardamom) & Twak (Cinnamon)', botanicalName: 'Elettaria cardamomum & Cinnamomum', potencyOrMg: '9.7%', role: 'Carminative antimicrobials that open airways' }
     ],
     precautionsAndContraindications: [
-      'Contains natural unrefined rock candy; diabetic patients should consult their Vaidya.',
+      'Contains natural unrefined rock candy; diabetic patients should consult their Doctor.',
       'Do not drink chilled water immediately after consuming this herbal paste.',
       'Safe for children above 3 years in half the adult dosage.'
     ],
@@ -671,7 +671,7 @@ export const HERBAL_PRODUCTS: HerbalProduct[] = [
 export const PHARMACY_CONTACT_INFO = {
   pharmacyName: 'Aurashka Herbal Apothecary',
   hindiName: 'औराश्का हर्बल औषधि भंडार',
-  headPharmacist: 'Vaidya Harshit Maan (BAMS, MD Ayu.)',
+  headPharmacist: 'Dr. Harshit Maan (BAMS, MD Ayu.)',
   regNumber: 'AYUR-REG-2018-9941 / Central Ayush Board',
   helplinePhone: '+91 98765 43210',
   whatsappNumber: '919876543210',
@@ -691,7 +691,7 @@ export const PHARMACY_CONTACT_INFO = {
 export const DEFAULT_SITE_SETTINGS = {
   brandName: 'Aurashka',
   hindiName: 'औराश्का हर्बल औषधि भंडार',
-  headPharmacist: 'Vaidya Harshit Maan (BAMS, MD Ayu.)',
+  headPharmacist: 'Dr. Harshit Maan (BAMS, MD Ayu.)',
   regNumber: 'AYUR-REG-2018-9941 / Central Ayush Board',
   storeAddress: 'Shop #14-16, Ayur Mandir Road, Near Central Botanical Garden, New Delhi - 110001, India',
   storeTimings: 'Mon – Sat: 9:00 AM – 8:00 PM | Sun: 10:00 AM – 2:00 PM',
@@ -709,7 +709,7 @@ export const DEFAULT_SITE_SETTINGS = {
     ],
     emails: [
       { id: 'e1', label: 'Support Desk', email: 'care@aurashka.com' },
-      { id: 'e2', label: 'Doctor / Vaidya Desk', email: 'consult@aurashka.com' }
+      { id: 'e2', label: 'Doctor Consultation Desk', email: 'consult@aurashka.com' }
     ]
   },
   licenseBadges: [
@@ -720,12 +720,12 @@ export const DEFAULT_SITE_SETTINGS = {
   ],
   messageTemplates: {
     headerWhatsApp: 'Namaste, I want to inquire about {brandName} herbal formulations and clinical consultation.',
-    floatingWhatsApp: 'Namaste Vaidya ji, I am on the {brandName} website and need immediate herbal advice or dosage guidance.',
+    floatingWhatsApp: 'Namaste Doctor ji, I am on the {brandName} website and need immediate herbal advice or dosage guidance.',
     frontContactBarWhatsApp: 'Namaste, I would like to contact {brandName} for medicine inquiries and order details.',
     heroWhatsApp: 'Namaste, I am browsing {brandName} Herbal Apothecary and would like to inquire about formulations and current deals.',
     productInquiryWhatsApp: 'Namaste, I want to inquire about "{productName}" (Deal price ₹{productPrice}{resellerInfo}). Please share availability and dosage advice.',
-    cartOrderWhatsApp: '*HERBAL PHARMACY ORDER & DOSAGE CONSULTATION*\n------------------------------------\nNamaste Vaidya ji, I would like to order and consult on the following herbal formulations:\n\n{cartSummary}\n\n*Total Estimated Value:* ₹{cartTotal}\n------------------------------------\nPlease verify dosage suitability for me and confirm delivery address details.',
-    consultationWhatsApp: 'Namaste Vaidya ji, I need dosage & clinical consultation for "{ailment}". Please guide me on medicines and authentic routine.',
+    cartOrderWhatsApp: '*HERBAL PHARMACY ORDER & DOSAGE CONSULTATION*\n------------------------------------\nNamaste Doctor ji, I would like to order and consult on the following herbal formulations:\n\n{cartSummary}\n\n*Total Estimated Value:* ₹{cartTotal}\n------------------------------------\nPlease verify dosage suitability for me and confirm delivery address details.',
+    consultationWhatsApp: 'Namaste Doctor ji, I need dosage & clinical consultation for "{ailment}". Please guide me on medicines and authentic routine.',
     contactFormEmailSubject: '{brandName} Inquiry: {subject}',
     contactFormEmailBody: 'Hello {brandName} Apothecary Team,\n\nI have an inquiry regarding: {subject}\n\nMessage Details:\n{message}',
     includeUserInfo: true,

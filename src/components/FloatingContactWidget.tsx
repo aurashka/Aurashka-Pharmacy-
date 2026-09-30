@@ -145,7 +145,7 @@ export const FloatingContactWidget: React.FC<FloatingContactWidgetProps> = ({
           className="hidden sm:flex px-3 py-2 rounded-full bg-[#E7EFEA] text-[#14291D] hover:bg-[#d5e4db] transition-colors items-center gap-1.5 text-xs font-semibold cursor-pointer"
         >
           <Calendar className="w-3.5 h-3.5 text-[#2C5E43]" />
-          <span>Consult Vaidya</span>
+          <span>Consult Doctor</span>
         </button>
 
         {/* Direct WhatsApp Instant Consultation */}
