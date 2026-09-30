@@ -118,3 +118,44 @@ export const fetchSiteSettingsFromFirebase = async (): Promise<SiteSettings | nu
   }
   return null;
 };
+
+/**
+ * Backup dynamic Categories & Forms to Firebase
+ */
+export const backupCatalogMetaToFirebase = async (meta: {
+  categories: { id: string; label: string }[];
+  forms: string[];
+}): Promise<boolean> => {
+  try {
+    const res = await fetch(`${firebaseConfig.databaseURL}/catalog_meta.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(meta),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to backup catalog meta to Firebase:', e);
+    return false;
+  }
+};
+
+/**
+ * Fetch dynamic Categories & Forms from Firebase
+ */
+export const fetchCatalogMetaFromFirebase = async (): Promise<{
+  categories: { id: string; label: string }[];
+  forms: string[];
+} | null> => {
+  try {
+    const res = await fetch(`${firebaseConfig.databaseURL}/catalog_meta.json`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.categories) && Array.isArray(data.forms)) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn('Firebase RTDB catalog meta fetch notice:', e);
+  }
+  return null;
+};

@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { HERBAL_PRODUCTS, DEFAULT_SITE_SETTINGS } from './data/herbalProducts';
-import { HerbalProduct, ProductCategory, SiteSettings } from './types/pharmacy';
+import { HERBAL_PRODUCTS, DEFAULT_SITE_SETTINGS, DEFAULT_CATEGORIES, DEFAULT_FORMS } from './data/herbalProducts';
+import { HerbalProduct, ProductCategory, SiteSettings, CategoryItem } from './types/pharmacy';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
@@ -27,12 +27,16 @@ import {
   backupAllCatalogToFirebase, 
   deleteProductFromFirebase,
   backupSiteSettingsToFirebase,
-  fetchSiteSettingsFromFirebase
+  fetchSiteSettingsFromFirebase,
+  backupCatalogMetaToFirebase,
+  fetchCatalogMetaFromFirebase
 } from './utils/firebaseSync';
 import { Shield, Settings, Sparkles } from 'lucide-react';
 
 const PRODUCTS_STORAGE_KEY = 'aurashka_catalog_products';
 const SITE_SETTINGS_STORAGE_KEY = 'aurashka_site_settings';
+const CATEGORIES_STORAGE_KEY = 'aurashka_categories';
+const FORMS_STORAGE_KEY = 'aurashka_forms';
 
 function PharmacyApp() {
   const { currentUser, isAdmin } = useAuth();
@@ -49,6 +53,34 @@ function PharmacyApp() {
       console.error(e);
     }
     return DEFAULT_SITE_SETTINGS;
+  });
+
+  // Dynamic Categories state (Preset & Custom)
+  const [categories, setCategories] = useState<CategoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_CATEGORIES;
+  });
+
+  // Dynamic Formulation Forms state (Preset & Custom)
+  const [forms, setForms] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(FORMS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_FORMS;
   });
 
   // Products catalog state
@@ -80,7 +112,7 @@ function PharmacyApp() {
   // Inquiry / Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  // Sync products and site settings from Firebase Realtime Database on initial mount
+  // Sync products, site settings, categories & forms from Firebase Realtime Database on initial mount
   useEffect(() => {
     const fetchRemoteData = async () => {
       // 1. Fetch site settings & multiple contacts
@@ -97,7 +129,26 @@ function PharmacyApp() {
         console.warn('Firebase RTDB site settings load note:', err);
       }
 
-      // 2. Fetch products
+      // 2. Fetch categories & forms
+      try {
+        const meta = await fetchCatalogMetaFromFirebase();
+        if (meta) {
+          if (Array.isArray(meta.categories) && meta.categories.length > 0) {
+            setCategories(meta.categories);
+            localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(meta.categories));
+          }
+          if (Array.isArray(meta.forms) && meta.forms.length > 0) {
+            setForms(meta.forms);
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(meta.forms));
+          }
+        } else {
+          backupCatalogMetaToFirebase({ categories: DEFAULT_CATEGORIES, forms: DEFAULT_FORMS });
+        }
+      } catch (err) {
+        console.warn('Firebase RTDB catalog meta load note:', err);
+      }
+
+      // 3. Fetch products
       try {
         const res = await fetch(`${firebaseConfig.databaseURL}/products.json`);
         if (res.ok) {
@@ -135,6 +186,26 @@ function PharmacyApp() {
     setSiteSettings(newSettings);
     try {
       localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateCategories = async (newCategories: CategoryItem[]) => {
+    setCategories(newCategories);
+    try {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(newCategories));
+      await backupCatalogMetaToFirebase({ categories: newCategories, forms });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateForms = async (newForms: string[]) => {
+    setForms(newForms);
+    try {
+      localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(newForms));
+      await backupCatalogMetaToFirebase({ categories, forms: newForms });
     } catch (e) {
       console.error(e);
     }
@@ -248,7 +319,7 @@ function PharmacyApp() {
               Admin Active: {currentUser?.email}
             </span>
             <span className="hidden sm:inline text-white/90">
-              · Complete access: Edit titles, product images, ingredients, multiple contacts, phone, whatsapp, email.
+              · Full Control: Manage Categories & Forms, Reseller Pricing, Rating Stars, Images & Multiple Contacts.
             </span>
           </div>
 
@@ -258,7 +329,7 @@ function PharmacyApp() {
                 setProductToEditInAdmin(null);
                 setIsAdminPanelOpen(true);
               }}
-              className="px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs"
+              className="px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5 text-amber-300" />
               <span>Launch Admin App</span>
@@ -279,7 +350,7 @@ function PharmacyApp() {
             title="Admin Mode Active: Click to Open Admin App"
           >
             <Shield className="w-4 h-4 text-amber-200" />
-            <span>⚡ ADMIN ACCESS PANEL</span>
+            <span>ADMIN ACCESS PANEL</span>
           </button>
         </div>
       )}
@@ -317,7 +388,7 @@ function PharmacyApp() {
           }}
         />
 
-        {/* Product Dashboard with Main Page Admin Controls */}
+        {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
         <ProductDashboard
           products={products}
           selectedCategory={selectedCategory}
@@ -336,6 +407,8 @@ function PharmacyApp() {
             setProductToEditInAdmin(prod);
             setIsAdminPanelOpen(true);
           }}
+          categories={categories}
+          forms={forms}
         />
 
         {/* Detailed Uses, Pharmacopoeia & Anupana Science Guide */}
@@ -399,6 +472,10 @@ function PharmacyApp() {
         initialProductToEdit={productToEditInAdmin}
         siteSettings={siteSettings}
         onUpdateSiteSettings={handleUpdateSiteSettings}
+        categories={categories}
+        onUpdateCategories={handleUpdateCategories}
+        forms={forms}
+        onUpdateForms={handleUpdateForms}
       />
 
       {/* Authentication Modal (Login & Signup with auto-close and immediate feedback) */}

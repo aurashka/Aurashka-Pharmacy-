@@ -1,6 +1,20 @@
 import React from 'react';
 import { HerbalProduct } from '../types/pharmacy';
-import { MessageCircle, Eye, ShoppingBag, Check, Edit3, ExternalLink, Camera } from 'lucide-react';
+import { 
+  MessageCircle, 
+  Eye, 
+  ShoppingBag, 
+  Check, 
+  Edit3, 
+  ExternalLink, 
+  Camera, 
+  Star,
+  Flame,
+  Trophy,
+  Tag,
+  Rocket,
+  Sparkles
+} from 'lucide-react';
 import { PHARMACY_CONTACT_INFO } from '../data/herbalProducts';
 
 interface ProductCardProps {
@@ -34,7 +48,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       return;
     }
     const text = encodeURIComponent(
-      `Namaste, I want to inquire about "${product.name}" (Deal price ₹${product.price}). Please share dosage details.`
+      `Namaste, I want to inquire about "${product.name}" (Deal price ₹${product.price}${product.resellerPrice ? `, Reseller Price ₹${product.resellerPrice}` : ''}). Please share details.`
     );
     window.open(`https://wa.me/${PHARMACY_CONTACT_INFO.whatsappNumber}?text=${text}`, '_blank');
   };
@@ -45,6 +59,65 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onEditProduct(product);
     }
   };
+
+  const hasSortBadge = product.sortBadge && product.sortBadge !== 'none';
+  const ratingStars = Math.round(product.rating || 5);
+
+  // Branded badge configuration without emojis
+  const renderSortBadge = () => {
+    if (!hasSortBadge) return null;
+    const badge = product.sortBadge;
+    if (badge === 'trending') {
+      return (
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs bg-red-600 text-white flex items-center gap-1">
+          <Flame className="w-3 h-3 text-amber-200" />
+          <span>Trending</span>
+        </span>
+      );
+    }
+    if (badge === 'top_seller') {
+      return (
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs bg-amber-600 text-white flex items-center gap-1">
+          <Trophy className="w-3 h-3 text-amber-100" />
+          <span>Top Seller</span>
+        </span>
+      );
+    }
+    if (badge === 'best_deal') {
+      return (
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs bg-emerald-700 text-white flex items-center gap-1">
+          <Tag className="w-3 h-3 text-emerald-200" />
+          <span>Best Deal</span>
+        </span>
+      );
+    }
+    if (badge === 'new_launch') {
+      return (
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs bg-blue-600 text-white flex items-center gap-1">
+          <Rocket className="w-3 h-3 text-blue-100" />
+          <span>New Launch</span>
+        </span>
+      );
+    }
+    if (badge === 'featured') {
+      return (
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs bg-indigo-700 text-white flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-indigo-200" />
+          <span>Featured</span>
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs bg-[#B4741E] text-white">
+        {badge}
+      </span>
+    );
+  };
+
+  // Sorted custom fields for display
+  const sortedCustomFields = product.customFields && product.customFields.length > 0
+    ? [...product.customFields].sort((a, b) => a.position - b.position)
+    : [];
 
   return (
     <div 
@@ -63,14 +136,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           }}
         />
         
-        {/* Deal Badge */}
-        {discountPercent > 0 && (
-          <div className="absolute top-2.5 left-2.5 bg-[#B4741E] text-white text-[11px] font-bold px-2 py-0.5 rounded shadow-xs">
-            Save {discountPercent}%
-          </div>
-        )}
+        {/* Sort & Deal Badges (Branded Icons without emojis) */}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+          {renderSortBadge()}
 
-        {/* Top-Right Badge: Admin Edit Button + Rating */}
+          {discountPercent > 0 && (
+            <span className="bg-[#B4741E] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs w-fit">
+              Save {discountPercent}%
+            </span>
+          )}
+        </div>
+
+        {/* Top-Right Badge: Admin Edit Button + Rating Stars */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
           {isAdmin && onEditProduct && (
             <button
@@ -83,14 +160,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </button>
           )}
 
-          <div className="bg-white/90 backdrop-blur-xs text-[#2C5E43] text-[11px] font-semibold px-2 py-0.5 rounded shadow-xs">
-            ★ {product.rating}
+          <div className="bg-white/95 backdrop-blur-xs text-[#2C5E43] text-[11px] font-semibold px-2 py-0.5 rounded shadow-xs flex items-center gap-1 border border-[#DDD5C5]">
+            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+            <span className="font-bold">{product.rating}</span>
+            {product.reviewsCount > 0 && (
+              <span className="text-[10px] text-[#7A705E]">({product.reviewsCount})</span>
+            )}
           </div>
         </div>
 
-        {/* Multiple Photos Indicator Pill on Card bottom (Indicates more angles in product view) */}
+        {/* Multiple Photos Indicator Pill on Card bottom (Shows customer that multiple photos exist) */}
         {totalImagesCount > 1 && (
-          <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 z-10">
+          <div className="absolute bottom-2.5 left-2.5 bg-black/65 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 z-10">
             <Camera className="w-3 h-3 text-[#A5D6B6]" />
             <span>{totalImagesCount} Photos</span>
           </div>
@@ -106,12 +187,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Card Content */}
-      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-        <div className="space-y-1">
+      <div className="p-4 flex-1 flex flex-col justify-between space-y-2.5">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs text-[#6E6352]">
             <span>{product.categoryLabel}</span>
             <span aria-hidden="true">·</span>
             <span>{product.volumeOrWeight}</span>
+            <span aria-hidden="true">·</span>
+            <span className="text-[#2C5E43] font-medium">{product.form}</span>
           </div>
 
           <h3 className="font-serif text-base font-bold text-[#14291D] group-hover:text-[#2C5E43] transition-colors line-clamp-1">
@@ -122,9 +205,79 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.sanskritName}
           </p>
 
+          {/* RATING STARS & REVIEW COUNT (WITH CLEAN BRANDED SVG ICONS) */}
+          <div className="flex items-center gap-1.5 text-xs pt-0.5">
+            <div className="flex text-amber-500">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3 h-3 ${
+                    i < ratingStars
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'fill-gray-200 text-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="font-bold text-[#14291D] text-[11px]">{product.rating}</span>
+            <span className="text-[11px] text-[#7A705E]">
+              ({product.reviewsCount > 0 ? `${product.reviewsCount} reviews` : 'Verified'})
+            </span>
+          </div>
+
           <p className="text-xs text-[#524A3D] line-clamp-2 pt-0.5 leading-relaxed">
             {product.tagline}
           </p>
+
+          {/* CUSTOM FIELDS HIGHLIGHT (NAME & VALUE IN DISPLAY POSITION ORDER) */}
+          {sortedCustomFields.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {sortedCustomFields.slice(0, 2).map((cf) => (
+                <span
+                  key={cf.id}
+                  className="px-2 py-0.5 bg-[#FAF6F0] border border-[#E7DFD1] text-[10px] text-[#554C3E] rounded font-medium"
+                >
+                  <strong className="text-[#14291D]">{cf.name}:</strong> {cf.value}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* RESELLER PRICE PILL (IN PRODUCT LIST VIEW) */}
+          {product.resellerPrice !== undefined && product.resellerPrice > 0 ? (
+            <div className="pt-1">
+              <div className="px-2.5 py-1.5 rounded-lg bg-[#EBF5EF] border border-[#BBDDC7] flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-[#183624] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block animate-pulse" />
+                  Reseller Price:
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-[#183624] text-xs">
+                    ₹{product.resellerPrice}
+                  </span>
+                  {product.price > product.resellerPrice && (
+                    <span className="text-[10px] text-emerald-800 font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                      Margin ₹{product.price - product.resellerPrice}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            isAdmin && (
+              <div className="pt-1">
+                <div 
+                  onClick={handleAdminEdit}
+                  className="px-2 py-1 rounded bg-amber-50/80 border border-amber-200/80 text-[10px] text-amber-800 flex items-center justify-between cursor-pointer hover:bg-amber-100"
+                >
+                  <span>Reseller Rate: Not Set</span>
+                  <span className="underline font-semibold flex items-center gap-0.5">
+                    <Edit3 className="w-2.5 h-2.5" /> + Set Price
+                  </span>
+                </div>
+              </div>
+            )
+          )}
         </div>
 
         {/* Pricing & Actions */}
@@ -150,7 +303,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               onClick={handleWhatsAppConsult}
               title={product.customLink ? "Open Custom Link" : "Quick WhatsApp order"}
               aria-label={product.customLink ? "Open Custom Link" : "Quick WhatsApp order"}
-              className="p-1.5 rounded-lg bg-[#25D366]/10 text-[#1E7E34] hover:bg-[#25D366] hover:text-white transition-colors"
+              className="p-1.5 rounded-lg bg-[#25D366]/10 text-[#1E7E34] hover:bg-[#25D366] hover:text-white transition-colors cursor-pointer"
             >
               {product.customLink ? (
                 <ExternalLink className="w-4 h-4 text-[#2C5E43]" />
@@ -164,7 +317,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 onAddToCart(product);
               }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
                 isInCart
                   ? 'bg-[#2C5E43] text-white'
                   : 'bg-[#14291D] text-white hover:bg-[#203E2D]'

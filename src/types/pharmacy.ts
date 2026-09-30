@@ -1,20 +1,17 @@
-export type ProductCategory = 
-  | 'all'
-  | 'immunity'
-  | 'digestion'
-  | 'joint_pain'
-  | 'mind_sleep'
-  | 'skin_hair'
-  | 'vitality';
+export type ProductCategory = string;
+export type ProductForm = string;
 
-export type ProductForm = 
-  | 'all'
-  | 'Churna (Powder)'
-  | 'Vati / Tablet'
-  | 'Taila (Oil)'
-  | 'Swaras & Asava (Liquid)'
-  | 'Resin & Lehyam'
-  | 'Veg Capsule';
+export interface CategoryItem {
+  id: string;
+  label: string;
+}
+
+export interface FormItem {
+  id: string;
+  name: string;
+}
+
+export type SortBadgeType = 'trending' | 'top_seller' | 'best_deal' | 'featured' | 'new_launch' | 'none' | string;
 
 export interface IngredientItem {
   herb: string;
@@ -37,6 +34,13 @@ export interface DosageGuideline {
   duration: string;
 }
 
+export interface ProductCustomField {
+  id: string;
+  name: string;
+  value: string;
+  position: number;
+}
+
 export interface HerbalProduct {
   id: string;
   name: string;
@@ -48,12 +52,15 @@ export interface HerbalProduct {
   description: string;
   price: number;
   mrp: number;
+  resellerPrice?: number; // Reseller / B2B wholesale price in ₹
+  sortBadge?: SortBadgeType; // Trending, Top Seller, Best Deal, etc.
   volumeOrWeight: string;
   rating: number;
   reviewsCount: number;
   inStock: boolean;
   image: string;
   images?: string[]; // Multiple product images support
+  customFields?: ProductCustomField[]; // Custom attributes with name, value and position
   keyIndications: string[];
   detailedUses: DetailedUses;
   dosageAndAnupana: DosageGuideline;

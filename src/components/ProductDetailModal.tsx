@@ -12,7 +12,13 @@ import {
   ChevronRight,
   Maximize2,
   Sparkles,
-  Camera
+  Camera,
+  Star,
+  Flame,
+  Trophy,
+  Tag,
+  Rocket,
+  Sliders
 } from 'lucide-react';
 import { PHARMACY_CONTACT_INFO } from '../data/herbalProducts';
 
@@ -157,7 +163,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     )}
                     {isPrimary ? (
                       <div className="bg-[#14291D]/85 backdrop-blur-xs text-[#A5D6B6] text-[10px] font-bold px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
-                        <span>★ Primary View</span>
+                        <Star className="w-3 h-3 fill-emerald-300 text-emerald-300" />
+                        <span>Primary View</span>
                       </div>
                     ) : (
                       <div className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-xs">
@@ -285,6 +292,51 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {product.sanskritName}
                 </p>
 
+                {/* Rating stars & Sort Badge */}
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <div className="flex items-center gap-1.5 bg-[#FAF6F0] px-2.5 py-1 rounded-lg border border-[#E7DFD1]">
+                    <div className="flex text-amber-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${
+                            i < Math.round(product.rating || 5)
+                              ? 'fill-amber-400 text-amber-400'
+                              : 'fill-gray-200 text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="font-bold text-xs text-[#14291D]">{product.rating}</span>
+                    <span className="text-[11px] text-[#7A705E]">({product.reviewsCount} customer reviews)</span>
+                  </div>
+
+                  {product.sortBadge && product.sortBadge !== 'none' && (
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg text-white shadow-2xs flex items-center gap-1.5 ${
+                      product.sortBadge === 'trending' ? 'bg-red-600' :
+                      product.sortBadge === 'top_seller' ? 'bg-amber-600' :
+                      product.sortBadge === 'best_deal' ? 'bg-emerald-700' :
+                      product.sortBadge === 'new_launch' ? 'bg-blue-600' :
+                      product.sortBadge === 'featured' ? 'bg-indigo-700' :
+                      'bg-[#B4741E]'
+                    }`}>
+                      {product.sortBadge === 'trending' && <Flame className="w-3.5 h-3.5 text-amber-200" />}
+                      {product.sortBadge === 'top_seller' && <Trophy className="w-3.5 h-3.5 text-amber-100" />}
+                      {product.sortBadge === 'best_deal' && <Tag className="w-3.5 h-3.5 text-emerald-200" />}
+                      {product.sortBadge === 'new_launch' && <Rocket className="w-3.5 h-3.5 text-blue-100" />}
+                      {product.sortBadge === 'featured' && <Sparkles className="w-3.5 h-3.5 text-indigo-200" />}
+                      <span>
+                        {product.sortBadge === 'trending' ? 'Trending' :
+                         product.sortBadge === 'top_seller' ? 'Top Seller' :
+                         product.sortBadge === 'best_deal' ? 'Best Deal' :
+                         product.sortBadge === 'new_launch' ? 'New Launch' :
+                         product.sortBadge === 'featured' ? 'Featured Choice' :
+                         product.sortBadge}
+                      </span>
+                    </span>
+                  )}
+                </div>
+
                 <p className="text-xs text-[#4F4638] leading-relaxed">
                   {product.description}
                 </p>
@@ -348,6 +400,32 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Reseller / B2B Wholesale Pricing Callout */}
+                {product.resellerPrice !== undefined && product.resellerPrice > 0 && (
+                  <div className="p-3 bg-[#EBF5EF] rounded-xl border border-[#BBDDC7] flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#1F5435] flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
+                        Verified Reseller / B2B Rate
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-xl font-bold font-mono text-[#183624]">
+                          ₹{product.resellerPrice}
+                        </span>
+                        <span className="text-[11px] text-[#4F6858]">per unit</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] font-bold text-emerald-900 bg-white px-2.5 py-1 rounded-md border border-[#A5D6B6] shadow-2xs inline-block">
+                        Reseller Margin: ₹{product.price - product.resellerPrice} ({Math.round(((product.price - product.resellerPrice) / product.price) * 100)}%)
+                      </span>
+                      <span className="text-[10px] text-[#527760] block mt-0.5">
+                        Direct wholesale price for ayurvedic resellers & clinics
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -360,6 +438,26 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </span>
               ))}
             </div>
+
+            {/* Custom Specifications / Fields (Name, Value & Display Position Order) */}
+            {product.customFields && product.customFields.length > 0 && (
+              <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] space-y-2.5">
+                <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-2 border-b border-[#F0EAE0] pb-1.5">
+                  <Sliders className="w-4 h-4 text-[#2C5E43]" />
+                  <span>Custom Formulation Specifications</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                  {[...product.customFields]
+                    .sort((a, b) => a.position - b.position)
+                    .map((field) => (
+                      <div key={field.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5] text-xs">
+                        <span className="text-[11px] text-[#7A705E] block font-medium uppercase tracking-wider">{field.name}</span>
+                        <span className="font-bold text-[#14291D] mt-0.5 block">{field.value}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
 
             {/* Uses & Dosage Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
