@@ -3084,6 +3084,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     />
                   </div>
                 </div>
+
+                {/* Footer Copyright & Botanical Badge Customization */}
+                <div className="pt-3 border-t border-[#EAE3D4] space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-[#2C5E43]" />
+                    <h5 className="font-bold text-xs text-[#14291D]">
+                      Website Footer Texts (All Rights Reserved & 100% Botanical Badge)
+                    </h5>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Footer Copyright / Rights Reserved Text
+                        <span className="text-[10px] text-[#786D5C] ml-1.5 font-normal">(Tokens: {'{year}'}, {'{brandName}'})</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.footerCopyrightText ?? '© {year} {brandName}. All rights reserved.'}
+                        onChange={(e) => setSiteForm({ ...siteForm, footerCopyrightText: e.target.value })}
+                        placeholder="e.g. © {year} {brandName}. All rights reserved."
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Footer 100% Botanical Verification Text
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.footerBotanicalBadgeText ?? '100% Verified Botanical Formulations & Deals'}
+                        onChange={(e) => setSiteForm({ ...siteForm, footerBotanicalBadgeText: e.target.value })}
+                        placeholder="e.g. 100% Verified Botanical Formulations & Deals"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Save Button */}

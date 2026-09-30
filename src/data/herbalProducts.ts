@@ -766,7 +766,9 @@ export const DEFAULT_SITE_SETTINGS = {
         highlightPoints: ['Wild Forest Honey Base', 'Immunity & Ojas Enhancer', 'Zero Refined Sugar']
       }
     ]
-  }
+  },
+  footerCopyrightText: '© {year} {brandName}. All rights reserved.',
+  footerBotanicalBadgeText: '100% Verified Botanical Formulations & Deals'
 };
 
 export const COMMON_AILMENT_TAGS = [

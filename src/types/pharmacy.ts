@@ -144,6 +144,8 @@ export interface SiteSettings {
   licenseBadges: string[];
   messageTemplates?: MessageTemplates;
   weeklyDeals?: WeeklyDealsConfig;
+  footerCopyrightText?: string;
+  footerBotanicalBadgeText?: string;
 }
 
 export interface ConsultationInquiry {

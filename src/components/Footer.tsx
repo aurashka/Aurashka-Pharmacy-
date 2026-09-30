@@ -137,10 +137,14 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Minimal Bottom Bar */}
         <div className="pt-4 border-t border-[#1C3A27] flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[#718D7D]">
           <span>
-            © {new Date().getFullYear()} {siteSettings.brandName}. All rights reserved.
+            {siteSettings.footerCopyrightText
+              ? siteSettings.footerCopyrightText
+                  .replace(/\{year\}/g, String(new Date().getFullYear()))
+                  .replace(/\{brandName\}/g, siteSettings.brandName)
+              : `© ${new Date().getFullYear()} ${siteSettings.brandName}. All rights reserved.`}
           </span>
           <span>
-            100% Verified Botanical Formulations & Deals
+            {siteSettings.footerBotanicalBadgeText || '100% Verified Botanical Formulations & Deals'}
           </span>
         </div>
       </div>
