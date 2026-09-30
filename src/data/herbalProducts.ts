@@ -717,7 +717,19 @@ export const DEFAULT_SITE_SETTINGS = {
     'Lab-Tested For Heavy Metals & Pesticides',
     'Registered Ayurvedic Pharmacist On Call',
     'Free Tele-Consultation With Every Prescription'
-  ]
+  ],
+  messageTemplates: {
+    headerWhatsApp: 'Namaste, I want to inquire about {brandName} herbal formulations and clinical consultation.',
+    floatingWhatsApp: 'Namaste Vaidya ji, I am on the {brandName} website and need immediate herbal advice or dosage guidance.',
+    frontContactBarWhatsApp: 'Namaste, I would like to contact {brandName} for medicine inquiries and order details.',
+    heroWhatsApp: 'Namaste, I am browsing {brandName} Herbal Apothecary and would like to inquire about formulations and current deals.',
+    productInquiryWhatsApp: 'Namaste, I want to inquire about "{productName}" (Deal price ₹{productPrice}{resellerInfo}). Please share availability and dosage advice.',
+    cartOrderWhatsApp: '*HERBAL PHARMACY ORDER & DOSAGE CONSULTATION*\n------------------------------------\nNamaste Vaidya ji, I would like to order and consult on the following herbal formulations:\n\n{cartSummary}\n\n*Total Estimated Value:* ₹{cartTotal}\n------------------------------------\nPlease verify dosage suitability for me and confirm delivery address details.',
+    consultationWhatsApp: 'Namaste Vaidya ji, I need dosage & clinical consultation for "{ailment}". Please guide me on medicines and authentic routine.',
+    contactFormEmailSubject: '{brandName} Inquiry: {subject}',
+    contactFormEmailBody: 'Hello {brandName} Apothecary Team,\n\nI have an inquiry regarding: {subject}\n\nMessage Details:\n{message}',
+    includeUserInfo: true,
+  }
 };
 
 export const COMMON_AILMENT_TAGS = [

@@ -1,6 +1,14 @@
 import React from 'react';
 import { Phone, MessageCircle, ArrowRight, Tag, Star, Settings } from 'lucide-react';
 import { HerbalProduct, SiteSettings } from '../types/pharmacy';
+import { useAuth } from '../context/AuthContext';
+import { 
+  getPrimaryPhone, 
+  getPrimaryWhatsApp, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES,
+  buildWhatsAppUrl 
+} from '../utils/messageFormatter';
 
 interface HeroSectionProps {
   onOpenConsultationModal: () => void;
@@ -20,17 +28,23 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   siteSettings,
   featuredDeal,
 }) => {
-  const primaryPhone = siteSettings.contacts.phones[0]?.number || '+91 98765 43210';
-  const primaryWhatsApp = siteSettings.contacts.whatsapps[0] || {
-    number: '919876543210',
-    displayNumber: '+91 98765 43210',
-  };
+  const { currentUser } = useAuth();
+  const primaryPhone = getPrimaryPhone(siteSettings);
+  const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+
+  const heroTemplate = siteSettings.messageTemplates?.heroWhatsApp || DEFAULT_MESSAGE_TEMPLATES.heroWhatsApp;
+  const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
+
+  const formattedMsg = formatCustomMessage(
+    heroTemplate,
+    { brandName: siteSettings.brandName },
+    currentUser,
+    includeUserInfo
+  );
 
   const handleWhatsAppClick = () => {
-    const text = encodeURIComponent(
-      `Namaste, I am browsing ${siteSettings.brandName} Herbal Apothecary and would like to inquire about formulations and current deals.`
-    );
-    window.open(`https://wa.me/${primaryWhatsApp.number}?text=${text}`, '_blank');
+    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
+    window.open(url, '_blank');
   };
 
   return (

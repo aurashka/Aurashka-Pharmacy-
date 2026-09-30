@@ -7,8 +7,10 @@ import {
   SiteSettings, 
   CategoryItem,
   SortBadgeType,
-  ProductCustomField
+  ProductCustomField,
+  MessageTemplates
 } from '../types/pharmacy';
+import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { 
   X, 
   Plus, 
@@ -80,7 +82,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'categories_forms' | 'contacts' | 'site_titles'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories_forms' | 'contacts' | 'site_titles' | 'messages'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -152,6 +154,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   // Site Settings & Multiple Contacts Local Form State
   const [siteForm, setSiteForm] = useState<SiteSettings>(siteSettings);
+
+  const handleUpdateMessageTemplate = (key: keyof MessageTemplates, val: any) => {
+    const currentTemplates = siteForm.messageTemplates || DEFAULT_MESSAGE_TEMPLATES;
+    setSiteForm({
+      ...siteForm,
+      messageTemplates: {
+        ...currentTemplates,
+        [key]: val,
+      },
+    });
+  };
 
   useEffect(() => {
     setSiteForm(siteSettings);
@@ -836,6 +849,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           >
             <FileText className="w-4 h-4 text-[#2C5E43]" />
             <span>Website Titles & Banner Texts</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('messages');
+              setIsCreatingNew(false);
+              setEditingProduct(null);
+            }}
+            className={`py-2.5 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
+              activeTab === 'messages'
+                ? 'border-[#14291D] text-[#14291D] bg-white'
+                : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 text-[#25D366]" />
+            <span>WhatsApp & Email Custom Messages</span>
           </button>
         </div>
 
@@ -2337,6 +2367,330 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 >
                   <Save className="w-4 h-4 text-amber-300" />
                   <span>Save Titles to Firebase</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Tab 5: WhatsApp & Email Custom Messages */}
+        {activeTab === 'messages' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
+              {/* Overview Card */}
+              <div className="bg-[#FAF8F5] p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-[#25D366]" />
+                    <div>
+                      <h4 className="font-serif text-base font-bold text-[#14291D]">
+                        WhatsApp & Email Message Customizer
+                      </h4>
+                      <p className="text-[11px] text-[#6E6352]">
+                        Control every automated text sent to your Firebase updated WhatsApp numbers and Email desks.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSiteForm({
+                        ...siteForm,
+                        messageTemplates: { ...DEFAULT_MESSAGE_TEMPLATES },
+                      });
+                      setSaveSuccessMsg('Restored all message templates to default!');
+                      setTimeout(() => setSaveSuccessMsg(null), 3000);
+                    }}
+                    className="px-3 py-1 bg-white border border-[#DDD5C5] text-[#5A5040] hover:text-[#14291D] rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Restore Defaults</span>
+                  </button>
+                </div>
+
+                {/* Option: Include Logged In User Info Toggle */}
+                <div className="p-3.5 bg-white rounded-xl border-2 border-[#A5D6B6] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <label className="font-bold text-[#14291D] flex items-center gap-2 cursor-pointer text-xs">
+                      <input
+                        type="checkbox"
+                        checked={siteForm.messageTemplates?.includeUserInfo ?? true}
+                        onChange={(e) => handleUpdateMessageTemplate('includeUserInfo', e.target.checked)}
+                        className="w-4 h-4 text-[#2C5E43] rounded cursor-pointer"
+                      />
+                      <span>Automatically Include Logged-In User Details (Name, Email, Timestamp)</span>
+                    </label>
+                    <p className="text-[11px] text-[#635948] pl-6">
+                      When enabled, patient's name, registered email, and message timestamp are automatically added to the message so you know their profile right inside WhatsApp and Email.
+                    </p>
+                  </div>
+
+                  <div className="text-[10px] bg-[#EBF5EF] text-[#183624] font-mono px-2.5 py-1.5 rounded-lg border border-[#BBDDC7] shrink-0">
+                    Active: {currentUser ? currentUser.name : 'Guest User'} ({currentUser ? currentUser.email : 'Not signed in'})
+                  </div>
+                </div>
+
+                {/* Available Variables Guide */}
+                <div className="bg-white p-3 rounded-lg border border-[#E7DFD1] space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-[#7A705E] block">
+                    Available Template Variables (Placeholders replace automatically):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      '{brandName}',
+                      '{userName}',
+                      '{userEmail}',
+                      '{currentTime}',
+                      '{productName}',
+                      '{productPrice}',
+                      '{resellerInfo}',
+                      '{cartSummary}',
+                      '{cartTotal}',
+                      '{ailment}',
+                      '{subject}',
+                      '{message}',
+                    ].map((token) => (
+                      <span
+                        key={token}
+                        className="font-mono text-[10px] px-2 py-0.5 bg-[#FAF6F0] text-[#14291D] border border-[#DDD5C5] rounded font-semibold"
+                        title="Click to copy or type in template"
+                      >
+                        {token}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 1. Header & Quick Floating Widget Messages */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Header WhatsApp Message */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      1. Top Header Ribbon WhatsApp Message
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Top Ribbon</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={siteForm.messageTemplates?.headerWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.headerWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('headerWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic">
+                    <strong>Preview:</strong> "{formatCustomMessage(
+                      siteForm.messageTemplates?.headerWhatsApp || DEFAULT_MESSAGE_TEMPLATES.headerWhatsApp,
+                      { brandName: siteForm.brandName },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+
+                {/* Floating Widget WhatsApp Message */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      2. Floating Bottom Widget WhatsApp Message
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Bottom Right Widget & Tooltip</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={siteForm.messageTemplates?.floatingWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.floatingWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('floatingWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic">
+                    <strong>Preview:</strong> "{formatCustomMessage(
+                      siteForm.messageTemplates?.floatingWhatsApp || DEFAULT_MESSAGE_TEMPLATES.floatingWhatsApp,
+                      { brandName: siteForm.brandName },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Front Contact Bar & Hero Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Front Contact Bar WhatsApp Message */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      3. Front Contact Bar WhatsApp Message
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Under Hero</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={siteForm.messageTemplates?.frontContactBarWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.frontContactBarWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('frontContactBarWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic">
+                    <strong>Preview:</strong> "{formatCustomMessage(
+                      siteForm.messageTemplates?.frontContactBarWhatsApp || DEFAULT_MESSAGE_TEMPLATES.frontContactBarWhatsApp,
+                      { brandName: siteForm.brandName },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+
+                {/* Hero Section WhatsApp Consultation */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      4. Hero Banner WhatsApp Consultation Message
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Hero Action Button</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={siteForm.messageTemplates?.heroWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.heroWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('heroWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic">
+                    <strong>Preview:</strong> "{formatCustomMessage(
+                      siteForm.messageTemplates?.heroWhatsApp || DEFAULT_MESSAGE_TEMPLATES.heroWhatsApp,
+                      { brandName: siteForm.brandName },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Product & Cart Order WhatsApp Messages */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Product Inquiry WhatsApp Message */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      5. Product Card & Monograph WhatsApp Order
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Tokens: {'{productName}'}, {'{productPrice}'}, {'{resellerInfo}'}</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={siteForm.messageTemplates?.productInquiryWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.productInquiryWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('productInquiryWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic whitespace-pre-wrap">
+                    <strong>Simulated Product Order Preview:</strong>\n"{formatCustomMessage(
+                      siteForm.messageTemplates?.productInquiryWhatsApp || DEFAULT_MESSAGE_TEMPLATES.productInquiryWhatsApp,
+                      {
+                        brandName: siteForm.brandName,
+                        productName: 'Shilajit Pure Himalayan Resin',
+                        productPrice: 1199,
+                        resellerInfo: ', Reseller Wholesale: ₹890',
+                      },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+
+                {/* Cart Order WhatsApp Message */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      6. Dispensary Bag Checkout Message
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Tokens: {'{cartSummary}'}, {'{cartTotal}'}</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={siteForm.messageTemplates?.cartOrderWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.cartOrderWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('cartOrderWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic whitespace-pre-wrap max-h-24 overflow-y-auto">
+                    <strong>Simulated Bag Checkout Preview:</strong>\n"{formatCustomMessage(
+                      siteForm.messageTemplates?.cartOrderWhatsApp || DEFAULT_MESSAGE_TEMPLATES.cartOrderWhatsApp,
+                      {
+                        brandName: siteForm.brandName,
+                        cartSummary: '1. Ashwagandha KSM-66 (60 Capsules) - Qty: 2 = ₹1298\n2. Brahmi Taila (200ml) - Qty: 1 = ₹349',
+                        cartTotal: 1647,
+                      },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Consultation & Direct Email */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Consultation Modal WhatsApp Message */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      7. Vaidya Consultation Modal WhatsApp Message
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Token: {'{ailment}'}</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={siteForm.messageTemplates?.consultationWhatsApp ?? DEFAULT_MESSAGE_TEMPLATES.consultationWhatsApp}
+                    onChange={(e) => handleUpdateMessageTemplate('consultationWhatsApp', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                  <div className="p-2 bg-[#F2EDE1]/50 rounded text-[10px] text-[#554C3E] italic whitespace-pre-wrap">
+                    <strong>Preview:</strong>\n"{formatCustomMessage(
+                      siteForm.messageTemplates?.consultationWhatsApp || DEFAULT_MESSAGE_TEMPLATES.consultationWhatsApp,
+                      {
+                        brandName: siteForm.brandName,
+                        ailment: 'Chronic Joint Stiffness & Low Energy',
+                      },
+                      currentUser,
+                      siteForm.messageTemplates?.includeUserInfo ?? true
+                    )}"
+                  </div>
+                </div>
+
+                {/* Email Subject & Body Templates */}
+                <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#14291D] text-xs">
+                      8. Patient Direct Email Subject & Body
+                    </label>
+                    <span className="text-[10px] text-[#716858]">Tokens: {'{subject}'}, {'{message}'}</span>
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#716858] block mb-0.5">Email Subject:</label>
+                    <input
+                      type="text"
+                      value={siteForm.messageTemplates?.contactFormEmailSubject ?? DEFAULT_MESSAGE_TEMPLATES.contactFormEmailSubject}
+                      onChange={(e) => handleUpdateMessageTemplate('contactFormEmailSubject', e.target.value)}
+                      className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#716858] block mb-0.5">Email Body:</label>
+                    <textarea
+                      rows={2}
+                      value={siteForm.messageTemplates?.contactFormEmailBody ?? DEFAULT_MESSAGE_TEMPLATES.contactFormEmailBody}
+                      onChange={(e) => handleUpdateMessageTemplate('contactFormEmailBody', e.target.value)}
+                      className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-md cursor-pointer text-xs"
+                >
+                  <Save className="w-4 h-4 text-amber-300" />
+                  <span>Save All Custom Messages to Firebase</span>
                 </button>
               </div>
             </form>

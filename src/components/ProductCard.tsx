@@ -1,5 +1,5 @@
 import React from 'react';
-import { HerbalProduct } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings } from '../types/pharmacy';
 import { 
   MessageCircle, 
   Eye, 
@@ -15,7 +15,13 @@ import {
   Rocket,
   Sparkles
 } from 'lucide-react';
-import { PHARMACY_CONTACT_INFO } from '../data/herbalProducts';
+import { useAuth } from '../context/AuthContext';
+import { 
+  getPrimaryWhatsApp, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES, 
+  buildWhatsAppUrl 
+} from '../utils/messageFormatter';
 
 interface ProductCardProps {
   product: HerbalProduct;
@@ -24,6 +30,7 @@ interface ProductCardProps {
   isInCart?: boolean;
   isAdmin?: boolean;
   onEditProduct?: (product: HerbalProduct) => void;
+  siteSettings?: SiteSettings;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -33,7 +40,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isInCart = false,
   isAdmin = false,
   onEditProduct,
+  siteSettings,
 }) => {
+  const { currentUser } = useAuth();
   const savings = product.mrp - product.price;
   const discountPercent = Math.round((savings / product.mrp) * 100);
 
@@ -47,10 +56,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       window.open(product.customLink, '_blank');
       return;
     }
-    const text = encodeURIComponent(
-      `Namaste, I want to inquire about "${product.name}" (Deal price ₹${product.price}${product.resellerPrice ? `, Reseller Price ₹${product.resellerPrice}` : ''}). Please share details.`
+    const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+    const template = siteSettings?.messageTemplates?.productInquiryWhatsApp || DEFAULT_MESSAGE_TEMPLATES.productInquiryWhatsApp;
+    const includeUserInfo = siteSettings?.messageTemplates?.includeUserInfo ?? true;
+    const formattedMsg = formatCustomMessage(
+      template,
+      {
+        brandName: siteSettings?.brandName,
+        productName: product.name,
+        productPrice: product.price,
+        resellerInfo: product.resellerPrice ? `, Reseller Wholesale: ₹${product.resellerPrice}` : '',
+      },
+      currentUser,
+      includeUserInfo
     );
-    window.open(`https://wa.me/${PHARMACY_CONTACT_INFO.whatsappNumber}?text=${text}`, '_blank');
+    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
+    window.open(url, '_blank');
   };
 
   const handleAdminEdit = (e: React.MouseEvent) => {

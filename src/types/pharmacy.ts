@@ -91,6 +91,19 @@ export interface ContactWhatsAppItem {
   displayNumber: string;
 }
 
+export interface MessageTemplates {
+  headerWhatsApp: string;
+  floatingWhatsApp: string;
+  frontContactBarWhatsApp: string;
+  heroWhatsApp: string;
+  productInquiryWhatsApp: string;
+  cartOrderWhatsApp: string;
+  consultationWhatsApp: string;
+  contactFormEmailSubject: string;
+  contactFormEmailBody: string;
+  includeUserInfo: boolean;
+}
+
 export interface SiteSettings {
   brandName: string;
   hindiName: string;
@@ -107,6 +120,7 @@ export interface SiteSettings {
     emails: ContactEmailItem[];
   };
   licenseBadges: string[];
+  messageTemplates?: MessageTemplates;
 }
 
 export interface ConsultationInquiry {

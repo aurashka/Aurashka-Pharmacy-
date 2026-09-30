@@ -9,9 +9,19 @@ import {
   CheckCircle,
   Copy,
   Check,
-  ExternalLink
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react';
 import { SiteSettings } from '../types/pharmacy';
+import { useAuth } from '../context/AuthContext';
+import { 
+  getPrimaryWhatsApp, 
+  getPrimaryEmail,
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES, 
+  buildWhatsAppUrl,
+  buildMailtoUrl 
+} from '../utils/messageFormatter';
 
 interface ContactSectionProps {
   onOpenConsultationModal: () => void;
@@ -22,15 +32,19 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   onOpenConsultationModal,
   siteSettings,
 }) => {
+  const { currentUser } = useAuth();
   const [contactForm, setContactForm] = useState({
-    name: '',
+    name: currentUser?.name || '',
     phone: '',
-    email: '',
+    email: currentUser?.email || '',
     subject: 'Medicine Order / Deal Inquiry',
     message: ''
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+
+  const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+  const primaryEmail = getPrimaryEmail(siteSettings);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -38,9 +52,55 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
     setTimeout(() => setCopiedItem(null), 2500);
   };
 
+  const handleSendViaWhatsApp = () => {
+    const template = siteSettings.messageTemplates?.frontContactBarWhatsApp || DEFAULT_MESSAGE_TEMPLATES.frontContactBarWhatsApp;
+    const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
+    const composed = formatCustomMessage(
+      `*DIRECT INQUIRY - ${siteSettings.brandName}*\nSubject: {subject}\nMessage: {message}\nPhone: {phone}`,
+      {
+        brandName: siteSettings.brandName,
+        subject: contactForm.subject,
+        message: contactForm.message || 'I would like to inquire about formulations.',
+        phone: contactForm.phone,
+        email: contactForm.email,
+      },
+      currentUser || (contactForm.name ? { id: 'patient', name: contactForm.name, email: contactForm.email, role: 'user' } : null),
+      includeUserInfo
+    );
+    window.open(buildWhatsAppUrl(primaryWhatsApp.number, composed), '_blank');
+  };
+
+  const handleSendViaEmail = () => {
+    const subjectTemplate = siteSettings.messageTemplates?.contactFormEmailSubject || DEFAULT_MESSAGE_TEMPLATES.contactFormEmailSubject;
+    const bodyTemplate = siteSettings.messageTemplates?.contactFormEmailBody || DEFAULT_MESSAGE_TEMPLATES.contactFormEmailBody;
+    const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
+
+    const formattedSubject = formatCustomMessage(
+      subjectTemplate,
+      { brandName: siteSettings.brandName, subject: contactForm.subject },
+      currentUser,
+      false
+    );
+    const formattedBody = formatCustomMessage(
+      bodyTemplate,
+      {
+        brandName: siteSettings.brandName,
+        subject: contactForm.subject,
+        message: contactForm.message || 'No additional details provided.',
+        phone: contactForm.phone,
+        email: contactForm.email,
+      },
+      currentUser || (contactForm.name ? { id: 'patient', name: contactForm.name, email: contactForm.email, role: 'user' } : null),
+      includeUserInfo
+    );
+
+    window.open(buildMailtoUrl(primaryEmail, formattedSubject, formattedBody), '_blank');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormSubmitted(true);
+    handleSendViaWhatsApp();
   };
 
   const handleOpenGoogleMaps = () => {
@@ -140,10 +200,15 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                       </span>
                     </div>
                     <a
-                      href={`https://wa.me/${w.number}?text=Namaste,%20I%20want%20to%20consult%20${encodeURIComponent(siteSettings.brandName)}.`}
+                      href={buildWhatsAppUrl(w.number, formatCustomMessage(
+                        siteSettings.messageTemplates?.frontContactBarWhatsApp || DEFAULT_MESSAGE_TEMPLATES.frontContactBarWhatsApp,
+                        { brandName: siteSettings.brandName, subject: w.label },
+                        currentUser,
+                        siteSettings.messageTemplates?.includeUserInfo ?? true
+                      ))}
                       target="_blank"
                       rel="noreferrer"
-                      className="px-2.5 py-1 text-[11px] font-semibold bg-[#25D366] text-white rounded hover:bg-[#20bd5a] transition-colors flex items-center gap-1"
+                      className="px-2.5 py-1 text-[11px] font-semibold bg-[#25D366] text-white rounded hover:bg-[#20bd5a] transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       <MessageCircle className="w-3 h-3" />
                       <span>Chat</span>
@@ -178,7 +243,21 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                         {e.label}
                       </span>
                       <a
-                        href={`mailto:${e.email}`}
+                        href={buildMailtoUrl(
+                          e.email,
+                          formatCustomMessage(
+                            siteSettings.messageTemplates?.contactFormEmailSubject || DEFAULT_MESSAGE_TEMPLATES.contactFormEmailSubject,
+                            { brandName: siteSettings.brandName, subject: e.label },
+                            currentUser,
+                            false
+                          ),
+                          formatCustomMessage(
+                            siteSettings.messageTemplates?.contactFormEmailBody || DEFAULT_MESSAGE_TEMPLATES.contactFormEmailBody,
+                            { brandName: siteSettings.brandName, subject: e.label, message: `Inquiry regarding ${e.label} department.` },
+                            currentUser,
+                            siteSettings.messageTemplates?.includeUserInfo ?? true
+                          )
+                        )}
                         className="font-medium text-xs text-[#2C5E43] hover:underline truncate block"
                       >
                         {e.email}
@@ -319,13 +398,24 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 />
               </div>
 
-              <div className="flex justify-end pt-1">
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSendViaEmail}
+                  className="py-2 px-4 rounded-lg bg-white border border-[#DDD5C5] text-[#2C5E43] hover:bg-[#FAF8F5] font-medium text-xs transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  title={`Send directly to ${primaryEmail}`}
+                >
+                  <Mail className="w-3.5 h-3.5 text-[#2C5E43]" />
+                  <span>Send via Email</span>
+                </button>
+
                 <button
                   type="submit"
-                  className="py-2 px-5 rounded-lg bg-[#14291D] text-white font-medium text-xs hover:bg-[#203E2D] transition-colors flex items-center gap-1.5 shadow-xs"
+                  className="py-2 px-5 rounded-lg bg-[#25D366] text-white font-semibold text-xs hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  title={`Send directly to WhatsApp: ${primaryWhatsApp.displayNumber}`}
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Message</span>
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Send via WhatsApp</span>
                 </button>
               </div>
             </form>

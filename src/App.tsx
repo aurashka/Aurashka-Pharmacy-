@@ -10,7 +10,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { FrontContactBar } from './components/FrontContactBar';
-import { AilmentQuickFinder } from './components/AilmentQuickFinder';
 import { ProductDashboard } from './components/ProductDashboard';
 import { DosageGuideSection } from './components/DosageGuideSection';
 import { ContactSection } from './components/ContactSection';
@@ -377,17 +376,6 @@ function PharmacyApp() {
           siteSettings={siteSettings}
         />
 
-        {/* Symptom & Ailment Quick Finder */}
-        <AilmentQuickFinder
-          selectedCategory={selectedCategory}
-          onSelectCategory={(cat) => setSelectedCategory(cat)}
-          searchQuery={searchQuery}
-          onSelectAilmentQuery={(q) => {
-            setSearchQuery(q);
-            handleNavigateSection('products-catalog');
-          }}
-        />
-
         {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
         <ProductDashboard
           products={products}
@@ -409,6 +397,7 @@ function PharmacyApp() {
           }}
           categories={categories}
           forms={forms}
+          siteSettings={siteSettings}
         />
 
         {/* Detailed Uses, Pharmacopoeia & Anupana Science Guide */}
@@ -430,6 +419,7 @@ function PharmacyApp() {
         onClose={() => setSelectedProductForDetail(null)}
         onAddToCart={handleAddToCart}
         isInCart={selectedProductForDetail ? cartProductIds.has(selectedProductForDetail.id) : false}
+        siteSettings={siteSettings}
       />
 
       {/* Free Vaidya Dosage & Prescription Consultation Modal */}
@@ -437,6 +427,7 @@ function PharmacyApp() {
         isOpen={isConsultationModalOpen}
         onClose={() => setIsConsultationModalOpen(false)}
         initialProduct={consultationInitialProduct}
+        siteSettings={siteSettings}
       />
 
       {/* Dispensary Order / Consultation List Drawer */}
@@ -451,6 +442,7 @@ function PharmacyApp() {
           setIsCartOpen(false);
           setSelectedProductForDetail(prod);
         }}
+        siteSettings={siteSettings}
       />
 
       {/* Comprehensive Admin Panel Modal */}
@@ -487,6 +479,7 @@ function PharmacyApp() {
       {/* Bottom Floating Quick-Contact Button (WhatsApp + Phone + Consult) */}
       <FloatingContactWidget
         onOpenConsultationModal={() => handleOpenConsultationModal()}
+        siteSettings={siteSettings}
       />
 
       {/* Footer */}

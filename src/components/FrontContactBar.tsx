@@ -1,6 +1,14 @@
 import React from 'react';
 import { Phone, MessageCircle, Calendar, MapPin } from 'lucide-react';
 import { SiteSettings } from '../types/pharmacy';
+import { useAuth } from '../context/AuthContext';
+import { 
+  getPrimaryPhone, 
+  getPrimaryWhatsApp, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES,
+  buildWhatsAppUrl 
+} from '../utils/messageFormatter';
 
 interface FrontContactBarProps {
   onOpenConsultationModal: () => void;
@@ -13,17 +21,23 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
   onScrollToContact,
   siteSettings,
 }) => {
-  const primaryPhone = siteSettings.contacts.phones[0]?.number || '+91 98765 43210';
-  const primaryWhatsApp = siteSettings.contacts.whatsapps[0] || {
-    number: '919876543210',
-    displayNumber: '+91 98765 43210',
-  };
+  const { currentUser } = useAuth();
+  const primaryPhone = getPrimaryPhone(siteSettings);
+  const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+
+  const frontTemplate = siteSettings.messageTemplates?.frontContactBarWhatsApp || DEFAULT_MESSAGE_TEMPLATES.frontContactBarWhatsApp;
+  const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
+
+  const formattedMsg = formatCustomMessage(
+    frontTemplate,
+    { brandName: siteSettings.brandName },
+    currentUser,
+    includeUserInfo
+  );
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Namaste, I would like to contact ${siteSettings.brandName} for medicine inquiries.`
-    );
-    window.open(`https://wa.me/${primaryWhatsApp.number}?text=${text}`, '_blank');
+    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
+    window.open(url, '_blank');
   };
 
   return (
@@ -33,6 +47,7 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
           <span className="font-semibold text-[#14291D]">Apothecary Helplines:</span>
           <a
             href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
+            title={`Call Pharmacist: ${primaryPhone}`}
             className="font-mono font-medium hover:text-[#14291D] transition-colors"
           >
             {primaryPhone}
@@ -44,7 +59,8 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleWhatsApp}
-            className="px-3 py-1.5 rounded-lg bg-[#25D366] text-white font-medium text-xs hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5"
+            title={`WhatsApp Helpline: ${primaryWhatsApp.displayNumber}\nMessage: "${formattedMsg.slice(0, 60)}..."`}
+            className="px-3 py-1.5 rounded-lg bg-[#25D366] text-white font-medium text-xs hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <MessageCircle className="w-3.5 h-3.5" />
             <span>WhatsApp: {primaryWhatsApp.displayNumber}</span>
@@ -52,7 +68,7 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
 
           <button
             onClick={onOpenConsultationModal}
-            className="px-3 py-1.5 rounded-lg bg-white border border-[#D5CCBC] text-[#292218] hover:bg-[#FAF8F5] font-medium text-xs transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg bg-white border border-[#D5CCBC] text-[#292218] hover:bg-[#FAF8F5] font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Calendar className="w-3.5 h-3.5 text-[#2C5E43]" />
             <span>Consultation</span>
@@ -60,7 +76,7 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
 
           <button
             onClick={onScrollToContact}
-            className="hidden lg:flex px-2.5 py-1.5 text-xs text-[#5E5445] hover:text-[#14291D] transition-colors items-center gap-1"
+            className="hidden lg:flex px-2.5 py-1.5 text-xs text-[#5E5445] hover:text-[#14291D] transition-colors items-center gap-1 cursor-pointer"
           >
             <MapPin className="w-3.5 h-3.5 text-[#2C5E43]" />
             <span>Store Address</span>

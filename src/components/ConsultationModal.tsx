@@ -1,22 +1,33 @@
 import React, { useState } from 'react';
 import { X, Send, Phone, MessageSquare, Clock, CheckCircle2, User, Mail, ShieldAlert } from 'lucide-react';
-import { PHARMACY_CONTACT_INFO, HERBAL_PRODUCTS } from '../data/herbalProducts';
+import { HERBAL_PRODUCTS } from '../data/herbalProducts';
+import { SiteSettings } from '../types/pharmacy';
+import { useAuth } from '../context/AuthContext';
+import { 
+  getPrimaryWhatsApp, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES, 
+  buildWhatsAppUrl 
+} from '../utils/messageFormatter';
 
 interface ConsultationModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialProduct?: string;
+  siteSettings?: SiteSettings;
 }
 
 export const ConsultationModal: React.FC<ConsultationModalProps> = ({
   isOpen,
   onClose,
   initialProduct = '',
+  siteSettings,
 }) => {
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
-    fullName: '',
+    fullName: currentUser?.name || '',
     phone: '',
-    email: '',
+    email: currentUser?.email || '',
     ailment: '',
     selectedProduct: initialProduct,
     contactMethod: 'whatsapp' as 'whatsapp' | 'phone' | 'email',
@@ -39,10 +50,25 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
   };
 
   const handleDirectWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Namaste Vaidya ji, my name is ${formData.fullName || 'Patient'}. I need dosage advice for "${formData.ailment || 'Herbal Consultation'}". Please guide me on medicines and authentic routine.`
+    const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+    const template = siteSettings?.messageTemplates?.consultationWhatsApp || DEFAULT_MESSAGE_TEMPLATES.consultationWhatsApp;
+    const includeUserInfo = siteSettings?.messageTemplates?.includeUserInfo ?? true;
+
+    const formattedMsg = formatCustomMessage(
+      template,
+      {
+        brandName: siteSettings?.brandName,
+        ailment: formData.ailment || 'Classical Herbal Health & Dosage Consultation',
+        phone: formData.phone,
+        email: formData.email,
+        message: formData.notes,
+      },
+      currentUser || (formData.fullName ? { id: 'patient', name: formData.fullName, email: formData.email, role: 'user' } : null),
+      includeUserInfo
     );
-    window.open(`https://wa.me/${PHARMACY_CONTACT_INFO.whatsappNumber}?text=${text}`, '_blank');
+
+    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
+    window.open(url, '_blank');
   };
 
   return (
@@ -83,7 +109,7 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 Consultation Request Received
               </h4>
               <p className="text-xs text-[#524B3F] max-w-sm mx-auto">
-                Thank you, <span className="font-semibold text-[#1E2922]">{formData.fullName}</span>. Our registered Ayurvedic Vaidya ({PHARMACY_CONTACT_INFO.headPharmacist}) has received your clinical query.
+                Thank you, <span className="font-semibold text-[#1E2922]">{formData.fullName}</span>. Our registered Ayurvedic Vaidya ({siteSettings?.headPharmacist || 'Vaidya Harshit Maan (BAMS, MD Ayu.)'}) has received your clinical query.
               </p>
             </div>
 

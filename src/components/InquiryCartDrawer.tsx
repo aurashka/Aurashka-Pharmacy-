@@ -1,7 +1,13 @@
 import React from 'react';
-import { HerbalProduct } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings } from '../types/pharmacy';
 import { X, Trash2, Plus, Minus, MessageSquare, ShoppingBag, ShieldCheck } from 'lucide-react';
-import { PHARMACY_CONTACT_INFO } from '../data/herbalProducts';
+import { useAuth } from '../context/AuthContext';
+import { 
+  getPrimaryWhatsApp, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES, 
+  buildWhatsAppUrl 
+} from '../utils/messageFormatter';
 
 export interface CartItem {
   product: HerbalProduct;
@@ -16,6 +22,7 @@ interface InquiryCartDrawerProps {
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
   onOpenProductDetail: (product: HerbalProduct) => void;
+  siteSettings?: SiteSettings;
 }
 
 export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
@@ -26,7 +33,9 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
   onRemoveItem,
   onClearCart,
   onOpenProductDetail,
+  siteSettings,
 }) => {
+  const { currentUser } = useAuth();
   if (!isOpen) return null;
 
   const totalAmount = cartItems.reduce(
@@ -51,17 +60,23 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
       )
       .join('\n');
 
-    const message = encodeURIComponent(
-      `*HERBAL PHARMACY ORDER & DOSAGE CONSULTATION*\n` +
-      `------------------------------------\n` +
-      `Namaste Vaidya ji, I would like to order and consult on the following herbal formulations:\n\n` +
-      `${itemsText}\n\n` +
-      `*Total Estimated Value:* ₹${totalAmount}\n` +
-      `------------------------------------\n` +
-      `Please verify dosage suitability for me and confirm delivery address details.`
+    const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+    const template = siteSettings?.messageTemplates?.cartOrderWhatsApp || DEFAULT_MESSAGE_TEMPLATES.cartOrderWhatsApp;
+    const includeUserInfo = siteSettings?.messageTemplates?.includeUserInfo ?? true;
+
+    const formattedMsg = formatCustomMessage(
+      template,
+      {
+        brandName: siteSettings?.brandName,
+        cartSummary: itemsText,
+        cartTotal: totalAmount,
+      },
+      currentUser,
+      includeUserInfo
     );
 
-    window.open(`https://wa.me/${PHARMACY_CONTACT_INFO.whatsappNumber}?text=${message}`, '_blank');
+    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
+    window.open(url, '_blank');
   };
 
   return (

@@ -1,6 +1,12 @@
 import React from 'react';
 import { SiteSettings } from '../types/pharmacy';
 import { Phone, MessageSquare, Mail, MapPin } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { 
+  buildWhatsAppUrl, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES 
+} from '../utils/messageFormatter';
 
 interface FooterProps {
   onNavigateSection: (sectionId: string) => void;
@@ -13,6 +19,7 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenConsultationModal,
   siteSettings,
 }) => {
+  const { currentUser } = useAuth();
   return (
     <footer className="bg-[#14291D] text-[#BACEC2] text-xs border-t border-[#1C3A27]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
@@ -49,14 +56,6 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button
-                  onClick={() => onNavigateSection('ailment-guide')}
-                  className="hover:text-white transition-colors"
-                >
-                  Remedy Quick Finder
-                </button>
-              </li>
-              <li>
-                <button
                   onClick={() => onNavigateSection('dosage-uses')}
                   className="hover:text-white transition-colors"
                 >
@@ -88,7 +87,12 @@ export const Footer: React.FC<FooterProps> = ({
                 <li key={idx} className="flex items-center gap-2">
                   <MessageSquare className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
                   <a 
-                    href={`https://wa.me/${w.number}`}
+                    href={buildWhatsAppUrl(w.number, formatCustomMessage(
+                      siteSettings.messageTemplates?.frontContactBarWhatsApp || DEFAULT_MESSAGE_TEMPLATES.frontContactBarWhatsApp,
+                      { brandName: siteSettings.brandName, subject: w.label },
+                      currentUser,
+                      siteSettings.messageTemplates?.includeUserInfo ?? true
+                    ))}
                     target="_blank"
                     rel="noreferrer"
                     className="hover:text-white truncate"

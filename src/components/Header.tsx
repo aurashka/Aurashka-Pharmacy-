@@ -2,6 +2,13 @@ import React from 'react';
 import { Phone, MessageSquare, ShoppingBag, LogIn, LogOut, Settings, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SiteSettings } from '../types/pharmacy';
+import { 
+  getPrimaryPhone, 
+  getPrimaryWhatsApp, 
+  formatCustomMessage, 
+  DEFAULT_MESSAGE_TEMPLATES,
+  buildWhatsAppUrl 
+} from '../utils/messageFormatter';
 
 interface HeaderProps {
   cartCount: number;
@@ -24,11 +31,18 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { currentUser, isAdmin, logout } = useAuth();
 
-  const primaryPhone = siteSettings.contacts.phones[0]?.number || '+91 98765 43210';
-  const primaryWhatsApp = siteSettings.contacts.whatsapps[0] || {
-    number: '919876543210',
-    displayNumber: '+91 98765 43210',
-  };
+  const primaryPhone = getPrimaryPhone(siteSettings);
+  const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+
+  const headerMsgTemplate = siteSettings.messageTemplates?.headerWhatsApp || DEFAULT_MESSAGE_TEMPLATES.headerWhatsApp;
+  const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
+  const formattedHeaderMsg = formatCustomMessage(
+    headerMsgTemplate,
+    { brandName: siteSettings.brandName },
+    currentUser,
+    includeUserInfo
+  );
+  const headerWhatsAppUrl = buildWhatsAppUrl(primaryWhatsApp.number, formattedHeaderMsg);
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E7DFD1]">
@@ -44,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-3 sm:gap-4">
             <a
               href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
+              title={`Call Direct: ${primaryPhone}`}
               className="flex items-center gap-1 hover:text-white transition-colors"
             >
               <Phone className="w-3 h-3 text-[#A5D6B6]" />
@@ -53,9 +68,10 @@ export const Header: React.FC<HeaderProps> = ({
             <span aria-hidden="true" className="text-white/30">·</span>
 
             <a
-              href={`https://wa.me/${primaryWhatsApp.number}?text=Namaste,%20I%20want%20to%20inquire%20about%20${encodeURIComponent(siteSettings.brandName)}%20herbal%20formulations.`}
+              href={headerWhatsAppUrl}
               target="_blank"
               rel="noreferrer"
+              title={`WhatsApp: ${primaryWhatsApp.displayNumber}\nMessage: "${formattedHeaderMsg.slice(0, 70)}..."`}
               className="flex items-center gap-1 text-[#4ADE80] hover:text-[#86efac] font-medium transition-colors"
             >
               <MessageSquare className="w-3 h-3" />
@@ -88,12 +104,6 @@ export const Header: React.FC<HeaderProps> = ({
             Formulations & Deals
           </button>
           <button
-            onClick={() => onNavigateSection('ailment-guide')}
-            className="hover:text-[#14291D] transition-colors"
-          >
-            Remedy Finder
-          </button>
-          <button
             onClick={() => onNavigateSection('dosage-uses')}
             className="hover:text-[#14291D] transition-colors"
           >
@@ -113,11 +123,11 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && (
             <button
               onClick={onOpenAdminPanel}
-              className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#B4741E] hover:bg-[#975f15] rounded-lg transition-colors flex items-center gap-1.5 shadow-sm border border-[#F4BE77]"
+              className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#B4741E] hover:bg-[#975f15] rounded-lg transition-colors flex items-center gap-1.5 shadow-sm border border-[#F4BE77] cursor-pointer"
               title="Open Admin Control Center"
             >
               <Settings className="w-3.5 h-3.5 text-amber-200" />
-              <span>⚡ Admin Access</span>
+              <span>Admin Access</span>
             </button>
           )}
 

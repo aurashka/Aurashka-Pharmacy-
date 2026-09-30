@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { HerbalProduct, ProductCategory, CategoryItem } from '../types/pharmacy';
+import { HerbalProduct, ProductCategory, CategoryItem, SiteSettings } from '../types/pharmacy';
 import { ProductCard } from './ProductCard';
 import { Search, X, RefreshCw, Tag, SlidersHorizontal, Plus, Settings, ShieldAlert, Sparkles, Flame, Trophy, Percent, Star } from 'lucide-react';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS } from '../data/herbalProducts';
@@ -18,6 +18,7 @@ interface ProductDashboardProps {
   onEditProduct?: (product: HerbalProduct) => void;
   categories?: CategoryItem[];
   forms?: string[];
+  siteSettings?: SiteSettings;
 }
 
 export const ProductDashboard: React.FC<ProductDashboardProps> = ({
@@ -34,6 +35,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   onEditProduct,
   categories = DEFAULT_CATEGORIES,
   forms = DEFAULT_FORMS,
+  siteSettings,
 }) => {
   const [selectedForm, setSelectedForm] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'deals' | 'trending' | 'top_seller' | 'rating' | 'reseller' | 'new_launch' | 'price-asc' | 'price-desc'>('deals');
@@ -310,6 +312,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
               isInCart={cartProductIds.has(product.id)}
               isAdmin={isAdmin}
               onEditProduct={onEditProduct}
+              siteSettings={siteSettings}
             />
           ))}
         </div>
