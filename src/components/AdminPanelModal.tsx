@@ -8,7 +8,9 @@ import {
   CategoryItem,
   SortBadgeType,
   ProductCustomField,
-  MessageTemplates
+  MessageTemplates,
+  WeeklyDealItem,
+  WeeklyDealsConfig
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { 
@@ -40,11 +42,18 @@ import {
   Rocket,
   Sliders,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Clock,
+  Percent,
+  MoveLeft,
+  MoveRight,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase } from '../utils/firebaseSync';
-import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS } from '../data/herbalProducts';
+import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS } from '../data/herbalProducts';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -82,13 +91,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'categories_forms' | 'contacts' | 'site_titles' | 'messages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'categories_forms' | 'contacts' | 'site_titles' | 'messages'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isBackingUp, setIsBackingUp] = useState(false);
+
+  // Deal of the Week state
+  const [selectedDealProductId, setSelectedDealProductId] = useState<string>(products[0]?.id || '');
+  const [dealCustomTitle, setDealCustomTitle] = useState('');
+  const [dealCustomSubtitle, setDealCustomSubtitle] = useState('');
+  const [dealPriceInput, setDealPriceInput] = useState<number>(products[0]?.price || 350);
+  const [dealBadgeInput, setDealBadgeInput] = useState('Deal of the Week · 30% Off');
+  const [dealHighlightInput, setDealHighlightInput] = useState('');
+  const [dealHighlights, setDealHighlights] = useState<string[]>(['Direct Apothecary Rate', 'Lab Tested Purity']);
+  const [deleteSectionConfirm, setDeleteSectionConfirm] = useState(false);
 
   // Quick inline add custom category / form state inside product editor
   const [showInlineAddCat, setShowInlineAddCat] = useState(false);
@@ -164,6 +183,104 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         [key]: val,
       },
     });
+  };
+
+  const currentWeeklyDeals: WeeklyDealsConfig = siteForm.weeklyDeals || {
+    enabled: true,
+    title: 'Deal of the Week',
+    subtitle: 'Handpicked classical formulations and pure Rasayanas at exclusive apothecary rates.',
+    badgeText: 'Handpicked Specials',
+    bannerTag: 'Save up to 35% this week',
+    dealEndNotice: 'Offers refresh every Sunday midnight · Authentic botanical guarantee',
+    items: [],
+  };
+
+  const handleUpdateWeeklyDeals = (updates: Partial<WeeklyDealsConfig>) => {
+    const updated: WeeklyDealsConfig = {
+      ...currentWeeklyDeals,
+      ...updates,
+    };
+    setSiteForm({
+      ...siteForm,
+      weeklyDeals: updated,
+    });
+  };
+
+  const handleToggleWeeklyDealsSection = (enabled: boolean) => {
+    handleUpdateWeeklyDeals({ enabled });
+    setSaveSuccessMsg(enabled ? 'Deal of the Week section enabled!' : 'Deal of the Week section deleted / hidden from website.');
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleDeleteSectionConfirm = () => {
+    handleUpdateWeeklyDeals({ enabled: false, items: [] });
+    setDeleteSectionConfirm(false);
+    setSaveSuccessMsg('Deal of the Week section and all items deleted from storefront.');
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleRestoreDefaultDeals = () => {
+    const defaultDeals = DEFAULT_SITE_SETTINGS.weeklyDeals;
+    if (defaultDeals) {
+      handleUpdateWeeklyDeals(defaultDeals);
+      setSaveSuccessMsg('Restored default Deal of the Week formulations!');
+      setTimeout(() => setSaveSuccessMsg(null), 3000);
+    }
+  };
+
+  const handleAddDealProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    const prod = products.find(p => p.id === selectedDealProductId);
+    if (!prod) return;
+
+    const newDealItem: WeeklyDealItem = {
+      id: `deal-${Date.now()}`,
+      productId: prod.id,
+      customTitle: dealCustomTitle.trim() || undefined,
+      customSubtitle: dealCustomSubtitle.trim() || undefined,
+      dealPrice: Number(dealPriceInput) > 0 ? Number(dealPriceInput) : prod.price,
+      dealBadge: dealBadgeInput.trim() || 'Deal of the Week · 30% Off',
+      highlightPoints: dealHighlights.filter(h => h.trim().length > 0),
+    };
+
+    const newItems = [...currentWeeklyDeals.items, newDealItem];
+    handleUpdateWeeklyDeals({ items: newItems, enabled: true });
+
+    // Reset inputs
+    setDealCustomTitle('');
+    setDealCustomSubtitle('');
+    setDealBadgeInput('Deal of the Week · 30% Off');
+    setSaveSuccessMsg(`Added "${prod.name}" to Deal of the Week horizontal carousel!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleRemoveDeal = (dealId: string) => {
+    const newItems = currentWeeklyDeals.items.filter(item => item.id !== dealId);
+    handleUpdateWeeklyDeals({ items: newItems });
+    setSaveSuccessMsg('Removed product from Deal of the Week.');
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  const handleMoveDeal = (dealId: string, direction: 'left' | 'right') => {
+    const items = [...currentWeeklyDeals.items];
+    const idx = items.findIndex(i => i.id === dealId);
+    if (idx < 0) return;
+    const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+
+    handleUpdateWeeklyDeals({ items });
+  };
+
+  const handleSaveWeeklyDealsTab = async (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateSiteSettings(siteForm);
+    await backupSiteSettingsToFirebase(siteForm);
+    setSaveSuccessMsg('Deal of the Week configuration saved to Firebase and storefront!');
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
   useEffect(() => {
@@ -781,92 +898,142 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex border-b border-[#E7DFD1] bg-[#FAF8F5] px-6 overflow-x-auto scrollbar-none">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('products');
+        {/* Mobile / Compact Quick Switcher Dropdown (Never Hidden) */}
+        <div className="md:hidden px-4 py-2.5 bg-[#F2EDE1] border-b border-[#DCD5C5] flex items-center justify-between gap-2 shrink-0">
+          <label className="text-xs font-bold text-[#14291D] shrink-0 flex items-center gap-1.5">
+            <Sliders className="w-3.5 h-3.5 text-[#2C5E43]" />
+            <span>Admin Section:</span>
+          </label>
+          <select
+            value={activeTab}
+            onChange={(e) => {
+              setActiveTab(e.target.value as any);
               setIsCreatingNew(false);
               setEditingProduct(null);
             }}
-            className={`py-2.5 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === 'products'
-                ? 'border-[#14291D] text-[#14291D] bg-white'
-                : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-            }`}
+            className="flex-1 py-1.5 px-3 bg-white border border-[#C8BEAB] rounded-lg text-xs font-semibold text-[#183624] shadow-2xs focus:outline-hidden focus:border-[#2C5E43] cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-[#2C5E43]" />
-            <span>Products & Reseller Rates ({products.length})</span>
-          </button>
+            <option value="products">🛍️ Products & Reseller Rates ({products.length})</option>
+            <option value="deal_of_week">🔥 Deal of the Week ({currentWeeklyDeals.items.length} deals{currentWeeklyDeals.enabled ? '' : ' - Hidden'})</option>
+            <option value="categories_forms">🗂️ Categories & Forms Manager</option>
+            <option value="contacts">📞 Multiple Contacts (Phones, WhatsApp, Emails)</option>
+            <option value="site_titles">🏷️ Website Titles & Banner Texts</option>
+            <option value="messages">💬 WhatsApp & Email Custom Messages</option>
+          </select>
+        </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('categories_forms');
-              setIsCreatingNew(false);
-              setEditingProduct(null);
-            }}
-            className={`py-2.5 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === 'categories_forms'
-                ? 'border-[#14291D] text-[#14291D] bg-white'
-                : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-            }`}
-          >
-            <Layers className="w-4 h-4 text-[#B4741E]" />
-            <span>Categories & Forms Manager</span>
-          </button>
+        {/* Tab Switcher - Responsive Wrapped Pills (Never Hidden on any screen) */}
+        <div className="border-b border-[#E7DFD1] bg-[#FAF8F5] px-3 sm:px-6 py-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('products');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'products'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'products' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+              <span>Products & Rates ({products.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('contacts');
-              setIsCreatingNew(false);
-              setEditingProduct(null);
-            }}
-            className={`py-2.5 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === 'contacts'
-                ? 'border-[#14291D] text-[#14291D] bg-white'
-                : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-            }`}
-          >
-            <Phone className="w-4 h-4 text-[#2C5E43]" />
-            <span>Multiple Contacts (Phones, WhatsApp, Emails)</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('deal_of_week');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'deal_of_week'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Flame className={`w-3.5 h-3.5 ${activeTab === 'deal_of_week' ? 'text-amber-400' : 'text-amber-600'}`} />
+              <span>Deal of the Week</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                !currentWeeklyDeals.enabled 
+                  ? 'bg-rose-100 text-rose-800' 
+                  : activeTab === 'deal_of_week' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'
+              }`}>
+                {!currentWeeklyDeals.enabled ? 'Off' : currentWeeklyDeals.items.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('site_titles');
-              setIsCreatingNew(false);
-              setEditingProduct(null);
-            }}
-            className={`py-2.5 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === 'site_titles'
-                ? 'border-[#14291D] text-[#14291D] bg-white'
-                : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-[#2C5E43]" />
-            <span>Website Titles & Banner Texts</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('categories_forms');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'categories_forms'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Layers className={`w-3.5 h-3.5 ${activeTab === 'categories_forms' ? 'text-amber-300' : 'text-[#B4741E]'}`} />
+              <span>Categories & Forms</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('messages');
-              setIsCreatingNew(false);
-              setEditingProduct(null);
-            }}
-            className={`py-2.5 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === 'messages'
-                ? 'border-[#14291D] text-[#14291D] bg-white'
-                : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4 text-[#25D366]" />
-            <span>WhatsApp & Email Custom Messages</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('contacts');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'contacts'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Phone className={`w-3.5 h-3.5 ${activeTab === 'contacts' ? 'text-emerald-300' : 'text-[#2C5E43]'}`} />
+              <span>Multiple Contacts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('site_titles');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'site_titles'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <FileText className={`w-3.5 h-3.5 ${activeTab === 'site_titles' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+              <span>Titles & Banner Texts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('messages');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'messages'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#25D366]' : 'text-[#25D366]'}`} />
+              <span>WhatsApp & Email Messages</span>
+            </button>
+          </div>
         </div>
 
         {/* Success Banner */}
@@ -1809,6 +1976,566 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               )}
             </div>
           </>
+        )}
+
+        {/* Tab: Deal of the Week (Add, Edit, Reorder, Delete Section & Multiple Products in Horizontal Scroll) */}
+        {activeTab === 'deal_of_week' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            {/* 1. Master Section Controls & Visibility Status */}
+            <div className={`p-5 rounded-xl border shadow-xs transition-colors ${
+              currentWeeklyDeals.enabled 
+                ? 'bg-linear-to-r from-emerald-50/70 via-white to-amber-50/50 border-[#A5D6B6]' 
+                : 'bg-rose-50/60 border-rose-200'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Flame className={`w-5 h-5 ${currentWeeklyDeals.enabled ? 'text-amber-500' : 'text-stone-400'}`} />
+                    <h3 className="font-serif text-lg font-bold text-[#14291D]">
+                      Deal of the Week Section Status
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      currentWeeklyDeals.enabled 
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}>
+                      {currentWeeklyDeals.enabled ? 'Active on Storefront' : 'Deleted / Hidden'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#594F40]">
+                    {currentWeeklyDeals.enabled 
+                      ? `Displaying ${currentWeeklyDeals.items.length} product(s) in a responsive horizontal scroll carousel on your store.`
+                      : 'The Deal of the Week section is completely deleted and hidden from all visitors on the store.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentWeeklyDeals.enabled ? (
+                    deleteSectionConfirm ? (
+                      <div className="flex items-center gap-2 bg-rose-100 p-2 rounded-lg border border-rose-300">
+                        <span className="text-xs text-rose-900 font-medium">Delete section from store?</span>
+                        <button
+                          type="button"
+                          onClick={handleDeleteSectionConfirm}
+                          className="px-2.5 py-1 text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white rounded cursor-pointer"
+                        >
+                          Yes, Delete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteSectionConfirm(false)}
+                          className="px-2 py-1 text-xs bg-white text-stone-700 hover:bg-stone-100 rounded border border-stone-300 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteSectionConfirm(true)}
+                        className="px-3.5 py-2 text-xs font-semibold bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        title="Delete or hide Deal of the Week section"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Delete Deal Section</span>
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleWeeklyDealsSection(true)}
+                      className="px-4 py-2 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Enable Deal Section on Website</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultDeals}
+                    className="px-3 py-2 text-xs font-medium text-[#483F30] hover:text-[#14291D] bg-white hover:bg-[#F2ECE1] border border-[#CFC5B4] rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    title="Restore default authentic formulations"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#B4741E]" />
+                    <span>Restore Defaults</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Deal Section Titles & Notice Settings */}
+            <form onSubmit={handleSaveWeeklyDealsTab} className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E9E2D5] pb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#2C5E43]" />
+                  <h4 className="font-bold text-sm text-[#14291D]">
+                    Deal of the Week Header & Banner Texts
+                  </h4>
+                </div>
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 text-xs font-bold bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Save Headers</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block font-medium text-[#2F2920] mb-1">
+                    Section Title
+                  </label>
+                  <input
+                    type="text"
+                    value={currentWeeklyDeals.title}
+                    onChange={(e) => handleUpdateWeeklyDeals({ title: e.target.value })}
+                    placeholder="e.g. Deal of the Week"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#2F2920] mb-1">
+                    Section Badge Pill
+                  </label>
+                  <input
+                    type="text"
+                    value={currentWeeklyDeals.badgeText}
+                    onChange={(e) => handleUpdateWeeklyDeals({ badgeText: e.target.value })}
+                    placeholder="e.g. Handpicked Specials"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-medium text-[#2F2920] mb-1">
+                    Section Subtitle / Description
+                  </label>
+                  <input
+                    type="text"
+                    value={currentWeeklyDeals.subtitle}
+                    onChange={(e) => handleUpdateWeeklyDeals({ subtitle: e.target.value })}
+                    placeholder="e.g. Handpicked classical formulations and pure Rasayanas at exclusive apothecary rates."
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#2F2920] mb-1">
+                    Promo Tag / Banner Highlight
+                  </label>
+                  <input
+                    type="text"
+                    value={currentWeeklyDeals.bannerTag}
+                    onChange={(e) => handleUpdateWeeklyDeals({ bannerTag: e.target.value })}
+                    placeholder="e.g. Save up to 35% this week"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#2F2920] mb-1">
+                    Countdown / Refresh Notice
+                  </label>
+                  <input
+                    type="text"
+                    value={currentWeeklyDeals.dealEndNotice || ''}
+                    onChange={(e) => handleUpdateWeeklyDeals({ dealEndNotice: e.target.value })}
+                    placeholder="e.g. Offers refresh every Sunday midnight · Authentic botanical guarantee"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+            </form>
+
+            {/* 3. Add Products to Deal of the Week */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex items-center gap-2 border-b border-[#E9E2D5] pb-3">
+                <Plus className="w-4 h-4 text-[#2C5E43]" />
+                <h4 className="font-bold text-sm text-[#14291D]">
+                  Add Product to Deal of the Week (Horizontal Scroll)
+                </h4>
+              </div>
+
+              <form onSubmit={handleAddDealProduct} className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label className="block font-medium text-[#2F2920] mb-1">
+                      Select Product from Catalog <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      value={selectedDealProductId}
+                      onChange={(e) => {
+                        setSelectedDealProductId(e.target.value);
+                        const sel = products.find(p => p.id === e.target.value);
+                        if (sel) {
+                          setDealPriceInput(sel.price);
+                          setDealCustomTitle(sel.name);
+                          setDealBadgeInput(`Deal of the Week · ${Math.round(((sel.mrp - sel.price) / (sel.mrp || 1)) * 100)}% Off`);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                    >
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.sanskritName}) - MRP ₹{p.mrp} / ₹{p.price}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2F2920] mb-1">
+                      Promotional Deal Price (₹) <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={dealPriceInput}
+                      onChange={(e) => setDealPriceInput(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-bold text-[#183624]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2F2920] mb-1">
+                      Deal Badge Tag
+                    </label>
+                    <input
+                      type="text"
+                      value={dealBadgeInput}
+                      onChange={(e) => setDealBadgeInput(e.target.value)}
+                      placeholder="e.g. Deal of the Week · 35% Off"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2F2920] mb-1">
+                      Custom Title Override (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={dealCustomTitle}
+                      onChange={(e) => setDealCustomTitle(e.target.value)}
+                      placeholder="Leave blank to use original product title"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2F2920] mb-1">
+                      Custom Subtitle Override (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={dealCustomSubtitle}
+                      onChange={(e) => setDealCustomSubtitle(e.target.value)}
+                      placeholder="Leave blank to use product tagline"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2F2920] mb-1">
+                      Add Highlight Point (Optional)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={dealHighlightInput}
+                        onChange={(e) => setDealHighlightInput(e.target.value)}
+                        placeholder="e.g. Free Anupana Guide"
+                        className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (dealHighlightInput.trim()) {
+                            setDealHighlights([...dealHighlights, dealHighlightInput.trim()]);
+                            setDealHighlightInput('');
+                          }
+                        }}
+                        className="px-2.5 py-1.5 bg-[#EAE3D5] text-[#2C2417] hover:bg-[#DDD4C4] rounded-lg font-semibold cursor-pointer"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Highlight pills preview */}
+                {dealHighlights.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-[#716858] font-medium">Points to display:</span>
+                    {dealHighlights.map((pt, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 text-[11px] bg-[#EFEAE0] text-[#3A3225] px-2 py-0.5 rounded-full border border-[#D5CCBC]"
+                      >
+                        <Sparkles className="w-2.5 h-2.5 text-[#B4741E]" />
+                        {pt}
+                        <button
+                          type="button"
+                          onClick={() => setDealHighlights(dealHighlights.filter((_, idx) => idx !== i))}
+                          className="hover:text-red-600 ml-0.5 cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-[#183624] hover:bg-[#255237] text-white font-semibold rounded-lg flex items-center gap-2 shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-300" />
+                    <span>Add to Deal of the Week Horizontal Carousel</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* 4. Active Products in Deal of the Week (Horizontal Scroll & Reorder) */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E9E2D5] pb-3">
+                <div className="space-y-0.5">
+                  <h4 className="font-bold text-sm text-[#14291D] flex items-center gap-2">
+                    <span>Products in Deal of the Week ({currentWeeklyDeals.items.length})</span>
+                    <span className="text-xs font-normal text-[#6F6453]">
+                      (Ordered left to right in the horizontal scroll carousel)
+                    </span>
+                  </h4>
+                  <p className="text-xs text-[#6A604F]">
+                    Use Left / Right buttons to reorder, adjust deal prices inline, or delete items.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveWeeklyDealsTab}
+                  className="px-4 py-1.5 text-xs font-bold bg-[#14291D] hover:bg-[#255237] text-white rounded-lg flex items-center gap-1.5 shadow-2xs cursor-pointer self-start sm:self-auto"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Save All to Firebase</span>
+                </button>
+              </div>
+
+              {currentWeeklyDeals.items.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[#7A705E] bg-[#FAF8F5] rounded-xl border border-dashed border-[#DDD5C5] space-y-2">
+                  <Flame className="w-8 h-8 text-amber-400 mx-auto" />
+                  <p className="font-semibold text-sm text-[#14291D]">No products in Deal of the Week currently.</p>
+                  <p>Add products above or click "Restore Defaults" to populate classical Rasayanas.</p>
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultDeals}
+                    className="mt-2 px-3 py-1.5 bg-[#183624] text-white rounded-lg text-xs font-semibold cursor-pointer"
+                  >
+                    Restore Default Formulations
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Live Horizontal Scroll Strip Preview */}
+                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E0D8C8]">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-[#5A5040] mb-2 px-1">
+                      <span>Horizontal Scroll Sequence Preview:</span>
+                      <span className="font-mono text-[#887D6C]">{currentWeeklyDeals.items.length} cards</span>
+                    </div>
+
+                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 scrollbar-thin">
+                      {currentWeeklyDeals.items.map((deal, index) => {
+                        const prod = products.find(p => p.id === deal.productId);
+                        const title = deal.customTitle || prod?.name || 'Apothecary Formulation';
+                        const image = deal.customImage || prod?.image || 'https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=800';
+                        const dealPrice = deal.dealPrice ?? prod?.price ?? 350;
+                        const mrp = prod?.mrp || Math.round(dealPrice * 1.35);
+
+                        return (
+                          <div
+                            key={deal.id}
+                            className="w-52 shrink-0 bg-white rounded-lg border border-[#D5CCBC] p-2.5 shadow-2xs space-y-2 relative group"
+                          >
+                            <div className="relative aspect-4/3 rounded overflow-hidden bg-[#ECE6D9]">
+                              <img src={image} alt={title} className="w-full h-full object-cover" />
+                              <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#25D366] text-black">
+                                #{index + 1}
+                              </span>
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded text-[10px] bg-black/70 text-white font-mono">
+                                ₹{dealPrice}
+                              </span>
+                            </div>
+
+                            <div>
+                              <div className="text-xs font-bold text-[#14291D] truncate" title={title}>
+                                {title}
+                              </div>
+                              <div className="text-[10px] text-[#2C5E43] truncate">
+                                {deal.dealBadge || 'Deal of the Week'}
+                              </div>
+                            </div>
+
+                            {/* Position Controls */}
+                            <div className="flex items-center justify-between border-t border-[#EFEAE0] pt-1.5 text-[11px]">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={index === 0}
+                                  onClick={() => handleMoveDeal(deal.id, 'left')}
+                                  className="p-1 rounded hover:bg-[#EFEAE0] disabled:opacity-30 cursor-pointer text-[#4A4133]"
+                                  title="Move Left in carousel"
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={index === currentWeeklyDeals.items.length - 1}
+                                  onClick={() => handleMoveDeal(deal.id, 'right')}
+                                  className="p-1 rounded hover:bg-[#EFEAE0] disabled:opacity-30 cursor-pointer text-[#4A4133]"
+                                  title="Move Right in carousel"
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDeal(deal.id)}
+                                className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                title="Delete deal product"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Detailed Table for In-line Editing */}
+                  <div className="border border-[#DDD5C5] rounded-xl overflow-hidden bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#FAF8F5] border-b border-[#E7DFD1] text-[#695F4F] font-bold text-[11px]">
+                          <th className="py-2.5 px-3">Order</th>
+                          <th className="py-2.5 px-3">Product Name</th>
+                          <th className="py-2.5 px-3">Deal Badge Tag</th>
+                          <th className="py-2.5 px-3">Deal Price (₹)</th>
+                          <th className="py-2.5 px-3">Reorder Position</th>
+                          <th className="py-2.5 px-3 text-right">Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EFEAE0]">
+                        {currentWeeklyDeals.items.map((deal, idx) => {
+                          const prod = products.find(p => p.id === deal.productId);
+                          const title = deal.customTitle || prod?.name || 'Apothecary Formulation';
+
+                          return (
+                            <tr key={deal.id} className="hover:bg-[#FAF8F5]">
+                              <td className="py-2 px-3 font-mono font-bold text-[#887D6C]">
+                                #{idx + 1}
+                              </td>
+
+                              <td className="py-2 px-3">
+                                <div className="font-semibold text-[#14291D]">{title}</div>
+                                {prod && (
+                                  <div className="text-[10px] text-[#716858]">
+                                    Original: ₹{prod.price} (MRP ₹{prod.mrp})
+                                  </div>
+                                )}
+                              </td>
+
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  value={deal.dealBadge || ''}
+                                  onChange={(e) => {
+                                    const items = currentWeeklyDeals.items.map(it => 
+                                      it.id === deal.id ? { ...it, dealBadge: e.target.value } : it
+                                    );
+                                    handleUpdateWeeklyDeals({ items });
+                                  }}
+                                  placeholder="e.g. Deal of the Week"
+                                  className="w-full max-w-[200px] px-2 py-1 bg-[#FAF8F5] border border-[#D5CCBC] rounded text-xs"
+                                />
+                              </td>
+
+                              <td className="py-2 px-3">
+                                <input
+                                  type="number"
+                                  value={deal.dealPrice ?? prod?.price ?? 350}
+                                  onChange={(e) => {
+                                    const items = currentWeeklyDeals.items.map(it => 
+                                      it.id === deal.id ? { ...it, dealPrice: Number(e.target.value) } : it
+                                    );
+                                    handleUpdateWeeklyDeals({ items });
+                                  }}
+                                  className="w-24 px-2 py-1 bg-[#FAF8F5] border border-[#D5CCBC] rounded font-mono font-bold text-xs text-[#183624]"
+                                />
+                              </td>
+
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleMoveDeal(deal.id, 'left')}
+                                    className="p-1.5 rounded hover:bg-[#EAE4D6] disabled:opacity-30 border border-[#D5CCBC] text-[#4A4133] cursor-pointer"
+                                    title="Move earlier in scroll"
+                                  >
+                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === currentWeeklyDeals.items.length - 1}
+                                    onClick={() => handleMoveDeal(deal.id, 'right')}
+                                    className="p-1.5 rounded hover:bg-[#EAE4D6] disabled:opacity-30 border border-[#D5CCBC] text-[#4A4133] cursor-pointer"
+                                    title="Move later in scroll"
+                                  >
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+
+                              <td className="py-2 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDeal(deal.id)}
+                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                  title="Delete product from Deal of the Week"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Save All Button */}
+            <div className="flex justify-end pt-2 pb-6">
+              <button
+                type="button"
+                onClick={handleSaveWeeklyDealsTab}
+                className="px-6 py-2.5 bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg font-bold flex items-center gap-2 shadow-md cursor-pointer text-xs"
+              >
+                <Save className="w-4 h-4 text-amber-300" />
+                <span>Save All Deal of the Week Changes to Firebase & Storefront</span>
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Tab 2: Categories & Forms Manager (Preset & Custom Edit / Add / Delete) */}

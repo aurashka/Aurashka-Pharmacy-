@@ -91,6 +91,28 @@ export interface ContactWhatsAppItem {
   displayNumber: string;
 }
 
+export interface WeeklyDealItem {
+  id: string;
+  productId: string;
+  customTitle?: string;
+  customSubtitle?: string;
+  dealPrice?: number;
+  dealDiscountPercent?: number;
+  dealBadge?: string;
+  customImage?: string;
+  highlightPoints?: string[];
+}
+
+export interface WeeklyDealsConfig {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  badgeText: string;
+  bannerTag: string;
+  dealEndNotice?: string;
+  items: WeeklyDealItem[];
+}
+
 export interface MessageTemplates {
   headerWhatsApp: string;
   floatingWhatsApp: string;
@@ -121,6 +143,7 @@ export interface SiteSettings {
   };
   licenseBadges: string[];
   messageTemplates?: MessageTemplates;
+  weeklyDeals?: WeeklyDealsConfig;
 }
 
 export interface ConsultationInquiry {

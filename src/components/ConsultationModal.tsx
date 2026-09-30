@@ -7,7 +7,8 @@ import {
   getPrimaryWhatsApp, 
   formatCustomMessage, 
   DEFAULT_MESSAGE_TEMPLATES, 
-  buildWhatsAppUrl 
+  buildWhatsAppUrl,
+  getCurrentFormattedDateTime
 } from '../utils/messageFormatter';
 
 interface ConsultationModalProps {
@@ -28,20 +29,46 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
     fullName: currentUser?.name || '',
     phone: '',
     email: currentUser?.email || '',
-    ailment: '',
-    selectedProduct: initialProduct,
     contactMethod: 'whatsapp' as 'whatsapp' | 'phone' | 'email',
     timeSlot: 'Morning (9:00 AM - 1:00 PM)',
-    notes: '',
+    notes: initialProduct ? `Product: ${initialProduct}` : '',
   });
 
   const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
+  const handleDirectWhatsApp = () => {
+    const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
+    const brandName = siteSettings?.brandName || 'Aurashka';
+
+    const lines = [
+      `🌿 *${brandName.toUpperCase()} - CLINICAL CONSULTATION REQUEST*`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `👤 *Patient Name:* ${formData.fullName.trim() || 'Valued Patient'}`,
+      `📞 *Phone / WhatsApp:* ${formData.phone.trim() || 'Not provided'}`,
+    ];
+
+    if (formData.email.trim()) {
+      lines.push(`📧 *Email:* ${formData.email.trim()}`);
+    }
+
+    lines.push(`⏰ *Preferred Callback Window:* ${formData.timeSlot}`);
+    lines.push(`💬 *Preferred Mode:* ${formData.contactMethod.toUpperCase()}`);
+
+    if (formData.notes.trim()) {
+      lines.push(``);
+      lines.push(`📝 *Additional Note (Product and deal):*`);
+      lines.push(`${formData.notes.trim()}`);
+    }
+
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`_Requested via ${brandName} Online Portal · ${getCurrentFormattedDateTime()}_`);
+    lines.push(`Please review clinical details and confirm dosage.`);
+
+    const formattedMsg = lines.join('\n');
+    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
+    window.open(url, '_blank');
   };
 
   const handleResetAndClose = () => {
@@ -49,26 +76,10 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
     onClose();
   };
 
-  const handleDirectWhatsApp = () => {
-    const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
-    const template = siteSettings?.messageTemplates?.consultationWhatsApp || DEFAULT_MESSAGE_TEMPLATES.consultationWhatsApp;
-    const includeUserInfo = siteSettings?.messageTemplates?.includeUserInfo ?? true;
-
-    const formattedMsg = formatCustomMessage(
-      template,
-      {
-        brandName: siteSettings?.brandName,
-        ailment: formData.ailment || 'Classical Herbal Health & Dosage Consultation',
-        phone: formData.phone,
-        email: formData.email,
-        message: formData.notes,
-      },
-      currentUser || (formData.fullName ? { id: 'patient', name: formData.fullName, email: formData.email, role: 'user' } : null),
-      includeUserInfo
-    );
-
-    const url = buildWhatsAppUrl(primaryWhatsApp.number, formattedMsg);
-    window.open(url, '_blank');
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleDirectWhatsApp();
+    setSubmitted(true);
   };
 
   return (
@@ -117,6 +128,9 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
               <p><span className="font-medium text-[#1E2922]">Expected Response:</span> Within 15 to 30 minutes during pharmacy working hours.</p>
               <p><span className="font-medium text-[#1E2922]">Selected Mode:</span> {formData.contactMethod.toUpperCase()} ({formData.phone || formData.email})</p>
               <p><span className="font-medium text-[#1E2922]">Preferred Time:</span> {formData.timeSlot}</p>
+              {formData.notes && (
+                <p><span className="font-medium text-[#1E2922]">Product & Deal Details:</span> {formData.notes}</p>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
@@ -197,38 +211,6 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-medium text-[#2F2920] mb-1">
-                  Health Concern / Symptom / Ailment <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Joint stiffness in morning, chronic acidity, insomnia, cough..."
-                  value={formData.ailment}
-                  onChange={(e) => setFormData({ ...formData, ailment: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#2F2920] mb-1">
-                  Product of Interest (If any specific formulation)
-                </label>
-                <select
-                  value={formData.selectedProduct}
-                  onChange={(e) => setFormData({ ...formData, selectedProduct: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
-                >
-                  <option value="">General Health Consultation (Not decided yet)</option>
-                  {HERBAL_PRODUCTS.map((prod) => (
-                    <option key={prod.id} value={prod.name}>
-                      {prod.name} ({prod.form})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-[#2F2920] mb-1">
@@ -264,11 +246,11 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
 
               <div>
                 <label className="block font-medium text-[#2F2920] mb-1">
-                  Additional Notes (Any ongoing allopathic drugs / allergies)
+                  Additional Notes (Product and deal)
                 </label>
                 <textarea
-                  rows={2}
-                  placeholder="Mention if you are diabetic, pregnant, or taking BP medications..."
+                  rows={3}
+                  placeholder="Mention product name, required quantity, deal inquiries or special requests..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
@@ -276,21 +258,28 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
               </div>
             </div>
 
-            {/* Action buttons */}
+            {/* WhatsApp Note & Action buttons */}
+            <div className="p-2.5 bg-[#E7EFEA]/80 border border-[#A5D6B6] rounded-lg flex items-center gap-2 text-[11px] text-[#14291D]">
+              <MessageSquare className="w-4 h-4 text-[#25D366] shrink-0" />
+              <span>
+                On submit, this consultation request and your additional notes will directly open in WhatsApp with our Vaidya.
+              </span>
+            </div>
+
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-[#645A4B] hover:text-[#1E2922] transition-colors"
+                className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-[#645A4B] hover:text-[#1E2922] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold text-white bg-[#183624] hover:bg-[#234D34] rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+                className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5" />
-                Submit Consultation Request
+                <MessageSquare className="w-4 h-4 fill-white/20" />
+                <span>Send Request & Note via WhatsApp</span>
               </button>
             </div>
           </form>

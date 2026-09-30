@@ -729,6 +729,43 @@ export const DEFAULT_SITE_SETTINGS = {
     contactFormEmailSubject: '{brandName} Inquiry: {subject}',
     contactFormEmailBody: 'Hello {brandName} Apothecary Team,\n\nI have an inquiry regarding: {subject}\n\nMessage Details:\n{message}',
     includeUserInfo: true,
+  },
+  weeklyDeals: {
+    enabled: true,
+    title: 'Deal of the Week',
+    subtitle: 'Handpicked classical formulations and pure Rasayanas at exclusive apothecary rates.',
+    badgeText: 'Handpicked Specials',
+    bannerTag: 'Save up to 35% this week',
+    dealEndNotice: 'Offers refresh every Sunday midnight · Authentic botanical guarantee',
+    items: [
+      {
+        id: 'deal-1',
+        productId: 'p1',
+        customTitle: 'Ashwagandha Gold Rasayana',
+        customSubtitle: 'Full Spectrum Root Extract for Vata Balancing & Vitality',
+        dealPrice: 380,
+        dealBadge: 'Deal of the Week · 31% Off',
+        highlightPoints: ['Direct Apothecary Rate', 'Lab Certified Withanolides', 'Free Anupana Chart']
+      },
+      {
+        id: 'deal-2',
+        productId: 'p2',
+        customTitle: 'Brahmi Ghrita & Medhya Rasayana',
+        customSubtitle: 'Classical Cognitive & Memory Calming Formulation',
+        dealPrice: 320,
+        dealBadge: 'Bestseller Deal · 29% Off',
+        highlightPoints: ['Pure A2 Desi Cow Ghee Base', 'Ayush GMP Certified', 'Deep Mental Rejuvenation']
+      },
+      {
+        id: 'deal-3',
+        productId: 'p4',
+        customTitle: 'Amalaki Special Chyawanprash',
+        customSubtitle: '48 Botanical Ingredients with Raw Forest Honey & Fresh Amla',
+        dealPrice: 420,
+        dealBadge: 'Immunity Booster · Save ₹130',
+        highlightPoints: ['Wild Forest Honey Base', 'Immunity & Ojas Enhancer', 'Zero Refined Sugar']
+      }
+    ]
   }
 };
 

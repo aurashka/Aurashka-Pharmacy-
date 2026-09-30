@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { FrontContactBar } from './components/FrontContactBar';
+import { WeeklyDealSection } from './components/WeeklyDealSection';
 import { ProductDashboard } from './components/ProductDashboard';
 import { DosageGuideSection } from './components/DosageGuideSection';
 import { ContactSection } from './components/ContactSection';
@@ -374,6 +375,20 @@ function PharmacyApp() {
           onOpenConsultationModal={() => handleOpenConsultationModal()}
           onScrollToContact={() => handleNavigateSection('contact-us')}
           siteSettings={siteSettings}
+        />
+
+        {/* Deal of the Week (Can add/edit/delete multiple products in horizontal scroll or delete section from admin panel) */}
+        <WeeklyDealSection
+          siteSettings={siteSettings}
+          products={products}
+          onSelectProduct={(p) => setSelectedProductForDetail(p)}
+          onAddToCart={handleAddToCart}
+          cartProductIds={cartProductIds}
+          isAdmin={isAdmin}
+          onOpenAdminPanel={() => {
+            setProductToEditInAdmin(null);
+            setIsAdminPanelOpen(true);
+          }}
         />
 
         {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
