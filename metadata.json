@@ -1,0 +1,6 @@
+{
+  "name": "VedaVriksha Herbal Pharmacy",
+  "description": "Comprehensive herbal pharmacy catalogue with detailed therapeutic uses, ailment filters, dosage guides, and front-and-center contact & Vaidya consultation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
