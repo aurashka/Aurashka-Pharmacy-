@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Phone, 
   MessageCircle, 
   ArrowRight, 
-  Tag, 
   Star, 
   Settings, 
   ChevronLeft, 
@@ -49,6 +48,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const [activeDealIndex, setActiveDealIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Swipe & Drag gesture refs
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const mouseStartX = useRef<number | null>(null);
+  const isMouseDown = useRef<boolean>(false);
+  const hasSwiped = useRef<boolean>(false);
 
   const primaryPhone = getPrimaryPhone(siteSettings);
   const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
@@ -91,14 +98,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     }
   }
 
-  // Current active deal item
-  const currentDealItem: WeeklyDealItem | undefined = dealItems[activeDealIndex] || dealItems[0];
-  
-  // Find matching catalog product
-  const currentProduct: HerbalProduct | undefined = currentDealItem
-    ? (products.find((p) => p.id === currentDealItem.productId) || featuredDeal || products[0])
-    : (featuredDeal || products[0]);
+  // Ensure active index is within bounds if deals count changes
+  useEffect(() => {
+    if (activeDealIndex >= dealItems.length && dealItems.length > 0) {
+      setActiveDealIndex(0);
+    }
+  }, [dealItems.length, activeDealIndex]);
 
+  // Next / Previous helpers
   const nextDeal = () => {
     if (dealItems.length <= 1) return;
     setActiveDealIndex((prev) => (prev + 1) % dealItems.length);
@@ -107,6 +114,93 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const prevDeal = () => {
     if (dealItems.length <= 1) return;
     setActiveDealIndex((prev) => (prev - 1 + dealItems.length) % dealItems.length);
+  };
+
+  // 1. Auto-scroll / Auto-rotate Effect (every 4.5 seconds when not hovered/touched)
+  useEffect(() => {
+    if (dealItems.length <= 1 || isPaused) return;
+
+    const timer = setInterval(() => {
+      setActiveDealIndex((prev) => (prev + 1) % dealItems.length);
+    }, 4500);
+
+    return () => clearInterval(timer);
+  }, [dealItems.length, isPaused]);
+
+  // 2. Touch Swipe Event Handlers (Mobile Swipe)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsPaused(true);
+    hasSwiped.current = false;
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+    if (touchStartX.current !== null) {
+      const diffX = Math.abs(touchStartX.current - touchEndX.current);
+      if (diffX > 15) {
+        hasSwiped.current = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsPaused(false);
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const diffX = touchStartX.current - touchEndX.current;
+      const minSwipeDistance = 45;
+      if (diffX > minSwipeDistance) {
+        // Swiped Left -> show next deal
+        nextDeal();
+      } else if (diffX < -minSwipeDistance) {
+        // Swiped Right -> show previous deal
+        prevDeal();
+      }
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  // 3. Mouse Drag Event Handlers (Desktop Drag-to-Swipe)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isMouseDown.current = true;
+    hasSwiped.current = false;
+    mouseStartX.current = e.clientX;
+    setIsPaused(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDown.current || mouseStartX.current === null) return;
+    const diffX = Math.abs(mouseStartX.current - e.clientX);
+    if (diffX > 15) {
+      hasSwiped.current = true;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!isMouseDown.current) return;
+    isMouseDown.current = false;
+    setIsPaused(false);
+    if (mouseStartX.current !== null) {
+      const diffX = mouseStartX.current - e.clientX;
+      const minDragDistance = 45;
+      if (diffX > minDragDistance) {
+        nextDeal();
+      } else if (diffX < -minDragDistance) {
+        prevDeal();
+      }
+    }
+    mouseStartX.current = null;
+  };
+
+  const handleCardClick = (product: HerbalProduct) => {
+    // If the user was swiping/dragging, don't trigger product detail click
+    if (hasSwiped.current) {
+      hasSwiped.current = false;
+      return;
+    }
+    onSelectProduct(product);
   };
 
   const handleWhatsAppDirectDeal = (e: React.MouseEvent, prod: HerbalProduct, deal: WeeklyDealItem) => {
@@ -195,182 +289,235 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Custom Added Deal of the Week (Horizontal Carousel View directly under WhatsApp button) */}
-          {isDealsSectionEnabled && currentProduct && currentDealItem && (
+          {/* Right Column: Custom Added Deal of the Week (Auto-Scroll & Swipe-Scroll Enabled) */}
+          {isDealsSectionEnabled && dealItems.length > 0 && (
             <div className="lg:col-span-5">
               <div 
-                onClick={() => onSelectProduct(currentProduct)}
-                className="bg-white/95 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-xl text-[#1E2922] cursor-pointer hover:border-[#2C5E43] transition-all group relative overflow-hidden"
+                className="bg-white/95 backdrop-blur-md rounded-xl border border-white/20 shadow-xl text-[#1E2922] relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => {
+                  setIsPaused(false);
+                  isMouseDown.current = false;
+                }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
               >
-                {/* Header ribbon with Deal badge and Horizontal Navigation */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#EAE3D4]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#A46714] flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
-                      <Flame className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-                      <span>
-                        {currentDealItem.dealBadge || 
-                          `Deal of the Week · Save ${Math.round(((currentProduct.mrp - (currentDealItem.dealPrice ?? currentProduct.price)) / (currentProduct.mrp || 1)) * 100)}%`}
-                      </span>
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Horizontal switcher if multiple products in Deal of the Week */}
-                    {dealItems.length > 1 && (
-                      <div className="flex items-center gap-1 bg-[#F5EFE6] px-1.5 py-0.5 rounded-lg border border-[#DDD5C5]" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); prevDeal(); }}
-                          className="p-1 rounded text-[#4A4133] hover:text-[#14291D] hover:bg-[#EAE2D2] transition-colors cursor-pointer"
-                          title="Previous weekly deal"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-[10px] font-mono font-bold text-[#6D6251] px-1">
-                          {activeDealIndex + 1}/{dealItems.length}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); nextDeal(); }}
-                          className="p-1 rounded text-[#4A4133] hover:text-[#14291D] hover:bg-[#EAE2D2] transition-colors cursor-pointer"
-                          title="Next weekly deal"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-[#183624]">
-                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                      <span>{currentProduct.rating}</span>
-                    </div>
-
-                    {isAdmin && onOpenAdminPanel && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenAdminPanel();
-                        }}
-                        className="p-1 text-[#645A4B] hover:text-[#14291D] hover:bg-stone-100 rounded cursor-pointer"
-                        title="Edit Deal of the Week in Admin Panel"
-                      >
-                        <Settings className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Product details */}
-                <div className="grid grid-cols-12 gap-4 items-center pt-3">
-                  <div className="col-span-4 aspect-square rounded-lg overflow-hidden bg-[#FAF8F5] border border-[#DDD5C5] relative">
-                    <img
-                      src={currentDealItem.customImage || currentProduct.image}
-                      alt={currentDealItem.customTitle || currentProduct.name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-103 transition-transform"
-                    />
-                    {currentProduct.images && currentProduct.images.length > 1 && (
-                      <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
-                        +{currentProduct.images.length - 1}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="col-span-8 space-y-1">
-                    <h3 className="font-serif text-lg font-bold text-[#14291D] group-hover:text-[#2C5E43] transition-colors line-clamp-1">
-                      {currentDealItem.customTitle || currentProduct.name}
-                    </h3>
-                    <p className="text-xs text-[#635A4B] line-clamp-1 italic font-serif">
-                      {currentProduct.sanskritName}
-                    </p>
-                    <p className="text-xs text-[#4F4638] line-clamp-2 leading-relaxed">
-                      {currentDealItem.customSubtitle || currentProduct.tagline}
-                    </p>
-
-                    {/* Highlight pills */}
-                    {currentDealItem.highlightPoints && currentDealItem.highlightPoints.length > 0 && (
-                      <div className="pt-0.5 flex flex-wrap gap-1">
-                        {currentDealItem.highlightPoints.slice(0, 2).map((pt, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center gap-1 text-[9px] bg-[#EFEAE0] text-[#423A2C] px-1.5 py-0.2 rounded border border-[#E0D7C6]"
-                          >
-                            <Sparkles className="w-2 h-2 text-[#B4741E]" />
-                            {pt}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Pricing */}
-                    <div className="flex items-baseline gap-2 pt-1">
-                      <span className="text-lg font-bold text-[#14291D] tabular-nums font-mono">
-                        ₹{currentDealItem.dealPrice ?? currentProduct.price}
-                      </span>
-                      <span className="text-xs text-[#877E6F] line-through tabular-nums font-mono">
-                        ₹{currentProduct.mrp}
-                      </span>
-                      <span className="text-[11px] font-semibold text-[#2C5E43]">
-                        Save ₹{currentProduct.mrp - (currentDealItem.dealPrice ?? currentProduct.price)}
-                      </span>
-                      {currentProduct.resellerPrice && (
-                        <span className="text-[10px] text-[#183624] bg-emerald-50 border border-emerald-200 px-1 rounded font-mono">
-                          Reseller: ₹{currentProduct.resellerPrice}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom link row */}
-                <div className="mt-3 pt-3 border-t border-[#EAE3D4] flex items-center justify-between text-xs text-[#2C5E43] font-semibold">
-                  <span className="hover:underline">View clinical uses & dosage schedule →</span>
-                  <span className="text-[11px] text-[#766C5B] font-normal font-mono">
-                    {currentProduct.volumeOrWeight}
-                  </span>
-                </div>
-
-                {/* Quick actions for Deal: Add to Cart and WhatsApp */}
-                <div className="mt-2.5 pt-2 border-t border-[#EAE3D4] grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onAddToCart) onAddToCart(currentProduct);
-                    }}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
-                      cartProductIds.has(currentProduct.id)
-                        ? 'bg-[#183624] text-white hover:bg-[#20442E]'
-                        : 'bg-[#2C5E43] text-white hover:bg-[#234D37]'
-                    }`}
-                  >
-                    {cartProductIds.has(currentProduct.id) ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-300" />
-                        <span>In Inquiry Cart</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Add to Cart</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => handleWhatsAppDirectDeal(e, currentProduct, currentDealItem)}
-                    className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WhatsApp Deal</span>
-                  </button>
-                </div>
-
-                {/* Horizontal Scroll Progress Indicators if multiple deals */}
+                {/* Auto-Scroll Subtle Progress Bar Indicator */}
                 {dealItems.length > 1 && (
-                  <div className="mt-2 flex items-center justify-center gap-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-black/5 z-20 overflow-hidden">
+                    <div 
+                      key={activeDealIndex}
+                      className={`h-full bg-emerald-600 transition-all ${isPaused ? 'opacity-50' : 'animate-[progress_4.5s_linear_forwards]'}`}
+                      style={{
+                        animationDuration: '4.5s',
+                        animationTimingFunction: 'linear',
+                        animationPlayState: isPaused ? 'paused' : 'running',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Sliding Horizontal Track for Smooth Swiping & Auto-Scrolling */}
+                <div 
+                  className="flex transition-transform duration-500 ease-out"
+                  style={{ transform: `translateX(-${activeDealIndex * 100}%)` }}
+                >
+                  {dealItems.map((deal) => {
+                    const product: HerbalProduct = (
+                      products.find((p) => p.id === deal.productId) || 
+                      featuredDeal || 
+                      products[0]
+                    );
+
+                    if (!product) return null;
+
+                    const finalPrice = deal.dealPrice ?? product.price;
+                    const mrp = product.mrp > finalPrice ? product.mrp : Math.round(finalPrice * 1.3);
+                    const savings = mrp - finalPrice;
+                    const discountPercent = Math.round((savings / (mrp || 1)) * 100);
+                    const dealBadge = deal.dealBadge || `Deal of the Week · Save ${discountPercent}%`;
+
+                    return (
+                      <div 
+                        key={deal.id}
+                        className="w-full shrink-0 p-5 flex flex-col justify-between"
+                        onClick={() => handleCardClick(product)}
+                      >
+                        {/* Header ribbon with Deal badge and Clean Navigation Arrows (No 1 / 2 / 3 text) */}
+                        <div className="flex items-center justify-between pb-3 border-b border-[#EAE3D4]">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[#A46714] flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 shadow-2xs">
+                              <Flame className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                              <span>{dealBadge}</span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            {/* Previous / Next clean circular arrow buttons (NO page 1/2/3 numbers) */}
+                            {dealItems.length > 1 && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); prevDeal(); }}
+                                  className="w-6 h-6 rounded-full bg-[#FAF8F5] hover:bg-[#EAE2D2] text-[#4A4133] border border-[#DDD5C5] flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                                  title="Previous deal (or swipe right)"
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); nextDeal(); }}
+                                  className="w-6 h-6 rounded-full bg-[#FAF8F5] hover:bg-[#EAE2D2] text-[#4A4133] border border-[#DDD5C5] flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                                  title="Next deal (or swipe left)"
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#183624] ml-1">
+                              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                              <span>{product.rating}</span>
+                            </div>
+
+                            {isAdmin && onOpenAdminPanel && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenAdminPanel();
+                                }}
+                                className="p-1 text-[#645A4B] hover:text-[#14291D] hover:bg-stone-100 rounded cursor-pointer"
+                                title="Edit Deal of the Week in Admin Panel"
+                              >
+                                <Settings className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Product details */}
+                        <div className="grid grid-cols-12 gap-4 items-center pt-3">
+                          <div className="col-span-4 aspect-square rounded-lg overflow-hidden bg-[#FAF8F5] border border-[#DDD5C5] relative">
+                            <img
+                              src={deal.customImage || product.image}
+                              alt={deal.customTitle || product.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103"
+                              draggable={false}
+                            />
+                            {product.images && product.images.length > 1 && (
+                              <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                +{product.images.length - 1}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="col-span-8 space-y-1">
+                            <h3 className="font-serif text-lg font-bold text-[#14291D] group-hover:text-[#2C5E43] transition-colors line-clamp-1">
+                              {deal.customTitle || product.name}
+                            </h3>
+                            <p className="text-xs text-[#635A4B] line-clamp-1 italic font-serif">
+                              {product.sanskritName}
+                            </p>
+                            <p className="text-xs text-[#4F4638] line-clamp-2 leading-relaxed">
+                              {deal.customSubtitle || product.tagline}
+                            </p>
+
+                            {/* Highlight pills */}
+                            {deal.highlightPoints && deal.highlightPoints.length > 0 && (
+                              <div className="pt-0.5 flex flex-wrap gap-1">
+                                {deal.highlightPoints.slice(0, 2).map((pt, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 text-[9px] bg-[#EFEAE0] text-[#423A2C] px-1.5 py-0.2 rounded border border-[#E0D7C6]"
+                                  >
+                                    <Sparkles className="w-2 h-2 text-[#B4741E]" />
+                                    {pt}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Pricing */}
+                            <div className="flex items-baseline gap-2 pt-1">
+                              <span className="text-lg font-bold text-[#14291D] tabular-nums font-mono">
+                                ₹{finalPrice}
+                              </span>
+                              <span className="text-xs text-[#877E6F] line-through tabular-nums font-mono">
+                                ₹{mrp}
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#2C5E43]">
+                                Save ₹{savings}
+                              </span>
+                              {product.resellerPrice && (
+                                <span className="text-[10px] text-[#183624] bg-emerald-50 border border-emerald-200 px-1 rounded font-mono">
+                                  Reseller: ₹{product.resellerPrice}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom link row */}
+                        <div className="mt-3 pt-3 border-t border-[#EAE3D4] flex items-center justify-between text-xs text-[#2C5E43] font-semibold">
+                          <span className="hover:underline flex items-center gap-1">
+                            <span>View clinical uses & dosage schedule</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </span>
+                          <span className="text-[11px] text-[#766C5B] font-normal font-mono">
+                            {product.volumeOrWeight}
+                          </span>
+                        </div>
+
+                        {/* Quick actions for Deal: Add to Cart and WhatsApp */}
+                        <div className="mt-2.5 pt-2 border-t border-[#EAE3D4] grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onAddToCart) onAddToCart(product);
+                            }}
+                            className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
+                              cartProductIds.has(product.id)
+                                ? 'bg-[#183624] text-white hover:bg-[#20442E]'
+                                : 'bg-[#2C5E43] text-white hover:bg-[#234D37]'
+                            }`}
+                          >
+                            {cartProductIds.has(product.id) ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                                <span>In Inquiry Cart</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                                <span>Add to Cart</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleWhatsAppDirectDeal(e, product, deal)}
+                            className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>WhatsApp Deal</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Sleek Horizontal Dots Navigation (No 1 / 2 / 3 text numbers) */}
+                {dealItems.length > 1 && (
+                  <div className="pb-3 flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {dealItems.map((_, dotIdx) => (
                       <button
                         key={dotIdx}
@@ -379,10 +526,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                           e.stopPropagation();
                           setActiveDealIndex(dotIdx);
                         }}
-                        className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                          dotIdx === activeDealIndex ? 'w-5 bg-[#183624]' : 'w-1.5 bg-[#D5CCBC] hover:bg-[#9E927F]'
+                        className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                          dotIdx === activeDealIndex 
+                            ? 'w-6 bg-[#183624]' 
+                            : 'w-1.5 bg-[#D5CCBC] hover:bg-[#9E927F]'
                         }`}
-                        aria-label={`Go to deal ${dotIdx + 1}`}
+                        aria-label={`Go to deal slide ${dotIdx + 1}`}
                       />
                     ))}
                   </div>
