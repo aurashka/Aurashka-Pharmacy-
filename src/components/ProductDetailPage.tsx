@@ -397,25 +397,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Custom Link / Unique Code Indicator */}
-            <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E0D8C8] flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 text-[#5E5444]">
-                <FileText className="w-4 h-4 text-[#2C5E43]" />
-                <span>Unique Link / Code:</span>
-                <code className="font-mono font-semibold bg-white px-2 py-0.5 rounded border border-[#D5CCBC] text-[#14291D]">
-                  #product/{productSlug}
-                </code>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="text-xs text-[#2C5E43] hover:text-[#14291D] font-semibold flex items-center gap-1 hover:underline cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy</span>
-              </button>
-            </div>
-
             {/* Action Buttons */}
             <div className="space-y-2.5 pt-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -575,19 +556,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   </div>
                 )}
 
-                {/* Custom Fields if any */}
-                {customFieldsList.length > 0 && (
-                  <div className="pt-2 border-t border-[#EAE3D4]">
-                    <h4 className="font-serif font-bold text-sm text-[#14291D] mb-3">
-                      Apothecary Specifications
+                {/* Custom Fields for Indications Tab */}
+                {customFieldsList.filter((cf) => !cf.section || cf.section === 'all' || cf.section === 'indications').length > 0 && (
+                  <div className="pt-3 border-t border-[#EAE3D4] space-y-2">
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      Apothecary Specifications & Clinical Details
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {customFieldsList.map((cf) => (
-                        <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
-                          <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
-                          <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
-                        </div>
-                      ))}
+                      {customFieldsList
+                        .filter((cf) => !cf.section || cf.section === 'all' || cf.section === 'indications')
+                        .map((cf) => (
+                          <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
+                            <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
+                            <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -625,6 +608,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 ) : (
                   <p className="text-[#645A4B]">Classical formulation ingredients as specified in Ayush pharmacopoeia.</p>
                 )}
+
+                {/* Custom Fields for Ingredients Tab */}
+                {customFieldsList.filter((cf) => cf.section === 'ingredients').length > 0 && (
+                  <div className="pt-3 border-t border-[#EAE3D4] space-y-2">
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      Botanical Assay & Formulation Specifications
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {customFieldsList
+                        .filter((cf) => cf.section === 'ingredients')
+                        .map((cf) => (
+                          <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
+                            <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
+                            <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -653,6 +655,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     )}
                   </div>
                 </div>
+
+                {/* Custom Fields for Dosage Tab */}
+                {customFieldsList.filter((cf) => cf.section === 'dosage').length > 0 && (
+                  <div className="pt-3 border-t border-[#EAE3D4] space-y-2">
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      Dosage Instructions & Specific Anupana Notes
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {customFieldsList
+                        .filter((cf) => cf.section === 'dosage')
+                        .map((cf) => (
+                          <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
+                            <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
+                            <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -662,13 +683,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   Pharmacological Mode of Action & Dosha Balance
                 </h4>
                 {product.detailedUses?.actionMechanism && (
-                  <p className="bg-[#FAF8F5] p-3 rounded-lg border border-[#E8E2D5]">
+                  <p className="bg-[#FAF8F5] p-3 rounded-lg border border-[#E8E2D5] leading-relaxed">
                     {product.detailedUses.actionMechanism}
                   </p>
                 )}
                 {product.detailedUses?.doshaEffect && (
                   <div className="p-3 bg-[#E7EFEA] rounded-lg text-[#14291D]">
                     <strong>Dosha Affinity:</strong> {product.detailedUses.doshaEffect}
+                  </div>
+                )}
+
+                {/* Custom Fields for Action Tab */}
+                {customFieldsList.filter((cf) => cf.section === 'action').length > 0 && (
+                  <div className="pt-3 border-t border-[#EAE3D4] space-y-2">
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      Receptor & Pharmacodynamic Specifications
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {customFieldsList
+                        .filter((cf) => cf.section === 'action')
+                        .map((cf) => (
+                          <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
+                            <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
+                            <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -681,7 +721,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </h4>
                 {precautionsList.length > 0 && (
                   <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 space-y-1">
-                    <strong>Precautions:</strong>
+                    <strong>Precautions & Medical Warnings:</strong>
                     <ul className="list-disc list-inside space-y-0.5 pt-1">
                       {precautionsList.map((prec, i) => (
                         <li key={i}>{prec}</li>
@@ -702,7 +742,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       {product.batchInfo || 'Batch #VK-2026 | 24 Months Mfd'}
                     </span>
                   </div>
+                  {product.storageGuideline && (
+                    <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5] col-span-1 sm:col-span-2">
+                      <span className="text-[10px] text-[#716858] block uppercase font-bold">Storage Guidelines</span>
+                      <span className="text-xs text-[#14291D] font-medium">{product.storageGuideline}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Custom Fields for Precautions Tab */}
+                {customFieldsList.filter((cf) => cf.section === 'precautions').length > 0 && (
+                  <div className="pt-3 border-t border-[#EAE3D4] space-y-2">
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      Quality, License & Compliance Specifications
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {customFieldsList
+                        .filter((cf) => cf.section === 'precautions')
+                        .map((cf) => (
+                          <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
+                            <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
+                            <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

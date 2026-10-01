@@ -72,6 +72,9 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
           ? (Object.values(s.weeklyDeals.items) as any[])
           : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
     },
+    peopleBadgeText: s.peopleBadgeText || DEFAULT_SITE_SETTINGS.peopleBadgeText,
+    peopleSectionTitle: s.peopleSectionTitle || DEFAULT_SITE_SETTINGS.peopleSectionTitle,
+    peopleSectionSubtitle: s.peopleSectionSubtitle || DEFAULT_SITE_SETTINGS.peopleSectionSubtitle,
     peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
       ? s.peopleList
       : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0

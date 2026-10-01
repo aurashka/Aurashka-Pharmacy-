@@ -769,6 +769,7 @@ export const DEFAULT_SITE_SETTINGS = {
   },
   footerCopyrightText: '© {year} {brandName}. All rights reserved.',
   footerBotanicalBadgeText: '100% Verified Botanical Formulations & Deals',
+  peopleBadgeText: 'Certified Ayurvedic Doctors & Formulators',
   peopleSectionTitle: 'Our Ayurvedic Doctors & Formulation Specialists',
   peopleSectionSubtitle: 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
   peopleList: [

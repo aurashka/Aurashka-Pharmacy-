@@ -52,7 +52,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  UserPlus
+  UserPlus,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase } from '../utils/firebaseSync';
@@ -218,6 +219,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             ? (Object.values(s.weeklyDeals.items) as WeeklyDealItem[])
             : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
       },
+      peopleBadgeText: s.peopleBadgeText || DEFAULT_SITE_SETTINGS.peopleBadgeText,
+      peopleSectionTitle: s.peopleSectionTitle || DEFAULT_SITE_SETTINGS.peopleSectionTitle,
+      peopleSectionSubtitle: s.peopleSectionSubtitle || DEFAULT_SITE_SETTINGS.peopleSectionSubtitle,
       peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
         ? s.peopleList
         : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
@@ -449,19 +453,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       volumeOrWeight: p.volumeOrWeight,
       inStock: p.inStock,
       customLink: p.customLink || '',
-      keyIndications: p.keyIndications.join(', '),
-      primaryBenefits: p.detailedUses.primaryBenefits.join('\n'),
-      ailmentsTreated: p.detailedUses.ailmentsTreated.join('\n'),
-      actionMechanism: p.detailedUses.actionMechanism,
-      doshaEffect: p.detailedUses.doshaEffect,
-      standardDosage: p.dosageAndAnupana.standardDosage,
-      bestTiming: p.dosageAndAnupana.bestTiming,
-      anupanaCarrier: p.dosageAndAnupana.anupanaCarrier,
-      duration: p.dosageAndAnupana.duration,
-      precautions: p.precautionsAndContraindications.join('\n'),
-      storageGuideline: p.storageGuideline,
-      ayushLicenseNo: p.ayushLicenseNo,
-      batchInfo: p.batchInfo,
+      keyIndications: Array.isArray(p.keyIndications) ? p.keyIndications.join(', ') : '',
+      primaryBenefits: Array.isArray(p.detailedUses?.primaryBenefits) ? p.detailedUses.primaryBenefits.join('\n') : '',
+      ailmentsTreated: Array.isArray(p.detailedUses?.ailmentsTreated) ? p.detailedUses.ailmentsTreated.join('\n') : '',
+      actionMechanism: p.detailedUses?.actionMechanism || '',
+      doshaEffect: p.detailedUses?.doshaEffect || '',
+      standardDosage: p.dosageAndAnupana?.standardDosage || '',
+      bestTiming: p.dosageAndAnupana?.bestTiming || '',
+      anupanaCarrier: p.dosageAndAnupana?.anupanaCarrier || '',
+      duration: p.dosageAndAnupana?.duration || '',
+      precautions: Array.isArray(p.precautionsAndContraindications) ? p.precautionsAndContraindications.join('\n') : '',
+      storageGuideline: p.storageGuideline || '',
+      ayushLicenseNo: p.ayushLicenseNo || '',
+      batchInfo: p.batchInfo || '',
     });
   };
 
@@ -505,17 +509,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   // Custom Fields Helpers (Name, Value & Position Order)
-  const handleAddCustomField = () => {
+  const handleAddCustomField = (targetSection: any = 'all') => {
     const nextPos = customFieldsList.length > 0
       ? Math.max(...customFieldsList.map((f) => f.position)) + 1
       : 1;
     setCustomFieldsList([
       ...customFieldsList,
-      { id: `cf_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, name: '', value: '', position: nextPos },
+      { 
+        id: `cf_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, 
+        name: '', 
+        value: '', 
+        position: nextPos,
+        section: targetSection
+      },
     ]);
   };
 
-  const handleUpdateCustomField = (index: number, key: 'name' | 'value' | 'position', val: any) => {
+  const handleUpdateCustomField = (index: number, key: 'name' | 'value' | 'position' | 'section', val: any) => {
     const updated = [...customFieldsList];
     updated[index] = { ...updated[index], [key]: val };
     setCustomFieldsList(updated);
@@ -788,9 +798,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     const selectedCatObj = categories.find((c) => c.id === productForm.category);
     const catLabel = selectedCatObj ? selectedCatObj.label : 'Herbal Formulation';
 
-    // Cleaned & sorted custom fields
-    const validCustomFields = customFieldsList
+    // Cleaned & sorted custom fields with section target
+    const validCustomFields: ProductCustomField[] = customFieldsList
       .filter((cf) => cf.name.trim() && cf.value.trim())
+      .map((cf) => ({
+        id: cf.id,
+        name: cf.name.trim(),
+        value: cf.value.trim(),
+        position: Number(cf.position) || 1,
+        section: cf.section || 'all',
+      }))
       .sort((a, b) => a.position - b.position);
 
     if (isCreatingNew) {
@@ -1581,6 +1598,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 />
                               </div>
 
+                              {/* Target Tab / Section Placement */}
+                              <div className="shrink-0">
+                                <select
+                                  value={field.section || 'all'}
+                                  onChange={(e) => handleUpdateCustomField(idx, 'section', e.target.value)}
+                                  className="px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-[11px] font-medium text-[#14291D] cursor-pointer"
+                                  title="Choose which monograph tab this field displays inside"
+                                >
+                                  <option value="all">📌 All Tabs / Apothecary Specs</option>
+                                  <option value="indications">📋 Indications & Uses</option>
+                                  <option value="ingredients">🌿 Ingredients & Potency</option>
+                                  <option value="dosage">🥄 Dosage & Anupana</option>
+                                  <option value="action">⚖️ Action & Doshas</option>
+                                  <option value="precautions">🛡️ Precautions & License</option>
+                                </select>
+                              </div>
+
                               {/* Delete Action */}
                               <button
                                 type="button"
@@ -1686,21 +1720,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* STRUCTURED INGREDIENTS SECTION (ADD / EDIT / DELETE) */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 2: INGREDIENTS & POTENCY (ACTIVE BOTANICALS) */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
                     <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h5 className="font-serif text-sm font-bold text-[#14291D] flex items-center gap-1.5">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-[#2C5E43]" />
-                          Active Herbal Ingredients (Add, Edit & Delete)
-                        </h5>
-                        <button
-                          type="button"
-                          onClick={handleAddIngredient}
-                          className="px-3 py-1 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Ingredient</span>
-                        </button>
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            2. Ingredients & Potency (Active Botanical Composition Table)
+                          </h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
+                            Tab 2 in Detail View
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleAddIngredient}
+                            className="px-3 py-1 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Herb</span>
+                          </button>
+                        </div>
                       </div>
 
                       <div className="overflow-x-auto">
@@ -1772,14 +1815,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Tagline, Net Volume & Full Description */}
+                    {/* Tagline & Net Volume */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">Tagline</label>
+                        <label className="block font-medium text-[#2B251D] mb-1">Tagline / Key Catchphrase</label>
                         <input
                           type="text"
                           value={productForm.tagline}
                           onChange={(e) => setProductForm({ ...productForm, tagline: e.target.value })}
+                          placeholder="e.g. Pure Classical Rasayana for Vital Immunity"
                           className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
                         />
                       </div>
@@ -1790,91 +1834,255 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           type="text"
                           value={productForm.volumeOrWeight}
                           onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
+                          placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
                           className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
                         />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block font-medium text-[#2B251D] mb-1">Full Description Text</label>
-                      <textarea
-                        rows={2}
-                        value={productForm.description}
-                        onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                      />
-                    </div>
-
-                    {/* Key Indications */}
-                    <div>
-                      <label className="block font-medium text-[#2B251D] mb-1">
-                        Key Indications (Comma separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={productForm.keyIndications}
-                        onChange={(e) => setProductForm({ ...productForm, keyIndications: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                      />
-                    </div>
-
-                    {/* Detailed Benefits & Ailments */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">
-                          Primary Clinical Benefits (1 per line)
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={productForm.primaryBenefits}
-                          onChange={(e) => setProductForm({ ...productForm, primaryBenefits: e.target.value })}
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                        />
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 1: INDICATIONS & USES (ROGADHIKAR & MONOGRAPH) */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-[#2C5E43]" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            1. Indications & Uses (Rogadhikar & Pharmacopoeia Monograph)
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
+                          Tab 1 in Detail View
+                        </span>
                       </div>
 
                       <div>
                         <label className="block font-medium text-[#2B251D] mb-1">
-                          Ailments Treated (1 per line)
+                          Description & Monograph Text
                         </label>
                         <textarea
                           rows={3}
-                          value={productForm.ailmentsTreated}
-                          onChange={(e) => setProductForm({ ...productForm, ailmentsTreated: e.target.value })}
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          value={productForm.description}
+                          onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                          placeholder="Detailed classical monograph, clinical preparation rationale, and bio-activity profile..."
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs leading-relaxed"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                          <span>Key Indications / Rogadhikar (Comma Separated)</span>
+                          <span className="text-[10px] text-[#716858]">Rendered as high-visibility tags</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={productForm.keyIndications}
+                          onChange={(e) => setProductForm({ ...productForm, keyIndications: e.target.value })}
+                          placeholder="Immunity, Vital Energy, Respiratory Tone, Cognitive Focus, Rasayana"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                            <span>Therapeutic Uses & Primary Benefits</span>
+                            <span className="text-[10px] text-[#716858]">1 per line</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={productForm.primaryBenefits}
+                            onChange={(e) => setProductForm({ ...productForm, primaryBenefits: e.target.value })}
+                            placeholder="Strengthens innate biological vitality&#10;Cleanses cellular ama toxins&#10;Restores healthy tissue tone"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                            <span>Ailments & Conditions Treated</span>
+                            <span className="text-[10px] text-[#716858]">1 per line</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={productForm.ailmentsTreated}
+                            onChange={(e) => setProductForm({ ...productForm, ailmentsTreated: e.target.value })}
+                            placeholder="Kasa (Cough)&#10;Shwasa (Dyspnea)&#10;Daurbalya (Debility)"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 3: DOSAGE & ANUPANA CARRIER */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-[#2C5E43]" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            3. Dosage & Anupana Carrier Guidelines
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
+                          Tab 3 in Detail View
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">Standard Dosage</label>
+                          <input
+                            type="text"
+                            value={productForm.standardDosage}
+                            onChange={(e) => setProductForm({ ...productForm, standardDosage: e.target.value })}
+                            placeholder="e.g. 1 to 2 tablets twice daily"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">Recommended Anupana (Carrier Liquid)</label>
+                          <input
+                            type="text"
+                            value={productForm.anupanaCarrier}
+                            onChange={(e) => setProductForm({ ...productForm, anupanaCarrier: e.target.value })}
+                            placeholder="e.g. Warm cow milk, honey or pure lukewarm water"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">Best Timing (Kala)</label>
+                          <input
+                            type="text"
+                            value={productForm.bestTiming}
+                            onChange={(e) => setProductForm({ ...productForm, bestTiming: e.target.value })}
+                            placeholder="e.g. Early morning and evening after meals"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">Recommended Course Duration</label>
+                          <input
+                            type="text"
+                            value={productForm.duration}
+                            onChange={(e) => setProductForm({ ...productForm, duration: e.target.value })}
+                            placeholder="e.g. 6 to 12 weeks continuous course"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 4: ACTION MECHANISM & DOSHAS */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-[#2C5E43]" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            4. Pharmacological Mode of Action & Dosha Balance
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
+                          Tab 4 in Detail View
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1">
+                          Pharmacological Mode of Action (Samprapti Vighatan)
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={productForm.actionMechanism}
+                          onChange={(e) => setProductForm({ ...productForm, actionMechanism: e.target.value })}
+                          placeholder="Phytochemical mode of action, bio-pathways, tissue metabolic nourishment..."
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs leading-relaxed"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1">
+                          Dosha Balancing Affinity
+                        </label>
+                        <input
+                          type="text"
+                          value={productForm.doshaEffect}
+                          onChange={(e) => setProductForm({ ...productForm, doshaEffect: e.target.value })}
+                          placeholder="e.g. Tridosha balancing, pacifies Vata & Kapha, rejuvenates Dhatus"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
                         />
                       </div>
                     </div>
 
-                    {/* Dosage Guidelines */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">Standard Dosage</label>
-                        <input
-                          type="text"
-                          value={productForm.standardDosage}
-                          onChange={(e) => setProductForm({ ...productForm, standardDosage: e.target.value })}
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                        />
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 5: PRECAUTIONS, LICENSE & QUALITY STANDARDS */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            5. Precautions, AYUSH License & Quality Standards
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
+                          Tab 5 in Detail View
+                        </span>
                       </div>
 
                       <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">Best Timing</label>
-                        <input
-                          type="text"
-                          value={productForm.bestTiming}
-                          onChange={(e) => setProductForm({ ...productForm, bestTiming: e.target.value })}
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                          <span>Precautions & Contraindications</span>
+                          <span className="text-[10px] text-[#716858]">1 warning per line</span>
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={productForm.precautions}
+                          onChange={(e) => setProductForm({ ...productForm, precautions: e.target.value })}
+                          placeholder="Use under medical supervision if pregnant&#10;Keep away from reach of children&#10;Avoid during acute hyperacidity flare-ups"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
                         />
                       </div>
 
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">Anupana (Carrier)</label>
-                        <input
-                          type="text"
-                          value={productForm.anupanaCarrier}
-                          onChange={(e) => setProductForm({ ...productForm, anupanaCarrier: e.target.value })}
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">AYUSH License Number</label>
+                          <input
+                            type="text"
+                            value={productForm.ayushLicenseNo}
+                            onChange={(e) => setProductForm({ ...productForm, ayushLicenseNo: e.target.value })}
+                            placeholder="AYUSH-DL-2026-HERB-9901"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">Batch & Shelf Life Info</label>
+                          <input
+                            type="text"
+                            value={productForm.batchInfo}
+                            onChange={(e) => setProductForm({ ...productForm, batchInfo: e.target.value })}
+                            placeholder="Batch #VK-2026-01 | Exp: 2028"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-medium text-[#2B251D] mb-1">Storage Guidelines</label>
+                          <input
+                            type="text"
+                            value={productForm.storageGuideline}
+                            onChange={(e) => setProductForm({ ...productForm, storageGuideline: e.target.value })}
+                            placeholder="Store below 25°C away from direct sunlight"
+                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -3119,32 +3327,70 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 )}
               </div>
 
-              {/* Section Title & Subtitle Customization */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block font-medium text-[#2B251D] mb-1">
-                    Section Heading Title
-                  </label>
-                  <input
-                    type="text"
-                    value={siteForm.peopleSectionTitle ?? 'Our Ayurvedic Doctors & Formulation Specialists'}
-                    onChange={(e) => setSiteForm({ ...siteForm, peopleSectionTitle: e.target.value })}
-                    placeholder="e.g. Our Ayurvedic Doctors & Formulation Specialists"
-                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
-                  />
+              {/* Section Badge, Title & Subtitle Customization */}
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Top Badge Text
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.peopleBadgeText ?? 'Certified Ayurvedic Doctors & Formulators'}
+                      onChange={(e) => setSiteForm({ ...siteForm, peopleBadgeText: e.target.value })}
+                      placeholder="e.g. Certified Ayurvedic Doctors & Formulators"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Section Heading Title
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.peopleSectionTitle ?? 'Our Ayurvedic Doctors & Formulation Specialists'}
+                      onChange={(e) => setSiteForm({ ...siteForm, peopleSectionTitle: e.target.value })}
+                      placeholder="e.g. Our Ayurvedic Doctors & Formulation Specialists"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Section Subtitle / Description Text
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.peopleSectionSubtitle ?? 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.'}
+                      onChange={(e) => setSiteForm({ ...siteForm, peopleSectionSubtitle: e.target.value })}
+                      placeholder="e.g. Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness."
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-medium text-[#2B251D] mb-1">
-                    Section Subtitle / Description Text
-                  </label>
-                  <input
-                    type="text"
-                    value={siteForm.peopleSectionSubtitle ?? 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.'}
-                    onChange={(e) => setSiteForm({ ...siteForm, peopleSectionSubtitle: e.target.value })}
-                    placeholder="e.g. Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness."
-                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
-                  />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updatedSite = {
+                        ...siteForm,
+                        peopleBadgeText: siteForm.peopleBadgeText?.trim() || 'Certified Ayurvedic Doctors & Formulators',
+                        peopleSectionTitle: siteForm.peopleSectionTitle?.trim() || 'Our Ayurvedic Doctors & Formulation Specialists',
+                        peopleSectionSubtitle: siteForm.peopleSectionSubtitle?.trim() || 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
+                      };
+                      setSiteForm(updatedSite);
+                      onUpdateSiteSettings(updatedSite);
+                      backupSiteSettingsToFirebase(updatedSite);
+                      setSaveSuccessMsg('Doctor Section Badge & Titles saved & synced to Firebase!');
+                      setTimeout(() => setSaveSuccessMsg(null), 3000);
+                    }}
+                    className="px-4 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <Save className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Save Badge & Section Titles</span>
+                  </button>
                 </div>
               </div>
             </div>

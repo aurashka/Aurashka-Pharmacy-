@@ -34,11 +34,14 @@ export interface DosageGuideline {
   duration: string;
 }
 
+export type ProductTabTarget = 'all' | 'indications' | 'ingredients' | 'dosage' | 'action' | 'precautions';
+
 export interface ProductCustomField {
   id: string;
   name: string;
   value: string;
   position: number;
+  section?: ProductTabTarget;
 }
 
 export interface HerbalProduct {
@@ -154,6 +157,7 @@ export interface SiteSettings {
   weeklyDeals?: WeeklyDealsConfig;
   footerCopyrightText?: string;
   footerBotanicalBadgeText?: string;
+  peopleBadgeText?: string;
   peopleSectionTitle?: string;
   peopleSectionSubtitle?: string;
   peopleList?: PeopleProfile[];
