@@ -26,6 +26,9 @@ import {
   buildWhatsAppUrl, 
   buildMailtoUrl 
 } from '../utils/messageFormatter';
+import { DEFAULT_SITE_SETTINGS } from '../data/herbalProducts';
+
+import { PeopleSection } from './PeopleSection';
 
 interface ContactPageProps {
   siteSettings: SiteSettings;
@@ -48,6 +51,27 @@ export const ContactPage: React.FC<ContactPageProps> = ({
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+
+  const rawPhones = siteSettings?.contacts?.phones;
+  const phonesList = Array.isArray(rawPhones) && rawPhones.length > 0
+    ? rawPhones
+    : (rawPhones && typeof rawPhones === 'object' && Object.values(rawPhones).length > 0
+      ? (Object.values(rawPhones) as any[])
+      : DEFAULT_SITE_SETTINGS.contacts.phones);
+
+  const rawWhatsApps = siteSettings?.contacts?.whatsapps;
+  const whatsappsList = Array.isArray(rawWhatsApps) && rawWhatsApps.length > 0
+    ? rawWhatsApps
+    : (rawWhatsApps && typeof rawWhatsApps === 'object' && Object.values(rawWhatsApps).length > 0
+      ? (Object.values(rawWhatsApps) as any[])
+      : DEFAULT_SITE_SETTINGS.contacts.whatsapps);
+
+  const rawEmails = siteSettings?.contacts?.emails;
+  const emailsList = Array.isArray(rawEmails) && rawEmails.length > 0
+    ? rawEmails
+    : (rawEmails && typeof rawEmails === 'object' && Object.values(rawEmails).length > 0
+      ? (Object.values(rawEmails) as any[])
+      : DEFAULT_SITE_SETTINGS.contacts.emails);
 
   const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
   const primaryEmail = getPrimaryEmail(siteSettings);
@@ -164,7 +188,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
             </div>
 
             <div className="space-y-2 pt-1">
-              {siteSettings.contacts.phones.map((p, idx) => (
+              {phonesList.map((p, idx) => (
                 <div key={idx} className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E8E2D5] flex items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[#2C5E43] block">
@@ -215,8 +239,8 @@ export const ContactPage: React.FC<ContactPageProps> = ({
             </div>
 
             <div className="space-y-2 pt-1">
-              {siteSettings.contacts.whatsapps.map((w, idx) => {
-                const cleanNum = w.number.replace(/[^0-9]/g, '');
+              {whatsappsList.map((w, idx) => {
+                const cleanNum = (w.number || '').replace(/[^0-9]/g, '');
                 const waUrl = buildWhatsAppUrl(
                   cleanNum,
                   `Namaste ${siteSettings.brandName} Doctor, I would like to inquire regarding formulations & dosage guidance.`
@@ -274,30 +298,30 @@ export const ContactPage: React.FC<ContactPageProps> = ({
             </div>
 
             <div className="space-y-2 pt-1">
-              {siteSettings.contacts.emails.map((m, idx) => (
+              {emailsList.map((m, idx) => (
                 <div key={idx} className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E8E2D5] flex items-center justify-between gap-2">
                   <div className="space-y-0.5 truncate mr-2">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[#2C5E43] block">
                       {m.label}
                     </span>
                     <a
-                      href={`mailto:${m.address}`}
+                      href={`mailto:${m.email}`}
                       className="text-xs font-semibold text-[#14291D] hover:text-[#2C5E43] transition-colors truncate block"
-                      title={m.address}
+                      title={m.email}
                     >
-                      {m.address}
+                      {m.email}
                     </a>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <a
-                      href={`mailto:${m.address}`}
+                      href={`mailto:${m.email}`}
                       className="px-2.5 py-1 text-[11px] font-semibold bg-[#183624] text-white hover:bg-[#255237] rounded transition-colors"
                     >
                       Email
                     </a>
                     <button
                       type="button"
-                      onClick={() => handleCopy(m.address, `email_${idx}`)}
+                      onClick={() => handleCopy(m.email, `email_${idx}`)}
                       className="p-1 text-[#695F4F] hover:text-[#14291D] rounded hover:bg-stone-200 transition-colors"
                       title="Copy email address"
                     >
@@ -330,7 +354,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                   Registered Location
                 </span>
                 <p className="text-[#3A3225] font-medium">
-                  {siteSettings.address}
+                  {siteSettings.storeAddress}
                 </p>
                 <div className="pt-2 flex items-center gap-2 text-[11px] text-[#695F4F]">
                   <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
@@ -343,7 +367,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                   Clinic & Dispense Hours
                 </span>
                 <p className="text-[#3A3225]">
-                  {siteSettings.timings}
+                  {siteSettings.storeTimings}
                 </p>
                 <p className="text-[11px] text-[#716858]">
                   WhatsApp dispatch & emergency herbal tele-consultation available 24/7.
@@ -495,6 +519,12 @@ export const ContactPage: React.FC<ContactPageProps> = ({
             </form>
           )}
         </div>
+
+        {/* Doctors & Key People Section at bottom of Contact Page */}
+        <PeopleSection
+          siteSettings={siteSettings}
+          onOpenConsultationModal={onOpenConsultationModal}
+        />
       </div>
     </div>
   );

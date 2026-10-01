@@ -113,6 +113,14 @@ export interface WeeklyDealsConfig {
   items: WeeklyDealItem[];
 }
 
+export interface PeopleProfile {
+  id: string;
+  name: string;
+  image: string;
+  roleOrDesignation: string; // text down to the name
+  qualificationOrExperience?: string;
+}
+
 export interface MessageTemplates {
   headerWhatsApp: string;
   floatingWhatsApp: string;
@@ -146,6 +154,9 @@ export interface SiteSettings {
   weeklyDeals?: WeeklyDealsConfig;
   footerCopyrightText?: string;
   footerBotanicalBadgeText?: string;
+  peopleSectionTitle?: string;
+  peopleSectionSubtitle?: string;
+  peopleList?: PeopleProfile[];
 }
 
 export interface ConsultationInquiry {

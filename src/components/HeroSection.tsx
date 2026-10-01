@@ -82,8 +82,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   // Prepare active deal items
   let dealItems: WeeklyDealItem[] = [];
   if (isDealsSectionEnabled) {
-    if (weeklyDealsConfig?.items && weeklyDealsConfig.items.length > 0) {
-      dealItems = weeklyDealsConfig.items;
+    const rawDeals = weeklyDealsConfig?.items;
+    const cleanItems: WeeklyDealItem[] = Array.isArray(rawDeals)
+      ? rawDeals
+      : (rawDeals && typeof rawDeals === 'object'
+        ? (Object.values(rawDeals) as WeeklyDealItem[])
+        : []);
+
+    if (cleanItems.length > 0) {
+      dealItems = cleanItems;
     } else if (featuredDeal) {
       dealItems = [
         {

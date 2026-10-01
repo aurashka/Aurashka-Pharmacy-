@@ -13,6 +13,7 @@ import { FrontContactBar } from './components/FrontContactBar';
 import { ProductDashboard } from './components/ProductDashboard';
 import { ProductDetailPage } from './components/ProductDetailPage';
 import { ContactPage } from './components/ContactPage';
+import { PeopleSection } from './components/PeopleSection';
 import { ConsultationModal } from './components/ConsultationModal';
 import { InquiryCartDrawer, CartItem } from './components/InquiryCartDrawer';
 import { FloatingContactWidget } from './components/FloatingContactWidget';
@@ -36,6 +37,49 @@ const SITE_SETTINGS_STORAGE_KEY = 'aurashka_site_settings';
 const CATEGORIES_STORAGE_KEY = 'aurashka_categories';
 const FORMS_STORAGE_KEY = 'aurashka_forms';
 
+function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
+  const s = settings || {};
+  return {
+    ...DEFAULT_SITE_SETTINGS,
+    ...s,
+    contacts: {
+      phones: Array.isArray(s.contacts?.phones) && s.contacts.phones.length > 0
+        ? s.contacts.phones
+        : (s.contacts?.phones && typeof s.contacts.phones === 'object' && Object.values(s.contacts.phones).length > 0
+          ? (Object.values(s.contacts.phones) as any[])
+          : DEFAULT_SITE_SETTINGS.contacts.phones),
+      whatsapps: Array.isArray(s.contacts?.whatsapps) && s.contacts.whatsapps.length > 0
+        ? s.contacts.whatsapps
+        : (s.contacts?.whatsapps && typeof s.contacts.whatsapps === 'object' && Object.values(s.contacts.whatsapps).length > 0
+          ? (Object.values(s.contacts.whatsapps) as any[])
+          : DEFAULT_SITE_SETTINGS.contacts.whatsapps),
+      emails: Array.isArray(s.contacts?.emails) && s.contacts.emails.length > 0
+        ? s.contacts.emails
+        : (s.contacts?.emails && typeof s.contacts.emails === 'object' && Object.values(s.contacts.emails).length > 0
+          ? (Object.values(s.contacts.emails) as any[])
+          : DEFAULT_SITE_SETTINGS.contacts.emails),
+    },
+    weeklyDeals: {
+      enabled: s.weeklyDeals?.enabled ?? true,
+      title: s.weeklyDeals?.title || DEFAULT_SITE_SETTINGS.weeklyDeals!.title,
+      subtitle: s.weeklyDeals?.subtitle || DEFAULT_SITE_SETTINGS.weeklyDeals!.subtitle,
+      badgeText: s.weeklyDeals?.badgeText || DEFAULT_SITE_SETTINGS.weeklyDeals!.badgeText,
+      bannerTag: s.weeklyDeals?.bannerTag || DEFAULT_SITE_SETTINGS.weeklyDeals!.bannerTag,
+      dealEndNotice: s.weeklyDeals?.dealEndNotice || DEFAULT_SITE_SETTINGS.weeklyDeals!.dealEndNotice,
+      items: Array.isArray(s.weeklyDeals?.items)
+        ? s.weeklyDeals.items
+        : (s.weeklyDeals?.items && typeof s.weeklyDeals.items === 'object'
+          ? (Object.values(s.weeklyDeals.items) as any[])
+          : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
+    },
+    peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
+      ? s.peopleList
+      : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
+        ? (Object.values(s.peopleList) as any[])
+        : (DEFAULT_SITE_SETTINGS.peopleList || [])),
+  };
+}
+
 function PharmacyApp() {
   const { currentUser, isAdmin } = useAuth();
 
@@ -45,7 +89,7 @@ function PharmacyApp() {
       const saved = localStorage.getItem(SITE_SETTINGS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.brandName) return parsed;
+        if (parsed && typeof parsed === 'object') return normalizeSiteSettings(parsed);
       }
     } catch (e) {
       console.error(e);
@@ -151,8 +195,9 @@ function PharmacyApp() {
       try {
         const remoteSettings = await fetchSiteSettingsFromFirebase();
         if (remoteSettings) {
-          setSiteSettings(remoteSettings);
-          localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(remoteSettings));
+          const normalized = normalizeSiteSettings(remoteSettings);
+          setSiteSettings(normalized);
+          localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
         } else {
           // If empty in Firebase, back up default site settings
           backupSiteSettingsToFirebase(DEFAULT_SITE_SETTINGS);
@@ -489,6 +534,17 @@ function PharmacyApp() {
               categories={categories}
               forms={forms}
               siteSettings={siteSettings}
+            />
+
+            {/* Doctors & Key People Section with Round Images and Text */}
+            <PeopleSection
+              siteSettings={siteSettings}
+              onOpenConsultationModal={(doctorName) => handleOpenConsultationModal(doctorName)}
+              isAdmin={isAdmin}
+              onOpenAdminPanel={() => {
+                setProductToEditInAdmin(null);
+                setIsAdminPanelOpen(true);
+              }}
             />
           </>
         )}

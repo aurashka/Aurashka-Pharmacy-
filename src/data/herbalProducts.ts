@@ -768,7 +768,32 @@ export const DEFAULT_SITE_SETTINGS = {
     ]
   },
   footerCopyrightText: '© {year} {brandName}. All rights reserved.',
-  footerBotanicalBadgeText: '100% Verified Botanical Formulations & Deals'
+  footerBotanicalBadgeText: '100% Verified Botanical Formulations & Deals',
+  peopleSectionTitle: 'Our Ayurvedic Doctors & Formulation Specialists',
+  peopleSectionSubtitle: 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
+  peopleList: [
+    {
+      id: 'person-1',
+      name: 'Dr. Harshit Maan (BAMS, MD Ayu.)',
+      image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80',
+      roleOrDesignation: 'Chief Ayurvedic Physician & Senior Formulator',
+      qualificationOrExperience: '15+ Years Clinical Practice · Central Ayush Board Verified',
+    },
+    {
+      id: 'person-2',
+      name: 'Dr. Ananya Sharma (BAMS, PhD Dravyaguna)',
+      image: 'https://images.unsplash.com/photo-1594824813628-989635b71946?auto=format&fit=crop&w=400&q=80',
+      roleOrDesignation: 'Head of Pharmacognosy & Botanical Standardization',
+      qualificationOrExperience: 'Ayurvedic Herbology Specialist · Heavy Metal Detox Analyst',
+    },
+    {
+      id: 'person-3',
+      name: 'Dr. Rajesh V. Shastri (BAMS, Rasashastra Gold Medalist)',
+      image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=400&q=80',
+      roleOrDesignation: 'Senior Rasayana & Classical Anupana Consultant',
+      qualificationOrExperience: 'Classical Formulations Expert · 20+ Years Patient Care',
+    },
+  ]
 };
 
 export const COMMON_AILMENT_TAGS = [

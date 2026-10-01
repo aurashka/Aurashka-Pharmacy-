@@ -116,16 +116,21 @@ export function getPrimaryWhatsApp(siteSettings?: SiteSettings): { number: strin
     displayNumber: '+91 98765 43210',
   };
 
-  if (!siteSettings?.contacts?.whatsapps || siteSettings.contacts.whatsapps.length === 0) {
+  const raw = siteSettings?.contacts?.whatsapps;
+  const list: any[] = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+
+  if (!list || list.length === 0 || !list[0]) {
     return defaultWhatsApp;
   }
 
-  const primary = siteSettings.contacts.whatsapps[0];
-  const cleanNumber = primary.number.replace(/[^0-9]/g, '');
+  const primary = list[0] as { number?: string; displayNumber?: string };
+  const cleanNumber = (primary?.number || '').replace(/[^0-9]/g, '');
 
   return {
     number: cleanNumber || defaultWhatsApp.number,
-    displayNumber: primary.displayNumber || primary.number || defaultWhatsApp.displayNumber,
+    displayNumber: primary?.displayNumber || primary?.number || defaultWhatsApp.displayNumber,
   };
 }
 
@@ -133,20 +138,32 @@ export function getPrimaryWhatsApp(siteSettings?: SiteSettings): { number: strin
  * Returns primary Phone string from SiteSettings
  */
 export function getPrimaryPhone(siteSettings?: SiteSettings): string {
-  if (!siteSettings?.contacts?.phones || siteSettings.contacts.phones.length === 0) {
+  const raw = siteSettings?.contacts?.phones;
+  const list: any[] = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+
+  if (!list || list.length === 0 || !list[0]) {
     return '+91 98765 43210';
   }
-  return siteSettings.contacts.phones[0].number || '+91 98765 43210';
+  const primary = list[0] as { number?: string };
+  return primary?.number || '+91 98765 43210';
 }
 
 /**
  * Returns primary Email string from SiteSettings
  */
 export function getPrimaryEmail(siteSettings?: SiteSettings): string {
-  if (!siteSettings?.contacts?.emails || siteSettings.contacts.emails.length === 0) {
+  const raw = siteSettings?.contacts?.emails;
+  const list: any[] = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+
+  if (!list || list.length === 0 || !list[0]) {
     return 'care@aurashka.com';
   }
-  return siteSettings.contacts.emails[0].email || 'care@aurashka.com';
+  const primary = list[0] as { email?: string };
+  return primary?.email || 'care@aurashka.com';
 }
 
 /**

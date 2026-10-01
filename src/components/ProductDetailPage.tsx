@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HerbalProduct, SiteSettings } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem } from '../types/pharmacy';
 import { 
   ArrowLeft, 
   MessageCircle, 
@@ -65,12 +65,73 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   // Clean images list from product
   const imagesList: string[] = React.useMemo(() => {
     if (!product) return [];
-    if (product.images && product.images.length > 0) {
-      const valid = product.images.filter((img) => img && img.trim().length > 0);
+    const rawImgs = product.images;
+    const imgs = Array.isArray(rawImgs)
+      ? rawImgs
+      : (rawImgs && typeof rawImgs === 'object' ? Object.values(rawImgs) : []);
+
+    if (imgs.length > 0) {
+      const valid = imgs.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
       if (valid.length > 0) return valid;
     }
     return product.image ? [product.image] : [];
   }, [product]);
+
+  // Defensive array extractions for product monograph
+  const indicationsList: string[] = React.useMemo(() => {
+    if (!product?.keyIndications) return [];
+    if (Array.isArray(product.keyIndications)) return product.keyIndications;
+    if (typeof product.keyIndications === 'string') {
+      return (product.keyIndications as string).split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    if (typeof product.keyIndications === 'object') {
+      return Object.values(product.keyIndications);
+    }
+    return [];
+  }, [product?.keyIndications]);
+
+  const benefitsList: string[] = React.useMemo(() => {
+    const raw = product?.detailedUses?.primaryBenefits;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'object') return Object.values(raw);
+    return [];
+  }, [product?.detailedUses?.primaryBenefits]);
+
+  const ailmentsList: string[] = React.useMemo(() => {
+    const raw = product?.detailedUses?.ailmentsTreated;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'object') return Object.values(raw);
+    return [];
+  }, [product?.detailedUses?.ailmentsTreated]);
+
+  const customFieldsList: ProductCustomField[] = React.useMemo(() => {
+    const raw = product?.customFields;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'object') return Object.values(raw);
+    return [];
+  }, [product?.customFields]);
+
+  const ingredientsList: IngredientItem[] = React.useMemo(() => {
+    const raw = product?.keyIngredients;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'object') return Object.values(raw);
+    return [];
+  }, [product?.keyIngredients]);
+
+  const precautionsList: string[] = React.useMemo(() => {
+    const raw = product?.precautionsAndContraindications;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      return (raw as string).split('\n').map((s) => s.trim()).filter(Boolean);
+    }
+    if (typeof raw === 'object') return Object.values(raw);
+    return [];
+  }, [product?.precautionsAndContraindications]);
 
   const activeImage = imagesList[currentImageIndex] || product.image;
   const savings = product.mrp - product.price;
@@ -424,7 +485,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
               }`}
             >
-              Ingredients & Potency ({product.ingredientsList?.length || product.ingredients.length})
+              Ingredients & Potency ({ingredientsList.length})
             </button>
             <button
               onClick={() => setActiveTab('dosage')}
@@ -469,24 +530,28 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   <p>{product.description}</p>
                 </div>
 
-                {product.keyIndications && (
+                {indicationsList.length > 0 && (
                   <div>
                     <h4 className="font-serif font-bold text-sm text-[#14291D] mb-2">
                       Key Indications (Rogadhikar)
                     </h4>
-                    <p className="bg-[#FAF8F5] p-3 rounded-lg border border-[#E8E2D5]">
-                      {product.keyIndications}
-                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {indicationsList.map((ind, i) => (
+                        <span key={i} className="px-2.5 py-1 bg-[#FAF8F5] border border-[#E8E2D5] text-[#14291D] rounded-md font-medium">
+                          {ind}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {product.therapeuticUses && product.therapeuticUses.length > 0 && (
+                {benefitsList.length > 0 && (
                   <div>
                     <h4 className="font-serif font-bold text-sm text-[#14291D] mb-2">
-                      Therapeutic Uses & Benefits
+                      Therapeutic Uses & Primary Benefits
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
-                      {product.therapeuticUses.map((use, i) => (
+                      {benefitsList.map((use: string, i: number) => (
                         <span key={i} className="px-2.5 py-1 bg-[#E7EFEA] text-[#14291D] rounded-md font-medium">
                           {use}
                         </span>
@@ -495,14 +560,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   </div>
                 )}
 
+                {ailmentsList.length > 0 && (
+                  <div>
+                    <h4 className="font-serif font-bold text-sm text-[#14291D] mb-2">
+                      Ailments & Conditions Treated
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ailmentsList.map((ail: string, i: number) => (
+                        <span key={i} className="px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-md font-medium">
+                          {ail}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Custom Fields if any */}
-                {product.customFields && product.customFields.length > 0 && (
+                {customFieldsList.length > 0 && (
                   <div className="pt-2 border-t border-[#EAE3D4]">
                     <h4 className="font-serif font-bold text-sm text-[#14291D] mb-3">
                       Apothecary Specifications
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {product.customFields.map((cf) => (
+                      {customFieldsList.map((cf) => (
                         <div key={cf.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5]">
                           <span className="text-[10px] uppercase font-bold text-[#6D6251] block">{cf.name}</span>
                           <span className="text-xs font-semibold text-[#14291D]">{cf.value}</span>
@@ -519,7 +599,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <h4 className="font-serif font-bold text-sm text-[#14291D]">
                   Botanical Composition & Potency
                 </h4>
-                {product.ingredientsList && product.ingredientsList.length > 0 ? (
+                {ingredientsList.length > 0 ? (
                   <div className="border border-[#DDD5C5] rounded-xl overflow-hidden">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
@@ -531,7 +611,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#EFEAE0]">
-                        {product.ingredientsList.map((item, idx) => (
+                        {ingredientsList.map((item, idx) => (
                           <tr key={idx} className="hover:bg-[#FAF8F5]">
                             <td className="py-2 px-3 font-semibold text-[#14291D]">{item.herb}</td>
                             <td className="py-2 px-3 italic text-[#594E3E]">{item.botanicalName}</td>
@@ -543,11 +623,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     </table>
                   </div>
                 ) : (
-                  <ul className="list-disc list-inside space-y-1">
-                    {product.ingredients.map((ing, i) => (
-                      <li key={i}>{ing}</li>
-                    ))}
-                  </ul>
+                  <p className="text-[#645A4B]">Classical formulation ingredients as specified in Ayush pharmacopoeia.</p>
                 )}
               </div>
             )}
@@ -560,11 +636,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5] space-y-1">
                     <span className="font-bold text-[#14291D] block">Standard Dosage:</span>
-                    <p>{product.dosage}</p>
+                    <p>{product.dosageAndAnupana?.standardDosage || '1 to 2 doses daily as advised by Doctor'}</p>
+                    {product.dosageAndAnupana?.bestTiming && (
+                      <p className="text-[11px] text-[#645A4B] pt-1">
+                        <strong>Timing:</strong> {product.dosageAndAnupana.bestTiming}
+                      </p>
+                    )}
                   </div>
                   <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5] space-y-1">
                     <span className="font-bold text-[#14291D] block">Recommended Anupana Carrier:</span>
-                    <p>{product.anupana || 'Warm water or organic honey'}</p>
+                    <p>{product.dosageAndAnupana?.anupanaCarrier || 'Warm water or pure cow milk'}</p>
+                    {product.dosageAndAnupana?.duration && (
+                      <p className="text-[11px] text-[#645A4B] pt-1">
+                        <strong>Duration:</strong> {product.dosageAndAnupana.duration}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -575,14 +661,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <h4 className="font-serif font-bold text-sm text-[#14291D]">
                   Pharmacological Mode of Action & Dosha Balance
                 </h4>
-                {product.actionMechanism && (
+                {product.detailedUses?.actionMechanism && (
                   <p className="bg-[#FAF8F5] p-3 rounded-lg border border-[#E8E2D5]">
-                    {product.actionMechanism}
+                    {product.detailedUses.actionMechanism}
                   </p>
                 )}
-                {product.doshaEffect && (
+                {product.detailedUses?.doshaEffect && (
                   <div className="p-3 bg-[#E7EFEA] rounded-lg text-[#14291D]">
-                    <strong>Dosha Affinity:</strong> {product.doshaEffect}
+                    <strong>Dosha Affinity:</strong> {product.detailedUses.doshaEffect}
                   </div>
                 )}
               </div>
@@ -593,9 +679,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <h4 className="font-serif font-bold text-sm text-[#14291D]">
                   Precautions, Contraindications & Ayush License
                 </h4>
-                {product.precautions && (
-                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900">
-                    <strong>Precautions:</strong> {product.precautions}
+                {precautionsList.length > 0 && (
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 space-y-1">
+                    <strong>Precautions:</strong>
+                    <ul className="list-disc list-inside space-y-0.5 pt-1">
+                      {precautionsList.map((prec, i) => (
+                        <li key={i}>{prec}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">

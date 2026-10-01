@@ -10,7 +10,8 @@ import {
   ProductCustomField,
   MessageTemplates,
   WeeklyDealItem,
-  WeeklyDealsConfig
+  WeeklyDealsConfig,
+  PeopleProfile
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { 
@@ -49,7 +50,9 @@ import {
   MoveRight,
   AlertTriangle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Users,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase } from '../utils/firebaseSync';
@@ -91,13 +94,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'categories_forms' | 'contacts' | 'site_titles' | 'messages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'messages'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isBackingUp, setIsBackingUp] = useState(false);
+
+  // Doctors & Key People (Round Images & Text) Management State
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+  const [personName, setPersonName] = useState('');
+  const [personImage, setPersonImage] = useState('');
+  const [personRole, setPersonRole] = useState('');
+  const [personDetail, setPersonDetail] = useState('');
+  const [isAddingPerson, setIsAddingPerson] = useState(false);
 
   // Deal of the Week state
   const [selectedDealProductId, setSelectedDealProductId] = useState<string>(products[0]?.id || '');
@@ -165,14 +176,64 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     bestTiming: 'After meals with warm water',
     anupanaCarrier: 'Warm water or pure honey',
     duration: '4 to 8 weeks',
-    precautions: 'Do not use during pregnancy without Vaidya consultation.\nKeep out of reach of children.',
+    precautions: 'Do not use during pregnancy without Doctor consultation.\nKeep out of reach of children.',
     storageGuideline: 'Store in an airtight container below 25°C away from humidity.',
     ayushLicenseNo: 'AYUSH-DL-2026-HERB-9901',
     batchInfo: 'Batch #VK-2026-01 | Exp: 2028',
   });
 
+  // Helper to normalize siteSettings data
+  const normalizeSettings = (settings?: SiteSettings): SiteSettings => {
+    const s = settings || DEFAULT_SITE_SETTINGS;
+    return {
+      ...DEFAULT_SITE_SETTINGS,
+      ...s,
+      contacts: {
+        phones: Array.isArray(s.contacts?.phones) && s.contacts.phones.length > 0
+          ? s.contacts.phones
+          : (s.contacts?.phones && typeof s.contacts.phones === 'object' && Object.values(s.contacts.phones).length > 0
+            ? (Object.values(s.contacts.phones) as any[])
+            : DEFAULT_SITE_SETTINGS.contacts.phones),
+        whatsapps: Array.isArray(s.contacts?.whatsapps) && s.contacts.whatsapps.length > 0
+          ? s.contacts.whatsapps
+          : (s.contacts?.whatsapps && typeof s.contacts.whatsapps === 'object' && Object.values(s.contacts.whatsapps).length > 0
+            ? (Object.values(s.contacts.whatsapps) as any[])
+            : DEFAULT_SITE_SETTINGS.contacts.whatsapps),
+        emails: Array.isArray(s.contacts?.emails) && s.contacts.emails.length > 0
+          ? s.contacts.emails
+          : (s.contacts?.emails && typeof s.contacts.emails === 'object' && Object.values(s.contacts.emails).length > 0
+            ? (Object.values(s.contacts.emails) as any[])
+            : DEFAULT_SITE_SETTINGS.contacts.emails),
+      },
+      weeklyDeals: {
+        enabled: s.weeklyDeals?.enabled ?? true,
+        title: s.weeklyDeals?.title || DEFAULT_SITE_SETTINGS.weeklyDeals!.title,
+        subtitle: s.weeklyDeals?.subtitle || DEFAULT_SITE_SETTINGS.weeklyDeals!.subtitle,
+        badgeText: s.weeklyDeals?.badgeText || DEFAULT_SITE_SETTINGS.weeklyDeals!.badgeText,
+        bannerTag: s.weeklyDeals?.bannerTag || DEFAULT_SITE_SETTINGS.weeklyDeals!.bannerTag,
+        dealEndNotice: s.weeklyDeals?.dealEndNotice || DEFAULT_SITE_SETTINGS.weeklyDeals!.dealEndNotice,
+        items: Array.isArray(s.weeklyDeals?.items)
+          ? s.weeklyDeals.items
+          : (s.weeklyDeals?.items && typeof s.weeklyDeals.items === 'object'
+            ? (Object.values(s.weeklyDeals.items) as WeeklyDealItem[])
+            : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
+      },
+      peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
+        ? s.peopleList
+        : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
+          ? (Object.values(s.peopleList) as PeopleProfile[])
+          : (DEFAULT_SITE_SETTINGS.peopleList || [])),
+    };
+  };
+
   // Site Settings & Multiple Contacts Local Form State
-  const [siteForm, setSiteForm] = useState<SiteSettings>(siteSettings);
+  const [siteForm, setSiteForm] = useState<SiteSettings>(() => normalizeSettings(siteSettings));
+
+  useEffect(() => {
+    if (siteSettings) {
+      setSiteForm(normalizeSettings(siteSettings));
+    }
+  }, [siteSettings]);
 
   const handleUpdateMessageTemplate = (key: keyof MessageTemplates, val: any) => {
     const currentTemplates = siteForm.messageTemplates || DEFAULT_MESSAGE_TEMPLATES;
@@ -185,14 +246,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     });
   };
 
-  const currentWeeklyDeals: WeeklyDealsConfig = siteForm.weeklyDeals || {
-    enabled: true,
-    title: 'Deal of the Week',
-    subtitle: 'Handpicked classical formulations and pure Rasayanas at exclusive apothecary rates.',
-    badgeText: 'Handpicked Specials',
-    bannerTag: 'Save up to 35% this week',
-    dealEndNotice: 'Offers refresh every Sunday midnight · Authentic botanical guarantee',
-    items: [],
+  const rawDeals = siteForm.weeklyDeals?.items;
+  const currentWeeklyDeals: WeeklyDealsConfig = {
+    enabled: siteForm.weeklyDeals?.enabled ?? true,
+    title: siteForm.weeklyDeals?.title || 'Deal of the Week',
+    subtitle: siteForm.weeklyDeals?.subtitle || 'Handpicked classical formulations and pure Rasayanas at exclusive apothecary rates.',
+    badgeText: siteForm.weeklyDeals?.badgeText || 'Handpicked Specials',
+    bannerTag: siteForm.weeklyDeals?.bannerTag || 'Save up to 35% this week',
+    dealEndNotice: siteForm.weeklyDeals?.dealEndNotice || 'Offers refresh every Sunday midnight · Authentic botanical guarantee',
+    items: Array.isArray(rawDeals)
+      ? rawDeals
+      : (rawDeals && typeof rawDeals === 'object'
+        ? (Object.values(rawDeals) as WeeklyDealItem[])
+        : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
   };
 
   const handleUpdateWeeklyDeals = (updates: Partial<WeeklyDealsConfig>) => {
@@ -998,6 +1064,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             >
               <Phone className={`w-3.5 h-3.5 ${activeTab === 'contacts' ? 'text-emerald-300' : 'text-[#2C5E43]'}`} />
               <span>Multiple Contacts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('people');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'people'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Users className={`w-3.5 h-3.5 ${activeTab === 'people' ? 'text-emerald-300' : 'text-[#2C5E43]'}`} />
+              <span>Doctors & Key People</span>
             </button>
 
             <button
@@ -2866,7 +2949,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         type="text"
                         required
                         value={wa.label}
-                        placeholder="Label (e.g. Order Desk, Vaidya Chat)"
+                        placeholder="Label (e.g. Order Desk, Doctor Chat)"
                         onChange={(e) => handleUpdateWhatsApp(idx, 'label', e.target.value)}
                         className="w-1/3 px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-medium"
                       />
@@ -2999,6 +3082,398 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           </div>
         )}
 
+        {/* Tab: Doctors & Key People (Round Images & Text) */}
+        {activeTab === 'people' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            {/* Header info */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#2C5E43]" />
+                  <div>
+                    <h4 className="font-serif text-base font-bold text-[#14291D]">
+                      Doctors & Key People Management (Round Images & Subtitles)
+                    </h4>
+                    <p className="text-[11px] text-[#6E6352]">
+                      These profiles appear at the bottom of the Main Storefront Page and the Contact Page.
+                    </p>
+                  </div>
+                </div>
+
+                {!isAddingPerson && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingPersonId(null);
+                      setPersonName('');
+                      setPersonImage('https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80');
+                      setPersonRole('Ayurvedic Doctor & Clinical Formulator');
+                      setPersonDetail('BAMS, MD Ayu. · 12+ Years Clinical Practice');
+                      setIsAddingPerson(true);
+                    }}
+                    className="px-3.5 py-1.5 bg-[#183624] hover:bg-[#255237] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Add New Doctor / Person</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Section Title & Subtitle Customization */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block font-medium text-[#2B251D] mb-1">
+                    Section Heading Title
+                  </label>
+                  <input
+                    type="text"
+                    value={siteForm.peopleSectionTitle ?? 'Our Ayurvedic Doctors & Formulation Specialists'}
+                    onChange={(e) => setSiteForm({ ...siteForm, peopleSectionTitle: e.target.value })}
+                    placeholder="e.g. Our Ayurvedic Doctors & Formulation Specialists"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#2B251D] mb-1">
+                    Section Subtitle / Description Text
+                  </label>
+                  <input
+                    type="text"
+                    value={siteForm.peopleSectionSubtitle ?? 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.'}
+                    onChange={(e) => setSiteForm({ ...siteForm, peopleSectionSubtitle: e.target.value })}
+                    placeholder="e.g. Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness."
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Add / Edit Form Modal / Inline Card */}
+            {isAddingPerson && (
+              <div className="bg-[#FAF8F5] p-5 rounded-xl border-2 border-[#2C5E43] shadow-md space-y-4">
+                <div className="flex items-center justify-between border-b border-[#E0D7C6] pb-2">
+                  <h4 className="font-serif font-bold text-sm text-[#14291D] flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-[#2C5E43]" />
+                    <span>{editingPersonId ? 'Edit Doctor Profile' : 'Add New Doctor / Person Profile'}</span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingPerson(false);
+                      setEditingPersonId(null);
+                    }}
+                    className="text-[#645A4B] hover:text-[#14291D] text-xs font-medium cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!personName.trim()) return;
+
+                    const currentList = siteForm.peopleList || DEFAULT_SITE_SETTINGS.peopleList || [];
+                    let updatedList: PeopleProfile[];
+
+                    if (editingPersonId) {
+                      updatedList = currentList.map((p) =>
+                        p.id === editingPersonId
+                          ? {
+                              ...p,
+                              name: personName.trim(),
+                              image: personImage.trim() || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80',
+                              roleOrDesignation: personRole.trim() || 'Ayurvedic Doctor',
+                              qualificationOrExperience: personDetail.trim() || undefined,
+                            }
+                          : p
+                      );
+                    } else {
+                      const newPerson: PeopleProfile = {
+                        id: `person-${Date.now()}`,
+                        name: personName.trim(),
+                        image: personImage.trim() || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80',
+                        roleOrDesignation: personRole.trim() || 'Ayurvedic Doctor',
+                        qualificationOrExperience: personDetail.trim() || undefined,
+                      };
+                      updatedList = [...currentList, newPerson];
+                    }
+
+                    const updatedSite = {
+                      ...siteForm,
+                      peopleList: updatedList,
+                    };
+                    setSiteForm(updatedSite);
+                    onUpdateSiteSettings(updatedSite);
+                    backupSiteSettingsToFirebase(updatedSite);
+
+                    setIsAddingPerson(false);
+                    setEditingPersonId(null);
+                    setSaveSuccessMsg('Doctor profile saved successfully!');
+                    setTimeout(() => setSaveSuccessMsg(null), 3000);
+                  }}
+                  className="space-y-4 text-xs"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                    {/* Live Circular Avatar Preview */}
+                    <div className="sm:col-span-3 flex flex-col items-center justify-center space-y-1.5">
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-3 border-[#2C5E43] shadow-md bg-white flex items-center justify-center">
+                        {personImage ? (
+                          <img
+                            src={personImage}
+                            alt="Round Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLElement).style.opacity = '0.3'; }}
+                          />
+                        ) : (
+                          <Users className="w-8 h-8 text-[#2C5E43]" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-[#6E6352] font-semibold">Live Round Preview</span>
+                    </div>
+
+                    <div className="sm:col-span-9 space-y-3">
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1">
+                          Doctor / Person Full Name <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={personName}
+                          onChange={(e) => setPersonName(e.target.value)}
+                          placeholder="e.g. Dr. Harshit Maan (BAMS, MD Ayu.)"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-bold text-[#14291D]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1">
+                          Circular Image URL (Photo) <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="url"
+                          required
+                          value={personImage}
+                          onChange={(e) => setPersonImage(e.target.value)}
+                          placeholder="https://... image link"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                        />
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span className="text-[10px] text-[#6E6352]">Sample Presets:</span>
+                        <button
+                          type="button"
+                          onClick={() => setPersonImage('https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&q=80')}
+                          className="px-2 py-0.5 bg-white border border-[#DDD5C5] rounded text-[10px] hover:bg-stone-100 cursor-pointer"
+                        >
+                          Doctor 1 (Male)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPersonImage('https://images.unsplash.com/photo-1594824813628-989635b71946?auto=format&fit=crop&w=400&q=80')}
+                          className="px-2 py-0.5 bg-white border border-[#DDD5C5] rounded text-[10px] hover:bg-stone-100 cursor-pointer"
+                        >
+                          Doctor 2 (Female)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPersonImage('https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=400&q=80')}
+                          className="px-2 py-0.5 bg-white border border-[#DDD5C5] rounded text-[10px] hover:bg-stone-100 cursor-pointer"
+                        >
+                          Doctor 3 (Senior)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Role / Designation (Another text down to the name) <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={personRole}
+                        onChange={(e) => setPersonRole(e.target.value)}
+                        placeholder="e.g. Chief Ayurvedic Physician & Senior Formulator"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#2C5E43]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Qualifications / Experience (Extra detail down to the name)
+                      </label>
+                      <input
+                        type="text"
+                        value={personDetail}
+                        onChange={(e) => setPersonDetail(e.target.value)}
+                        placeholder="e.g. 15+ Years Clinical Practice · Central Ayush Board"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-[#E0D7C6]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingPerson(false);
+                        setEditingPersonId(null);
+                      }}
+                      className="px-4 py-2 border border-[#C8BEAB] rounded-lg text-xs text-[#594E3E] hover:bg-white cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Save className="w-3.5 h-3.5 text-amber-300" />
+                      <span>{editingPersonId ? 'Update Doctor' : 'Save Doctor Profile'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* List of current doctors / people */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                  Current Doctors & Practitioners ({siteForm.peopleList?.length ?? (DEFAULT_SITE_SETTINGS.peopleList?.length || 0)})
+                </h4>
+                <span className="text-[11px] text-[#6E6352]">
+                  Circular image, name, and subtitle text display on the website
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {(siteForm.peopleList || DEFAULT_SITE_SETTINGS.peopleList || []).map((person, idx, arr) => (
+                  <div
+                    key={person.id}
+                    className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#DDD5C5] flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-[#2C5E43] transition-all"
+                  >
+                    <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#2C5E43] shrink-0 bg-white shadow-2xs">
+                        <img
+                          src={person.image}
+                          alt={person.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLElement).style.opacity = '0.3'; }}
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <h5 className="font-serif font-bold text-xs sm:text-sm text-[#14291D]">
+                          {person.name}
+                        </h5>
+                        <p className="text-xs font-semibold text-[#2C5E43]">
+                          {person.roleOrDesignation}
+                        </p>
+                        {person.qualificationOrExperience && (
+                          <p className="text-[11px] text-[#6E6352]">
+                            {person.qualificationOrExperience}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions: Reorder, Edit, Delete */}
+                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => {
+                          const list = [...(siteForm.peopleList || DEFAULT_SITE_SETTINGS.peopleList || [])];
+                          const [item] = list.splice(idx, 1);
+                          list.splice(idx - 1, 0, item);
+                          const updated = { ...siteForm, peopleList: list };
+                          setSiteForm(updated);
+                          onUpdateSiteSettings(updated);
+                          backupSiteSettingsToFirebase(updated);
+                        }}
+                        className="p-1.5 rounded-lg border border-[#DDD5C5] bg-white hover:bg-stone-100 text-[#594E3E] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title="Move Up"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={idx === arr.length - 1}
+                        onClick={() => {
+                          const list = [...(siteForm.peopleList || DEFAULT_SITE_SETTINGS.peopleList || [])];
+                          const [item] = list.splice(idx, 1);
+                          list.splice(idx + 1, 0, item);
+                          const updated = { ...siteForm, peopleList: list };
+                          setSiteForm(updated);
+                          onUpdateSiteSettings(updated);
+                          backupSiteSettingsToFirebase(updated);
+                        }}
+                        className="p-1.5 rounded-lg border border-[#DDD5C5] bg-white hover:bg-stone-100 text-[#594E3E] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title="Move Down"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPersonId(person.id);
+                          setPersonName(person.name);
+                          setPersonImage(person.image);
+                          setPersonRole(person.roleOrDesignation);
+                          setPersonDetail(person.qualificationOrExperience || '');
+                          setIsAddingPerson(true);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg border border-[#DDD5C5] bg-white hover:bg-stone-100 text-[#14291D] font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-[#2C5E43]" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const list = (siteForm.peopleList || DEFAULT_SITE_SETTINGS.peopleList || []).filter((p) => p.id !== person.id);
+                          const updated = { ...siteForm, peopleList: list };
+                          setSiteForm(updated);
+                          onUpdateSiteSettings(updated);
+                          backupSiteSettingsToFirebase(updated);
+                          setSaveSuccessMsg('Doctor removed.');
+                          setTimeout(() => setSaveSuccessMsg(null), 3000);
+                        }}
+                        className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 cursor-pointer"
+                        title="Delete Doctor Profile"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Save Settings */}
+              <div className="flex justify-end pt-3 border-t border-[#EAE3D4]">
+                <button
+                  type="button"
+                  onClick={handleSaveSiteSettings}
+                  className="px-6 py-2.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-md cursor-pointer text-xs"
+                >
+                  <Save className="w-4 h-4 text-amber-300" />
+                  <span>Save Doctors & Section Settings to Firebase</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tab 4: Site Titles & Headings */}
         {activeTab === 'site_titles' && (
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
@@ -3065,7 +3540,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-medium text-[#2B251D] mb-1">Chief Pharmacist / Vaidya</label>
+                    <label className="block font-medium text-[#2B251D] mb-1">Chief Pharmacist / Doctor</label>
                     <input
                       type="text"
                       value={siteForm.headPharmacist}
@@ -3397,7 +3872,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-[#14291D] text-xs">
-                      7. Vaidya Consultation Modal WhatsApp Message
+                      7. Doctor Consultation Modal WhatsApp Message
                     </label>
                     <span className="text-[10px] text-[#716858]">Token: {'{ailment}'}</span>
                   </div>
