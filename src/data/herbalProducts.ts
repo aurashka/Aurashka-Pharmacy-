@@ -691,13 +691,18 @@ export const PHARMACY_CONTACT_INFO = {
 export const DEFAULT_SITE_SETTINGS = {
   brandName: 'Aurashka',
   hindiName: 'औराश्का हर्बल औषधि भंडार',
+  brandLogoImage: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=120&q=80',
+  showBrandLogo: true,
   headPharmacist: 'Dr. Harshit Maan (BAMS, MD Ayu.)',
   regNumber: 'AYUR-REG-2018-9941 / Central Ayush Board',
   storeAddress: 'Shop #14-16, Ayur Mandir Road, Near Central Botanical Garden, New Delhi - 110001, India',
   storeTimings: 'Mon – Sat: 9:00 AM – 8:00 PM | Sun: 10:00 AM – 2:00 PM',
   shippingNotice: 'Complimentary shipping across India with sealed cold-pressed freshness guarantee.',
+  heroBadgeText: 'Registered Ayurvedic Formulations & Classical Rasayanas',
   heroTitle: 'Essential Herbal Formulations & Apothecary Deals',
   heroSubtitle: 'Clinically standardized Rasayanas and pure plant extracts. Explore detailed therapeutic uses, prescribed dosages, and direct apothecary pricing.',
+  catalogSectionTitle: 'Products, Formulations & Apothecary Deals',
+  catalogSectionSubtitle: 'Authentic herbal remedies with retail discounts, verified reseller rates & dosage charts.',
   contacts: {
     phones: [
       { id: 'p1', label: 'Primary Helpline', number: '+91 98765 43210' },
@@ -772,6 +777,7 @@ export const DEFAULT_SITE_SETTINGS = {
   peopleBadgeText: 'Certified Ayurvedic Doctors & Formulators',
   peopleSectionTitle: 'Our Ayurvedic Doctors & Formulation Specialists',
   peopleSectionSubtitle: 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
+  peopleSwipeNotice: '👉 Swipe horizontally to view team',
   peopleList: [
     {
       id: 'person-1',
@@ -794,7 +800,13 @@ export const DEFAULT_SITE_SETTINGS = {
       roleOrDesignation: 'Senior Rasayana & Classical Anupana Consultant',
       qualificationOrExperience: 'Classical Formulations Expert · 20+ Years Patient Care',
     },
-  ]
+  ],
+  productAssuranceBadges: {
+    badge1Title: 'Ayush & GMP Certified',
+    badge1Subtitle: 'Heavy-metal lab verified',
+    badge2Title: '100% Pure Botanical',
+    badge2Subtitle: 'Zero synthetic fillers',
+  }
 };
 
 export const COMMON_AILMENT_TAGS = [

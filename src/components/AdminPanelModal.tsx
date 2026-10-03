@@ -11,7 +11,9 @@ import {
   MessageTemplates,
   WeeklyDealItem,
   WeeklyDealsConfig,
-  PeopleProfile
+  PeopleProfile,
+  ProductVariant,
+  ProductAssuranceBadges
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { 
@@ -32,6 +34,7 @@ import {
   Mail, 
   Building2, 
   FileText,
+  Leaf,
   Sparkles,
   Layers,
   Star,
@@ -53,7 +56,8 @@ import {
   ChevronRight,
   Users,
   UserPlus,
-  ShieldCheck
+  ShieldCheck,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase } from '../utils/firebaseSync';
@@ -95,7 +99,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'messages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -150,7 +154,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Product Custom Fields state (Name, Value & Position)
   const [customFieldsList, setCustomFieldsList] = useState<ProductCustomField[]>([]);
 
-  // Product Form state including Reseller Price, Rating Star, Sort Badge
+  // Product Variants state (Sizes, Units e.g. 100ml, 200ml, 500gm, 1kg, separate images)
+  const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
+
+  // Product Form state including Reseller Price, Rating Star, Sort Badge, Stock, Display Order, Assurance Badges
   const [productForm, setProductForm] = useState({
     name: '',
     sanskritName: '',
@@ -167,6 +174,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     sortBadge: 'none' as SortBadgeType,
     volumeOrWeight: '100g Pure Powder',
     inStock: true,
+    displayOrder: 1,
+    badge1Title: 'Ayush & GMP Certified',
+    badge1Subtitle: 'Heavy-metal lab verified',
+    badge2Title: '100% Pure Botanical',
+    badge2Subtitle: 'Zero synthetic fillers',
     customLink: '',
     keyIndications: '',
     primaryBenefits: '',
@@ -219,14 +231,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             ? (Object.values(s.weeklyDeals.items) as WeeklyDealItem[])
             : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
       },
+      heroBadgeText: s.heroBadgeText || DEFAULT_SITE_SETTINGS.heroBadgeText,
+      heroTitle: s.heroTitle || DEFAULT_SITE_SETTINGS.heroTitle,
+      heroSubtitle: s.heroSubtitle || DEFAULT_SITE_SETTINGS.heroSubtitle,
+      catalogSectionTitle: s.catalogSectionTitle || DEFAULT_SITE_SETTINGS.catalogSectionTitle,
+      catalogSectionSubtitle: s.catalogSectionSubtitle || DEFAULT_SITE_SETTINGS.catalogSectionSubtitle,
       peopleBadgeText: s.peopleBadgeText || DEFAULT_SITE_SETTINGS.peopleBadgeText,
       peopleSectionTitle: s.peopleSectionTitle || DEFAULT_SITE_SETTINGS.peopleSectionTitle,
       peopleSectionSubtitle: s.peopleSectionSubtitle || DEFAULT_SITE_SETTINGS.peopleSectionSubtitle,
+      peopleSwipeNotice: s.peopleSwipeNotice || DEFAULT_SITE_SETTINGS.peopleSwipeNotice || '👉 Swipe horizontally to view team',
       peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
         ? s.peopleList
         : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
           ? (Object.values(s.peopleList) as PeopleProfile[])
           : (DEFAULT_SITE_SETTINGS.peopleList || [])),
+      brandLogoImage: s.brandLogoImage ?? DEFAULT_SITE_SETTINGS.brandLogoImage,
+      showBrandLogo: s.showBrandLogo !== undefined ? Boolean(s.showBrandLogo) : true,
+      productAssuranceBadges: s.productAssuranceBadges || DEFAULT_SITE_SETTINGS.productAssuranceBadges,
     };
   };
 
@@ -354,17 +375,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   useEffect(() => {
-    setSiteForm(siteSettings);
-  }, [siteSettings]);
-
-  useEffect(() => {
     if (initialProductToEdit) {
       setActiveTab('products');
       startEdit(initialProductToEdit);
     }
   }, [initialProductToEdit]);
-
-  if (!isOpen) return null;
 
   const startCreate = () => {
     setIsCreatingNew(true);
@@ -380,6 +395,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     ]);
     const firstCat = categories.find((c) => c.id !== 'all') || { id: 'immunity', label: 'Immunity & Respiratory' };
     const firstForm = forms[0] || 'Churna (Powder)';
+    setVariantsList([]);
 
     setProductForm({
       name: '',
@@ -397,6 +413,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       sortBadge: 'none',
       volumeOrWeight: '100g Pure Powder',
       inStock: true,
+      displayOrder: products.length + 1,
+      badge1Title: 'Ayush & GMP Certified',
+      badge1Subtitle: 'Heavy-metal lab verified',
+      badge2Title: '100% Pure Botanical',
+      badge2Subtitle: 'Zero synthetic fillers',
       customLink: '',
       keyIndications: 'Immunity, Vital Energy, Respiratory Tone',
       primaryBenefits: 'Strengthens innate biological vitality\nCleanses cellular ama toxins\nRestores healthy tissue tone',
@@ -436,6 +457,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         : []
     );
 
+    // Setup variants
+    setVariantsList(
+      p.variants && p.variants.length > 0
+        ? [...p.variants]
+        : []
+    );
+
     setProductForm({
       name: p.name,
       sanskritName: p.sanskritName,
@@ -451,7 +479,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       reviewsCount: p.reviewsCount || 1,
       sortBadge: p.sortBadge || 'none',
       volumeOrWeight: p.volumeOrWeight,
-      inStock: p.inStock,
+      inStock: p.inStock !== false,
+      displayOrder: p.displayOrder !== undefined ? p.displayOrder : (products.indexOf(p) + 1),
+      badge1Title: p.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
+      badge1Subtitle: p.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
+      badge2Title: p.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
+      badge2Subtitle: p.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
       customLink: p.customLink || '',
       keyIndications: Array.isArray(p.keyIndications) ? p.keyIndications.join(', ') : '',
       primaryBenefits: Array.isArray(p.detailedUses?.primaryBenefits) ? p.detailedUses.primaryBenefits.join('\n') : '',
@@ -810,6 +843,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }))
       .sort((a, b) => a.position - b.position);
 
+    // Cleaned variants
+    const validVariants: ProductVariant[] = variantsList
+      .filter((v) => v.size && v.unit)
+      .map((v) => ({
+        id: v.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        size: v.size.trim(),
+        unit: v.unit.trim(),
+        price: Number(v.price) || Number(productForm.price),
+        mrp: Number(v.mrp) || Number(productForm.mrp),
+        resellerPrice: v.resellerPrice !== undefined ? Number(v.resellerPrice) : undefined,
+        image: v.image?.trim() || undefined,
+        inStock: v.inStock !== false,
+      }));
+
+    const assuranceBadges: ProductAssuranceBadges = {
+      badge1Title: productForm.badge1Title.trim() || 'Ayush & GMP Certified',
+      badge1Subtitle: productForm.badge1Subtitle.trim() || 'Heavy-metal lab verified',
+      badge2Title: productForm.badge2Title.trim() || '100% Pure Botanical',
+      badge2Subtitle: productForm.badge2Subtitle.trim() || 'Zero synthetic fillers',
+    };
+
     if (isCreatingNew) {
       const newProd: HerbalProduct = {
         id: `prod_${Date.now()}`,
@@ -827,7 +881,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         reviewsCount: Number(productForm.reviewsCount) || 1,
         sortBadge: productForm.sortBadge || 'none',
         volumeOrWeight: productForm.volumeOrWeight.trim() || '100g',
-        inStock: productForm.inStock,
+        inStock: Boolean(productForm.inStock),
+        displayOrder: Number(productForm.displayOrder) || (products.length + 1),
+        variants: validVariants,
+        assuranceBadges,
         image: primaryImg,
         images: cleanImgs,
         customLink: productForm.customLink.trim() || undefined,
@@ -871,7 +928,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         reviewsCount: Number(productForm.reviewsCount),
         sortBadge: productForm.sortBadge || 'none',
         volumeOrWeight: productForm.volumeOrWeight.trim(),
-        inStock: productForm.inStock,
+        inStock: Boolean(productForm.inStock),
+        displayOrder: Number(productForm.displayOrder) || (editingProduct.displayOrder ?? 1),
+        variants: validVariants,
+        assuranceBadges,
         image: primaryImg,
         images: cleanImgs,
         customLink: productForm.customLink.trim() || undefined,
@@ -923,12 +983,57 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sanskritName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.categoryLabel.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Move product up (closer to top of list)
+  const handleMoveProductUp = (prod: HerbalProduct) => {
+    const sorted = [...products].sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999));
+    const currentIndex = sorted.findIndex((p) => p.id === prod.id);
+    if (currentIndex <= 0) return;
+    const prev = sorted[currentIndex - 1];
+
+    const prevOrder = prev.displayOrder ?? currentIndex;
+    const currentOrder = prod.displayOrder ?? (currentIndex + 1);
+
+    onUpdateProduct({ ...prod, displayOrder: prevOrder });
+    onUpdateProduct({ ...prev, displayOrder: currentOrder });
+    setSaveSuccessMsg(`Moved "${prod.name}" up towards top of list!`);
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  // Move product down (towards bottom of list)
+  const handleMoveProductDown = (prod: HerbalProduct) => {
+    const sorted = [...products].sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999));
+    const currentIndex = sorted.findIndex((p) => p.id === prod.id);
+    if (currentIndex === -1 || currentIndex >= sorted.length - 1) return;
+    const next = sorted[currentIndex + 1];
+
+    const currentOrder = prod.displayOrder ?? (currentIndex + 1);
+    const nextOrder = next.displayOrder ?? (currentIndex + 2);
+
+    onUpdateProduct({ ...prod, displayOrder: nextOrder });
+    onUpdateProduct({ ...next, displayOrder: currentOrder });
+    setSaveSuccessMsg(`Moved "${prod.name}" down!`);
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  // Quick In-Stock Toggle
+  const handleToggleProductStock = (prod: HerbalProduct) => {
+    const updated = { ...prod, inStock: !prod.inStock };
+    onUpdateProduct(updated);
+    setSaveSuccessMsg(`"${prod.name}" is now ${updated.inStock ? 'IN STOCK' : 'OUT OF STOCK'}`);
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  const filteredProducts = React.useMemo(() => {
+    const list = [...products].sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999));
+    return list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.sanskritName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.categoryLabel.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -1001,6 +1106,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <option value="categories_forms">🗂️ Categories & Forms Manager</option>
             <option value="contacts">📞 Multiple Contacts (Phones, WhatsApp, Emails)</option>
             <option value="site_titles">🏷️ Website Titles & Banner Texts</option>
+            <option value="assurance_badges">🛡️ Ayush & Quality Assurance Badges (Product View)</option>
             <option value="messages">💬 WhatsApp & Email Custom Messages</option>
           </select>
         </div>
@@ -1120,6 +1226,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <button
               type="button"
               onClick={() => {
+                setActiveTab('assurance_badges');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'assurance_badges'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <ShieldCheck className={`w-3.5 h-3.5 ${activeTab === 'assurance_badges' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+              <span>Ayush & Assurance Badges</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 setActiveTab('messages');
                 setIsCreatingNew(false);
                 setEditingProduct(null);
@@ -1212,9 +1335,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
 
                   <form onSubmit={handleSaveProduct} className="space-y-6 text-xs">
-                    {/* Titles & Custom Link */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      <div>
+                    {/* Titles, Custom Link, Display Order & In-Stock Status */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="md:col-span-2">
                         <label className="block font-medium text-[#2B251D] mb-1">
                           Product Commercial Title <span className="text-red-600">*</span>
                         </label>
@@ -1240,10 +1363,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         />
                       </div>
 
+                      {/* Display Order / Rank in vertical list */}
                       <div>
+                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                          <span>Catalog Display Order</span>
+                          <span className="text-[10px] text-emerald-800 font-bold">1 = Top of list</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          required
+                          value={productForm.displayOrder}
+                          onChange={(e) => setProductForm({ ...productForm, displayOrder: Math.max(1, parseInt(e.target.value) || 1) })}
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] font-mono font-bold"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3">
                         <label className="block font-medium text-[#2B251D] mb-1 flex items-center gap-1">
                           <LinkIcon className="w-3.5 h-3.5 text-[#2C5E43]" />
-                          <span>Custom Direct Buy / Order Link</span>
+                          <span>Custom Direct Buy / Order Link (Optional)</span>
                         </label>
                         <input
                           type="url"
@@ -1252,6 +1391,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           onChange={(e) => setProductForm({ ...productForm, customLink: e.target.value })}
                           className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] font-mono text-[11px]"
                         />
+                      </div>
+
+                      {/* Product Stock Availability Toggle */}
+                      <div className="flex items-center">
+                        <label className={`w-full p-2.5 rounded-lg border flex items-center gap-2.5 cursor-pointer transition-colors ${
+                          productForm.inStock 
+                            ? 'bg-[#EBF5EF] border-[#BBDDC7] text-[#183624]' 
+                            : 'bg-rose-50 border-rose-200 text-rose-800'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={productForm.inStock}
+                            onChange={(e) => setProductForm({ ...productForm, inStock: e.target.checked })}
+                            className="w-4 h-4 rounded text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <div>
+                            <span className="font-bold block text-xs">
+                              {productForm.inStock ? '✅ In Stock (Ready to Order)' : '❌ Out of Stock'}
+                            </span>
+                            <span className="text-[10px] opacity-80">
+                              {productForm.inStock ? 'Available for immediate dispatch' : 'Disabled for orders'}
+                            </span>
+                          </div>
+                        </label>
                       </div>
                     </div>
 
@@ -1624,6 +1787,230 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SIZE & PACKAGING VARIANTS SECTION (e.g. 100ml, 200ml, 500gm, 1kg, 1 Liter) */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Package className="w-4 h-4 text-[#2C5E43]" />
+                          <div>
+                            <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                              Size & Packaging Variants (100ml, 200ml, 500gm, 1kg, 1 Liter...)
+                            </h5>
+                            <span className="text-[11px] text-[#716858]">
+                              Set manual size (e.g. 100, 200) and type custom unit (ml, gm, kg, Liter) with individual pricing & separate images
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVariantsList([
+                              ...variantsList,
+                              {
+                                id: `var_${Date.now()}_${variantsList.length + 1}`,
+                                size: variantsList.length === 0 ? '100' : '200',
+                                unit: 'ml',
+                                price: Number(productForm.price) || 299,
+                                mrp: Number(productForm.mrp) || 399,
+                                resellerPrice: Number(productForm.resellerPrice) || undefined,
+                                image: '',
+                                inStock: true,
+                              }
+                            ]);
+                          }}
+                          className="px-3 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-amber-300" />
+                          <span>+ Add Variant</span>
+                        </button>
+                      </div>
+
+                      {variantsList.length === 0 ? (
+                        <div className="p-4 text-center border border-dashed border-[#DDD5C5] rounded-lg bg-white text-xs text-[#7A705E]">
+                          No packaging variants created yet (Single size: <strong>{productForm.volumeOrWeight}</strong>). Click <strong>"+ Add Variant"</strong> to create options like 100ml, 200ml, 500gm, 1kg or 1 Liter with custom prices and separate images.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {variantsList.map((variant, vIdx) => (
+                            <div key={variant.id || vIdx} className="bg-white p-3 rounded-xl border border-[#D5CCBC] shadow-2xs space-y-2.5">
+                              <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-1.5">
+                                <span className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                                  <span className="w-5 h-5 rounded-full bg-[#14291D] text-white text-[10px] flex items-center justify-center font-mono">
+                                    {vIdx + 1}
+                                  </span>
+                                  <span>Variant #{vIdx + 1}: {variant.size} {variant.unit}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setVariantsList(variantsList.filter((_, idx) => idx !== vIdx))}
+                                  className="text-red-600 hover:text-red-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                                  title="Delete this variant"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Remove</span>
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-2.5 items-end">
+                                {/* Size Value */}
+                                <div>
+                                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                    Size Value <span className="text-red-600">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={variant.size}
+                                    placeholder="e.g. 100, 200, 1"
+                                    onChange={(e) => {
+                                      const updated = [...variantsList];
+                                      updated[vIdx].size = e.target.value;
+                                      setVariantsList(updated);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs font-mono font-bold"
+                                  />
+                                </div>
+
+                                {/* Unit: Type manually ml, gm, kg, Liter, etc. */}
+                                <div>
+                                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                                    <span>Unit (Type Custom) <span className="text-red-600">*</span></span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={variant.unit}
+                                    placeholder="e.g. ml, gm, kg, Liter"
+                                    onChange={(e) => {
+                                      const updated = [...variantsList];
+                                      updated[vIdx].unit = e.target.value;
+                                      setVariantsList(updated);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs font-semibold"
+                                  />
+                                  {/* Quick unit helper buttons */}
+                                  <div className="flex gap-1 mt-1">
+                                    {['ml', 'gm', 'kg', 'Liter'].map((quickUnit) => (
+                                      <button
+                                        key={quickUnit}
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = [...variantsList];
+                                          updated[vIdx].unit = quickUnit;
+                                          setVariantsList(updated);
+                                        }}
+                                        className="text-[9px] px-1 py-0.2 bg-[#FAF8F5] border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded text-[#4A4133] cursor-pointer"
+                                      >
+                                        {quickUnit}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Variant Price */}
+                                <div>
+                                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                    Price (₹) <span className="text-red-600">*</span>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={variant.price}
+                                    onChange={(e) => {
+                                      const updated = [...variantsList];
+                                      updated[vIdx].price = Number(e.target.value);
+                                      setVariantsList(updated);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs font-mono font-bold"
+                                  />
+                                </div>
+
+                                {/* Variant MRP */}
+                                <div>
+                                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                    MRP (₹)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={variant.mrp}
+                                    onChange={(e) => {
+                                      const updated = [...variantsList];
+                                      updated[vIdx].mrp = Number(e.target.value);
+                                      setVariantsList(updated);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs font-mono"
+                                  />
+                                </div>
+
+                                {/* Variant Reseller Price */}
+                                <div>
+                                  <label className="block text-[11px] font-medium text-[#183624] mb-1">
+                                    Reseller Rate (₹)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={variant.resellerPrice ?? ''}
+                                    placeholder="Optional"
+                                    onChange={(e) => {
+                                      const updated = [...variantsList];
+                                      updated[vIdx].resellerPrice = e.target.value ? Number(e.target.value) : undefined;
+                                      setVariantsList(updated);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 bg-emerald-50/50 border border-emerald-300 rounded text-xs font-mono font-bold text-[#183624]"
+                                  />
+                                </div>
+
+                                {/* Variant Stock Status */}
+                                <div>
+                                  <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer py-1.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={variant.inStock !== false}
+                                      onChange={(e) => {
+                                        const updated = [...variantsList];
+                                        updated[vIdx].inStock = e.target.checked;
+                                        setVariantsList(updated);
+                                      }}
+                                      className="rounded text-emerald-700 cursor-pointer"
+                                    />
+                                    <span>{variant.inStock !== false ? 'In Stock' : 'Out of Stock'}</span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              {/* Separate Variant Image */}
+                              <div className="pt-2 border-t border-[#F0EAE0] flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+                                <label className="text-[11px] font-medium text-[#2B251D] shrink-0">
+                                  Variant Separate Photo:
+                                </label>
+                                <input
+                                  type="url"
+                                  value={variant.image || ''}
+                                  placeholder="https://... (Separate image shown when customer selects this size)"
+                                  onChange={(e) => {
+                                    const updated = [...variantsList];
+                                    updated[vIdx].image = e.target.value;
+                                    setVariantsList(updated);
+                                  }}
+                                  className="flex-1 px-2.5 py-1 bg-white border border-[#DDD5C5] rounded text-xs font-mono"
+                                />
+                                {variant.image && (
+                                  <div className="w-7 h-7 rounded border border-[#DDD5C5] overflow-hidden shrink-0 bg-stone-100">
+                                    <img
+                                      src={variant.image}
+                                      alt={`${variant.size} ${variant.unit}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -2082,6 +2469,131 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             placeholder="Store below 25°C away from direct sunlight"
                             className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 6: PRODUCT VIEW QUALITY ASSURANCE BADGES */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                          <div>
+                            <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                              6. Product View Quality Assurance Badges (Ayush & Trust Ribbon)
+                            </h5>
+                            <p className="text-[11px] text-[#6E6352]">
+                              These 4 trust indicators appear in the product view secretly and on customer monographs.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductForm({
+                              ...productForm,
+                              badge1Title: siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
+                              badge1Subtitle: siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
+                              badge2Title: siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
+                              badge2Subtitle: siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
+                            });
+                          }}
+                          className="px-2.5 py-1 bg-white border border-[#DDD5C5] text-[#14291D] hover:bg-stone-50 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <RotateCcw className="w-3 h-3 text-[#2C5E43]" />
+                          <span>Reset to Site Defaults</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Badge 1 */}
+                        <div className="p-3 bg-white rounded-xl border border-[#E0D7C6] space-y-2.5 shadow-2xs">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                            <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                            <span>Assurance Badge 1 (e.g. Ayush & GMP Certified)</span>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                              Badge 1 Title
+                            </label>
+                            <input
+                              type="text"
+                              value={productForm.badge1Title}
+                              onChange={(e) => setProductForm({ ...productForm, badge1Title: e.target.value })}
+                              placeholder="Ayush & GMP Certified"
+                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                              Badge 1 Subtitle / Note
+                            </label>
+                            <input
+                              type="text"
+                              value={productForm.badge1Subtitle}
+                              onChange={(e) => setProductForm({ ...productForm, badge1Subtitle: e.target.value })}
+                              placeholder="Heavy-metal lab verified"
+                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Badge 2 */}
+                        <div className="p-3 bg-white rounded-xl border border-[#E0D7C6] space-y-2.5 shadow-2xs">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                            <Leaf className="w-4 h-4 text-[#2C5E43]" />
+                            <span>Assurance Badge 2 (e.g. 100% Pure Botanical)</span>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                              Badge 2 Title
+                            </label>
+                            <input
+                              type="text"
+                              value={productForm.badge2Title}
+                              onChange={(e) => setProductForm({ ...productForm, badge2Title: e.target.value })}
+                              placeholder="100% Pure Botanical"
+                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                              Badge 2 Subtitle / Note
+                            </label>
+                            <input
+                              type="text"
+                              value={productForm.badge2Subtitle}
+                              onChange={(e) => setProductForm({ ...productForm, badge2Subtitle: e.target.value })}
+                              placeholder="Zero synthetic fillers"
+                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live preview in product form */}
+                      <div className="pt-1">
+                        <span className="text-[10px] uppercase font-bold text-[#716858] block mb-1">
+                          Product View Preview:
+                        </span>
+                        <div className="p-3 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs max-w-md">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                            <div>
+                              <span className="font-bold text-[#14291D] block">{productForm.badge1Title || 'Ayush & GMP Certified'}</span>
+                              <span className="text-[11px] text-[#716858]">{productForm.badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                            <div>
+                              <span className="font-bold text-[#14291D] block">{productForm.badge2Title || '100% Pure Botanical'}</span>
+                              <span className="text-[11px] text-[#716858]">{productForm.badge2Subtitle || 'Zero synthetic fillers'}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3071,6 +3583,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 })}
               </div>
             </div>
+
+            {/* Bottom Save All Button for Categories & Forms */}
+            <div className="flex justify-end pt-2 pb-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  await backupCatalogMetaToFirebase({ categories, forms });
+                  setSaveSuccessMsg('All Categories & Formulation Forms saved and synced to Firebase!');
+                  setTimeout(() => setSaveSuccessMsg(null), 3000);
+                }}
+                className="px-6 py-2.5 bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg font-bold flex items-center gap-2 shadow-md cursor-pointer text-xs"
+              >
+                <Save className="w-4 h-4 text-amber-300" />
+                <span>Save Categories & Forms to Firebase</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -3329,7 +3857,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* Section Badge, Title & Subtitle Customization */}
               <div className="space-y-3 pt-1">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="block font-medium text-[#2B251D] mb-1">
                       Top Badge Text
@@ -3368,6 +3896,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
                     />
                   </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Swipe Helper Notice
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.peopleSwipeNotice ?? '👉 Swipe horizontally to view team'}
+                      onChange={(e) => setSiteForm({ ...siteForm, peopleSwipeNotice: e.target.value })}
+                      placeholder="e.g. 👉 Swipe horizontally to view team"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-emerald-900"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end">
@@ -3379,17 +3920,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         peopleBadgeText: siteForm.peopleBadgeText?.trim() || 'Certified Ayurvedic Doctors & Formulators',
                         peopleSectionTitle: siteForm.peopleSectionTitle?.trim() || 'Our Ayurvedic Doctors & Formulation Specialists',
                         peopleSectionSubtitle: siteForm.peopleSectionSubtitle?.trim() || 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
+                        peopleSwipeNotice: siteForm.peopleSwipeNotice?.trim() || '👉 Swipe horizontally to view team',
                       };
                       setSiteForm(updatedSite);
                       onUpdateSiteSettings(updatedSite);
                       backupSiteSettingsToFirebase(updatedSite);
-                      setSaveSuccessMsg('Doctor Section Badge & Titles saved & synced to Firebase!');
+                      setSaveSuccessMsg('Doctor Section Badge, Titles & Swipe Notice saved & synced to Firebase!');
                       setTimeout(() => setSaveSuccessMsg(null), 3000);
                     }}
                     className="px-4 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
                   >
                     <Save className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Save Badge & Section Titles</span>
+                    <span>Save Badge, Titles & Swipe Notice</span>
                   </button>
                 </div>
               </div>
@@ -3725,33 +4267,165 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
               <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
-                <div className="flex items-center gap-2 border-b border-[#EAE3D4] pb-2">
-                  <FileText className="w-4 h-4 text-[#2C5E43]" />
-                  <h4 className="font-serif text-base font-bold text-[#14291D]">
-                    Store Branding & Hero Presentation
-                  </h4>
+                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#2C5E43]" />
+                    <h4 className="font-serif text-base font-bold text-[#14291D]">
+                      Store Header Title & Logo Customization
+                    </h4>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#2C5E43] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Live Header Sync
+                  </span>
+                </div>
+
+                {/* Live Header Preview Box */}
+                <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {siteForm.showBrandLogo !== false && (siteForm.brandLogoImage || DEFAULT_SITE_SETTINGS.brandLogoImage) && (
+                      <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#2C5E43] shadow-xs bg-[#E7EFEA] shrink-0 flex items-center justify-center">
+                        <img
+                          src={siteForm.brandLogoImage || DEFAULT_SITE_SETTINGS.brandLogoImage}
+                          alt="Store Logo"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-serif text-xl font-bold text-[#14291D] leading-tight">
+                        {siteForm.brandName || 'Brand Name'}
+                      </div>
+                      <div className="text-[11px] font-serif text-[#2C5E43] font-medium leading-tight">
+                        {siteForm.hindiName || 'हिन्दी ब्रांड उपशीर्षक'}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-[#6E6352] italic">
+                    (Live preview of how header title & logo appear on top bar)
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-medium text-[#2B251D] mb-1">Brand Name (English)</label>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Header Brand Title (English) *
+                    </label>
                     <input
                       type="text"
                       value={siteForm.brandName}
                       onChange={(e) => setSiteForm({ ...siteForm, brandName: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                      placeholder="e.g. Aurashka or VedaVriksha"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                      required
                     />
                   </div>
 
                   <div>
-                    <label className="block font-medium text-[#2B251D] mb-1">Hindi Brand Name</label>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Header Hindi Title / Subtitle
+                    </label>
                     <input
                       type="text"
                       value={siteForm.hindiName}
                       onChange={(e) => setSiteForm({ ...siteForm, hindiName: e.target.value })}
+                      placeholder="e.g. औराश्का हर्बल औषधि भंडार"
                       className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-serif"
                     />
                   </div>
+                </div>
+
+                {/* Header Logo Controls */}
+                <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#14291D]">
+                      <input
+                        type="checkbox"
+                        checked={siteForm.showBrandLogo !== false}
+                        onChange={(e) => setSiteForm({ ...siteForm, showBrandLogo: e.target.checked })}
+                        className="rounded border-[#DDD5C5] text-[#2C5E43] focus:ring-[#2C5E43]"
+                      />
+                      <span>Show Brand Logo in Header Navigation</span>
+                    </label>
+
+                    {siteForm.brandLogoImage && (
+                      <button
+                        type="button"
+                        onClick={() => setSiteForm({ ...siteForm, brandLogoImage: '' })}
+                        className="text-[11px] text-red-600 hover:text-red-800 font-semibold cursor-pointer"
+                      >
+                        Remove Logo
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Logo Image URL (Round Circular Header Icon)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={siteForm.brandLogoImage || ''}
+                        onChange={(e) => setSiteForm({ ...siteForm, brandLogoImage: e.target.value })}
+                        placeholder="https://... (direct image link, JPG/PNG/WebP/SVG)"
+                        className="flex-1 px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSiteForm({ ...siteForm, brandLogoImage: DEFAULT_SITE_SETTINGS.brandLogoImage })}
+                        className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 border border-[#DDD5C5] rounded-lg text-xs font-medium text-[#5B5141] shrink-0 cursor-pointer"
+                        title="Reset to default herbal emblem"
+                      >
+                        Default Logo
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Preset Recommended Logos */}
+                  <div>
+                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#6E6352] mb-1.5">
+                      Or Choose One-Click Ayurvedic Logo Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: '🌿 Green Botanicals', url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=120&q=80' },
+                        { label: '🌱 Pure Herbal Leaf', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=120&q=80' },
+                        { label: '🪵 Classical Rasayana Bark', url: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=120&q=80' },
+                        { label: '✨ Golden Apothecary', url: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=120&q=80' },
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSiteForm({ ...siteForm, brandLogoImage: preset.url, showBrandLogo: true })}
+                          className={`px-2 py-1 rounded-md text-[11px] font-medium border cursor-pointer transition-colors ${
+                            siteForm.brandLogoImage === preset.url
+                              ? 'bg-[#14291D] text-white border-[#14291D]'
+                              : 'bg-white text-[#4A4031] border-[#DDD5C5] hover:bg-stone-100'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hero Badge & Titles */}
+                <div>
+                  <label className="block font-medium text-[#2B251D] mb-1">
+                    Hero Top Badge Text
+                  </label>
+                  <input
+                    type="text"
+                    value={siteForm.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas'}
+                    onChange={(e) => setSiteForm({ ...siteForm, heroBadgeText: e.target.value })}
+                    placeholder="e.g. Registered Ayurvedic Formulations & Classical Rasayanas"
+                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                  />
+                  <span className="text-[10px] text-[#716858] mt-0.5 block">
+                    Pill badge shown at the top of the main website hero banner.
+                  </span>
                 </div>
 
                 <div>
@@ -3772,6 +4446,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     onChange={(e) => setSiteForm({ ...siteForm, heroSubtitle: e.target.value })}
                     className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
                   />
+                </div>
+
+                {/* Products & Catalog Section Headings */}
+                <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
+                  <h5 className="font-serif text-xs font-bold text-[#14291D] uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#2C5E43]" />
+                    <span>Products Catalog Section Heading & Description</span>
+                  </h5>
+
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Products Section Heading Title
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.catalogSectionTitle ?? 'Products, Formulations & Apothecary Deals'}
+                      onChange={(e) => setSiteForm({ ...siteForm, catalogSectionTitle: e.target.value })}
+                      placeholder="e.g. Products, Formulations & Apothecary Deals"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Products Section Subtitle / Description
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={siteForm.catalogSectionSubtitle ?? 'Authentic herbal remedies with retail discounts, verified reseller rates & dosage charts.'}
+                      onChange={(e) => setSiteForm({ ...siteForm, catalogSectionSubtitle: e.target.value })}
+                      placeholder="e.g. Authentic herbal remedies with retail discounts, verified reseller rates & dosage charts."
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -3844,6 +4552,138 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   </div>
                 </div>
+                {/* Product View Quality Assurance Badges (Ayush & Trust Box) */}
+                <div className="pt-4 border-t border-[#EAE3D4] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                      <div>
+                        <h5 className="font-bold text-xs text-[#14291D]">
+                          Product View Quality Assurance Badges (Ayush & Quality Trust Box)
+                        </h5>
+                        <p className="text-[11px] text-[#716858]">
+                          These 4 trust badges appear in the product view monograph ribbon for all products.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold bg-[#E7EFEA] text-[#183624] px-2 py-0.5 rounded border border-[#A5D6B6]">
+                      Product View Ribbon
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {/* Badge 1 */}
+                    <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#2C5E43]" />
+                        <span>Assurance Badge #1</span>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#2B251D] mb-0.5">
+                          Title (Default: Ayush & GMP Certified)
+                        </label>
+                        <input
+                          type="text"
+                          value={siteForm.productAssuranceBadges?.badge1Title ?? 'Ayush & GMP Certified'}
+                          onChange={(e) => setSiteForm({
+                            ...siteForm,
+                            productAssuranceBadges: {
+                              ...siteForm.productAssuranceBadges,
+                              badge1Title: e.target.value,
+                            },
+                          })}
+                          placeholder="Ayush & GMP Certified"
+                          className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#2B251D] mb-0.5">
+                          Subtitle / Note (Default: Heavy-metal lab verified)
+                        </label>
+                        <input
+                          type="text"
+                          value={siteForm.productAssuranceBadges?.badge1Subtitle ?? 'Heavy-metal lab verified'}
+                          onChange={(e) => setSiteForm({
+                            ...siteForm,
+                            productAssuranceBadges: {
+                              ...siteForm.productAssuranceBadges,
+                              badge1Subtitle: e.target.value,
+                            },
+                          })}
+                          placeholder="Heavy-metal lab verified"
+                          className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Badge 2 */}
+                    <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                        <Leaf className="w-3.5 h-3.5 text-[#2C5E43]" />
+                        <span>Assurance Badge #2</span>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#2B251D] mb-0.5">
+                          Title (Default: 100% Pure Botanical)
+                        </label>
+                        <input
+                          type="text"
+                          value={siteForm.productAssuranceBadges?.badge2Title ?? '100% Pure Botanical'}
+                          onChange={(e) => setSiteForm({
+                            ...siteForm,
+                            productAssuranceBadges: {
+                              ...siteForm.productAssuranceBadges,
+                              badge2Title: e.target.value,
+                            },
+                          })}
+                          placeholder="100% Pure Botanical"
+                          className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#2B251D] mb-0.5">
+                          Subtitle / Note (Default: Zero synthetic fillers)
+                        </label>
+                        <input
+                          type="text"
+                          value={siteForm.productAssuranceBadges?.badge2Subtitle ?? 'Zero synthetic fillers'}
+                          onChange={(e) => setSiteForm({
+                            ...siteForm,
+                            productAssuranceBadges: {
+                              ...siteForm.productAssuranceBadges,
+                              badge2Subtitle: e.target.value,
+                            },
+                          })}
+                          placeholder="Zero synthetic fillers"
+                          className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visual Preview */}
+                  <div className="pt-1">
+                    <span className="text-[10px] uppercase font-bold text-[#716858] block mb-1">
+                      Product View Ribbon Preview:
+                    </span>
+                    <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs max-w-md">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                        <div>
+                          <span className="font-bold text-[#14291D] block">{siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}</span>
+                          <span className="text-[11px] text-[#716858]">{siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                        <div>
+                          <span className="font-bold text-[#14291D] block">{siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}</span>
+                          <span className="text-[11px] text-[#716858]">{siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Save Button */}
@@ -3854,6 +4694,312 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 >
                   <Save className="w-4 h-4 text-amber-300" />
                   <span>Save Titles to Firebase</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Tab: Quality & Ayush Assurance Badges (Product View) */}
+        {activeTab === 'assurance_badges' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
+              {/* Header Box */}
+              <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#E7EFEA] border border-[#B5D6C4] flex items-center justify-center text-[#2C5E43]">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-serif text-base font-bold text-[#14291D]">
+                        Product View Quality Assurance Badges
+                      </h4>
+                      <p className="text-[11px] text-[#6E6352]">
+                        Configure the 4 core trust badges: "Ayush & GMP Certified", "Heavy-metal lab verified", "100% Pure Botanical", "Zero synthetic fillers".
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Save to Firebase</span>
+                  </button>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] font-semibold text-[#6E6352]">Quick Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSiteForm({
+                        ...siteForm,
+                        productAssuranceBadges: {
+                          badge1Title: 'Ayush & GMP Certified',
+                          badge1Subtitle: 'Heavy-metal lab verified',
+                          badge2Title: '100% Pure Botanical',
+                          badge2Subtitle: 'Zero synthetic fillers',
+                        },
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-[11px] hover:bg-stone-100 cursor-pointer font-medium"
+                  >
+                    Standard Classical Ayush
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSiteForm({
+                        ...siteForm,
+                        productAssuranceBadges: {
+                          badge1Title: '100% Certified Organic',
+                          badge1Subtitle: 'Wild-harvested botanicals',
+                          badge2Title: 'Pure Phytochemical Assay',
+                          badge2Subtitle: 'Zero synthetic additives',
+                        },
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-[11px] hover:bg-stone-100 cursor-pointer font-medium"
+                  >
+                    Certified Organic Botanical
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSiteForm({
+                        ...siteForm,
+                        productAssuranceBadges: {
+                          badge1Title: 'AYUSH Pharmacopoeia Grade',
+                          badge1Subtitle: 'Standardized extracts',
+                          badge2Title: 'Ancient Shastra Formulation',
+                          badge2Subtitle: 'No artificial preservatives',
+                        },
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-[11px] hover:bg-stone-100 cursor-pointer font-medium"
+                  >
+                    Pharmacopoeia Monograph Grade
+                  </button>
+                </div>
+
+                {/* Editor Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  {/* Badge 1 Card */}
+                  <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
+                    <div className="flex items-center gap-2 border-b border-[#E8E2D5] pb-2">
+                      <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                      <span className="font-bold text-xs text-[#14291D]">Assurance Badge #1</span>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Badge 1 Title / Heading <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={siteForm.productAssuranceBadges?.badge1Title ?? 'Ayush & GMP Certified'}
+                        onChange={(e) => setSiteForm({
+                          ...siteForm,
+                          productAssuranceBadges: {
+                            ...siteForm.productAssuranceBadges,
+                            badge1Title: e.target.value,
+                          },
+                        })}
+                        placeholder="e.g. Ayush & GMP Certified"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Badge 1 Subtitle / Verification Detail
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.productAssuranceBadges?.badge1Subtitle ?? 'Heavy-metal lab verified'}
+                        onChange={(e) => setSiteForm({
+                          ...siteForm,
+                          productAssuranceBadges: {
+                            ...siteForm.productAssuranceBadges,
+                            badge1Subtitle: e.target.value,
+                          },
+                        })}
+                        placeholder="e.g. Heavy-metal lab verified"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Badge 2 Card */}
+                  <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
+                    <div className="flex items-center gap-2 border-b border-[#E8E2D5] pb-2">
+                      <Leaf className="w-4 h-4 text-[#2C5E43]" />
+                      <span className="font-bold text-xs text-[#14291D]">Assurance Badge #2</span>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Badge 2 Title / Heading <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={siteForm.productAssuranceBadges?.badge2Title ?? '100% Pure Botanical'}
+                        onChange={(e) => setSiteForm({
+                          ...siteForm,
+                          productAssuranceBadges: {
+                            ...siteForm.productAssuranceBadges,
+                            badge2Title: e.target.value,
+                          },
+                        })}
+                        placeholder="e.g. 100% Pure Botanical"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#2B251D] mb-1">
+                        Badge 2 Subtitle / Filler & Purity Detail
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.productAssuranceBadges?.badge2Subtitle ?? 'Zero synthetic fillers'}
+                        onChange={(e) => setSiteForm({
+                          ...siteForm,
+                          productAssuranceBadges: {
+                            ...siteForm.productAssuranceBadges,
+                            badge2Subtitle: e.target.value,
+                          },
+                        })}
+                        placeholder="e.g. Zero synthetic fillers"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Preview Box */}
+                <div className="pt-3 border-t border-[#EAE3D4] space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-[#716858] block">
+                    Live Product View Ribbon Preview:
+                  </span>
+                  <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs max-w-lg shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                      <div>
+                        <span className="font-bold text-[#14291D] block">
+                          {siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
+                        </span>
+                        <span className="text-[11px] text-[#716858]">
+                          {siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                      <div>
+                        <span className="font-bold text-[#14291D] block">
+                          {siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
+                        </span>
+                        <span className="text-[11px] text-[#716858]">
+                          {siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Catalog Status Table */}
+              <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                  <div>
+                    <h4 className="font-serif text-sm font-bold text-[#14291D]">
+                      Individual Product Overrides ({products.length} Products)
+                    </h4>
+                    <p className="text-[11px] text-[#6E6352]">
+                      Each product automatically uses the site defaults above, or you can customize badges per product.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-[#FAF8F5] border-b border-[#DDD5C5] text-[#695F4F]">
+                        <th className="py-2 px-3">Product</th>
+                        <th className="py-2 px-3">Badge 1 (Ayush/GMP)</th>
+                        <th className="py-2 px-3">Badge 2 (Botanical/Fillers)</th>
+                        <th className="py-2 px-3">Status</th>
+                        <th className="py-2 px-3 text-right">Edit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EAE3D4]">
+                      {products.map((p) => {
+                        const hasCustom = Boolean(p.assuranceBadges?.badge1Title || p.assuranceBadges?.badge2Title);
+                        const b1Title = p.assuranceBadges?.badge1Title || siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified';
+                        const b1Sub = p.assuranceBadges?.badge1Subtitle || siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified';
+                        const b2Title = p.assuranceBadges?.badge2Title || siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical';
+                        const b2Sub = p.assuranceBadges?.badge2Subtitle || siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers';
+
+                        return (
+                          <tr key={p.id} className="hover:bg-[#FAF8F5] transition-colors">
+                            <td className="py-2.5 px-3">
+                              <span className="font-bold text-[#14291D] block">{p.name}</span>
+                              <span className="text-[10px] text-[#716858] italic">{p.sanskritName}</span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="font-semibold text-[#183624] block">{b1Title}</span>
+                              <span className="text-[10.5px] text-[#716858]">{b1Sub}</span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="font-semibold text-[#183624] block">{b2Title}</span>
+                              <span className="text-[10.5px] text-[#716858]">{b2Sub}</span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {hasCustom ? (
+                                <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold">
+                                  Custom Override
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded bg-[#E7EFEA] text-[#183624] text-[10px] font-bold">
+                                  Site Default
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab('products');
+                                  startEdit(p);
+                                }}
+                                className="px-2.5 py-1 bg-white hover:bg-stone-100 text-[#14291D] rounded border border-[#DDD5C5] text-[11px] font-semibold cursor-pointer"
+                              >
+                                Edit Product
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Bottom Save Button */}
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-md cursor-pointer text-xs"
+                >
+                  <Save className="w-4 h-4 text-amber-300" />
+                  <span>Save All Assurance Badges to Firebase</span>
                 </button>
               </div>
             </form>

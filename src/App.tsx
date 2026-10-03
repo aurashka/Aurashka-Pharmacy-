@@ -9,7 +9,6 @@ import { HerbalProduct, ProductCategory, SiteSettings, CategoryItem } from './ty
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
-import { FrontContactBar } from './components/FrontContactBar';
 import { ProductDashboard } from './components/ProductDashboard';
 import { ProductDetailPage } from './components/ProductDetailPage';
 import { ContactPage } from './components/ContactPage';
@@ -28,7 +27,8 @@ import {
   backupSiteSettingsToFirebase,
   fetchSiteSettingsFromFirebase,
   backupCatalogMetaToFirebase,
-  fetchCatalogMetaFromFirebase
+  fetchCatalogMetaFromFirebase,
+  getOrAutoSeedFirebaseData
 } from './utils/firebaseSync';
 import { Shield, Settings, Sparkles } from 'lucide-react';
 
@@ -42,6 +42,8 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
   return {
     ...DEFAULT_SITE_SETTINGS,
     ...s,
+    brandLogoImage: s.brandLogoImage !== undefined ? s.brandLogoImage : DEFAULT_SITE_SETTINGS.brandLogoImage,
+    showBrandLogo: s.showBrandLogo !== undefined ? s.showBrandLogo : DEFAULT_SITE_SETTINGS.showBrandLogo,
     contacts: {
       phones: Array.isArray(s.contacts?.phones) && s.contacts.phones.length > 0
         ? s.contacts.phones
@@ -72,14 +74,23 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
           ? (Object.values(s.weeklyDeals.items) as any[])
           : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
     },
+    heroBadgeText: s.heroBadgeText || DEFAULT_SITE_SETTINGS.heroBadgeText,
+    heroTitle: s.heroTitle || DEFAULT_SITE_SETTINGS.heroTitle,
+    heroSubtitle: s.heroSubtitle || DEFAULT_SITE_SETTINGS.heroSubtitle,
+    catalogSectionTitle: s.catalogSectionTitle || DEFAULT_SITE_SETTINGS.catalogSectionTitle,
+    catalogSectionSubtitle: s.catalogSectionSubtitle || DEFAULT_SITE_SETTINGS.catalogSectionSubtitle,
     peopleBadgeText: s.peopleBadgeText || DEFAULT_SITE_SETTINGS.peopleBadgeText,
     peopleSectionTitle: s.peopleSectionTitle || DEFAULT_SITE_SETTINGS.peopleSectionTitle,
     peopleSectionSubtitle: s.peopleSectionSubtitle || DEFAULT_SITE_SETTINGS.peopleSectionSubtitle,
+    peopleSwipeNotice: s.peopleSwipeNotice || DEFAULT_SITE_SETTINGS.peopleSwipeNotice || '👉 Swipe horizontally to view team',
     peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
       ? s.peopleList
       : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
         ? (Object.values(s.peopleList) as any[])
         : (DEFAULT_SITE_SETTINGS.peopleList || [])),
+    productAssuranceBadges: s.productAssuranceBadges || DEFAULT_SITE_SETTINGS.productAssuranceBadges,
+    footerCopyrightText: s.footerCopyrightText || DEFAULT_SITE_SETTINGS.footerCopyrightText,
+    footerBotanicalBadgeText: s.footerBotanicalBadgeText || DEFAULT_SITE_SETTINGS.footerBotanicalBadgeText,
   };
 }
 
@@ -192,62 +203,40 @@ function PharmacyApp() {
   }, [products]);
 
   // Sync products, site settings, categories & forms from Firebase Realtime Database on initial mount
+  // If remote is null, auto-create/seed Firebase with initial defaults
   useEffect(() => {
     const fetchRemoteData = async () => {
-      // 1. Fetch site settings & multiple contacts
       try {
-        const remoteSettings = await fetchSiteSettingsFromFirebase();
-        if (remoteSettings) {
-          const normalized = normalizeSiteSettings(remoteSettings);
+        const synced = await getOrAutoSeedFirebaseData(
+          DEFAULT_SITE_SETTINGS,
+          DEFAULT_CATEGORIES,
+          DEFAULT_FORMS,
+          HERBAL_PRODUCTS
+        );
+
+        if (synced.settings) {
+          const normalized = normalizeSiteSettings(synced.settings);
           setSiteSettings(normalized);
           localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
-        } else {
-          // If empty in Firebase, back up default site settings
-          backupSiteSettingsToFirebase(DEFAULT_SITE_SETTINGS);
+        }
+
+        if (Array.isArray(synced.categories) && synced.categories.length > 0) {
+          setCategories(synced.categories);
+          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(synced.categories));
+        }
+
+        if (Array.isArray(synced.forms) && synced.forms.length > 0) {
+          setForms(synced.forms);
+          localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(synced.forms));
+        }
+
+        if (Array.isArray(synced.products) && synced.products.length > 0) {
+          setProducts(synced.products);
+          localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(synced.products));
         }
       } catch (err) {
-        console.warn('Firebase RTDB site settings load note:', err);
+        console.warn('Firebase RTDB data sync note:', err);
       }
-
-      // 2. Fetch categories & forms
-      try {
-        const meta = await fetchCatalogMetaFromFirebase();
-        if (meta) {
-          if (Array.isArray(meta.categories) && meta.categories.length > 0) {
-            setCategories(meta.categories);
-            localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(meta.categories));
-          }
-          if (Array.isArray(meta.forms) && meta.forms.length > 0) {
-            setForms(meta.forms);
-            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(meta.forms));
-          }
-        } else {
-          backupCatalogMetaToFirebase({ categories: DEFAULT_CATEGORIES, forms: DEFAULT_FORMS });
-        }
-      } catch (err) {
-        console.warn('Firebase RTDB catalog meta load note:', err);
-      }
-
-      // 3. Fetch products
-      try {
-        const res = await fetch(`${firebaseConfig.databaseURL}/products.json`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && typeof data === 'object') {
-            const list: HerbalProduct[] = Object.values(data);
-            if (list.length > 0) {
-              setProducts(list);
-              localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(list));
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Firebase RTDB products load note:', err);
-      }
-
-      // If empty in Firebase, back up the initial default catalog
-      backupAllCatalogToFirebase(HERBAL_PRODUCTS);
     };
 
     fetchRemoteData();
@@ -262,10 +251,12 @@ function PharmacyApp() {
     }
   };
 
-  const handleUpdateSiteSettings = (newSettings: SiteSettings) => {
-    setSiteSettings(newSettings);
+  const handleUpdateSiteSettings = async (newSettings: SiteSettings) => {
+    const normalized = normalizeSiteSettings(newSettings);
+    setSiteSettings(normalized);
     try {
-      localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+      localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
+      await backupSiteSettingsToFirebase(normalized);
     } catch (e) {
       console.error(e);
     }
@@ -487,6 +478,13 @@ function PharmacyApp() {
             allProducts={products}
             onSelectProduct={handleSelectProduct}
             onOpenConsultationModal={handleOpenConsultationModal}
+            isAdmin={isAdmin}
+            onUpdateProduct={handleUpdateProduct}
+            onUpdateSiteSettings={handleUpdateSiteSettings}
+            onOpenAdminPanel={() => {
+              setProductToEditInAdmin(selectedProductForDetail);
+              setIsAdminPanelOpen(true);
+            }}
           />
         ) : (
           /* Main Storefront Catalog Page */
@@ -506,13 +504,6 @@ function PharmacyApp() {
               products={products}
               onAddToCart={handleAddToCart}
               cartProductIds={cartProductIds}
-            />
-
-            {/* Front-Row Direct Contact & Patient Helpline Ribbon */}
-            <FrontContactBar
-              onOpenConsultationModal={() => handleOpenConsultationModal()}
-              onScrollToContact={handleNavigateToContact}
-              siteSettings={siteSettings}
             />
 
             {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}

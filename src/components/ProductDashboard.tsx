@@ -38,7 +38,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   siteSettings,
 }) => {
   const [selectedForm, setSelectedForm] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'deals' | 'trending' | 'top_seller' | 'rating' | 'reseller' | 'new_launch' | 'price-asc' | 'price-desc'>('deals');
+  const [sortBy, setSortBy] = useState<'featured' | 'deals' | 'trending' | 'top_seller' | 'rating' | 'reseller' | 'new_launch' | 'price-asc' | 'price-desc'>('featured');
   const [showInStockOnly, setShowInStockOnly] = useState(false);
 
   // Filtering Logic
@@ -71,10 +71,17 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
     });
   }, [products, selectedCategory, selectedForm, showInStockOnly, searchQuery]);
 
-  // Sorting Logic: Trending, Top Sellers, Best Deals, Rating, Reseller Margin, Price
+  // Sorting Logic: Featured / Admin Order, Trending, Top Sellers, Best Deals, Rating, Reseller Margin, Price
   const sortedProducts = useMemo(() => {
     const list = [...filteredProducts];
-    if (sortBy === 'deals') {
+    if (sortBy === 'featured') {
+      list.sort((a, b) => {
+        const orderA = a.displayOrder !== undefined ? a.displayOrder : 9999;
+        const orderB = b.displayOrder !== undefined ? b.displayOrder : 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (b.rating * b.reviewsCount) - (a.rating * a.reviewsCount);
+      });
+    } else if (sortBy === 'deals') {
       list.sort((a, b) => (b.mrp - b.price) - (a.mrp - a.price));
     } else if (sortBy === 'trending') {
       list.sort((a, b) => {
@@ -123,7 +130,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
     setSelectedForm('all');
     onSearchChange('');
     setShowInStockOnly(false);
-    setSortBy('deals');
+    setSortBy('featured');
   };
 
   return (
@@ -171,10 +178,10 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#E7DFD1] pb-4">
         <div>
           <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#14291D]">
-            Products, Formulations & Apothecary Deals
+            {siteSettings?.catalogSectionTitle || 'Products, Formulations & Apothecary Deals'}
           </h2>
           <p className="text-xs sm:text-sm text-[#615748] mt-0.5">
-            Authentic herbal remedies with retail discounts, verified reseller rates & dosage charts.
+            {siteSettings?.catalogSectionSubtitle || 'Authentic herbal remedies with retail discounts, verified reseller rates & dosage charts.'}
           </p>
         </div>
 
@@ -212,6 +219,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
               onChange={(e) => setSortBy(e.target.value as any)}
               className="py-2 px-3 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-medium text-[#2F281E] focus:outline-hidden focus:border-[#2C5E43]"
             >
+              <option value="featured">Sort: Catalog Order (Admin Set)</option>
               <option value="deals">Sort: Best Deals</option>
               <option value="trending">Sort: Trending First</option>
               <option value="top_seller">Sort: Top Sellers</option>

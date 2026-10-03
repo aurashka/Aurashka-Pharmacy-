@@ -71,12 +71,12 @@ export const FloatingContactWidget: React.FC<FloatingContactWidgetProps> = ({
                 <span className="font-bold text-[#14291D]">{siteSettings.headPharmacist}</span>
               </div>
               <div className="flex items-center justify-between text-[11px] text-[#635948]">
-                <span>WhatsApp:</span>
-                <span className="font-mono font-bold text-emerald-700">{primaryWhatsApp.displayNumber}</span>
+                <span>WhatsApp Consultation:</span>
+                <span className="font-semibold text-emerald-700">Verified On Duty</span>
               </div>
               <div className="flex items-center justify-between text-[11px] text-[#635948]">
-                <span>Phone Helpline:</span>
-                <span className="font-mono font-bold text-[#14291D]">{primaryPhone}</span>
+                <span>Direct Helpline:</span>
+                <span className="font-semibold text-[#14291D]">Available On Call</span>
               </div>
             </div>
 
@@ -131,12 +131,12 @@ export const FloatingContactWidget: React.FC<FloatingContactWidgetProps> = ({
         {/* Direct Call Button */}
         <a
           href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
-          aria-label={`Call Pharmacist: ${primaryPhone}`}
-          title={`Direct Call: ${primaryPhone}`}
+          aria-label="Call Pharmacist"
+          title="Direct Call Helpline"
           className="p-2 sm:px-3 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 text-[#D8EADB] hover:text-white transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
         >
           <Phone className="w-3.5 h-3.5 text-[#A5D6B6]" />
-          <span className="hidden md:inline font-mono">Call: {primaryPhone}</span>
+          <span className="hidden md:inline font-medium">Call Helpline</span>
         </a>
 
         {/* Book Consultation Modal */}
@@ -151,11 +151,11 @@ export const FloatingContactWidget: React.FC<FloatingContactWidgetProps> = ({
         {/* Direct WhatsApp Instant Consultation */}
         <button
           onClick={handleWhatsApp}
-          title={`WhatsApp: ${primaryWhatsApp.displayNumber}\nClick to send custom message`}
+          title="Instant WhatsApp Consultation"
           className="px-3.5 py-2 rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] transition-all flex items-center gap-1.5 text-xs font-semibold shadow-md cursor-pointer"
         >
           <MessageCircle className="w-4 h-4" />
-          <span>WhatsApp: {primaryWhatsApp.displayNumber}</span>
+          <span>WhatsApp</span>
         </button>
       </div>
     </aside>

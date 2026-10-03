@@ -44,6 +44,17 @@ export interface ProductCustomField {
   section?: ProductTabTarget;
 }
 
+export interface ProductVariant {
+  id: string;
+  size: string; // e.g. "100", "200", "500", "1"
+  unit: string; // e.g. "ml", "gm", "kg", "Liter", "Capsules", "Tablets", etc.
+  price: number; // e.g. 299
+  mrp: number; // e.g. 399
+  resellerPrice?: number; // e.g. 210
+  image?: string; // separate image when this variant is selected
+  inStock?: boolean;
+}
+
 export interface HerbalProduct {
   id: string;
   name: string;
@@ -61,8 +72,10 @@ export interface HerbalProduct {
   rating: number;
   reviewsCount: number;
   inStock: boolean;
+  displayOrder?: number; // Sorting order in catalog (1 = top, 2 = second...)
   image: string;
   images?: string[]; // Multiple product images support
+  variants?: ProductVariant[]; // Different sizes / packaging variants
   customFields?: ProductCustomField[]; // Custom attributes with name, value and position
   keyIndications: string[];
   detailedUses: DetailedUses;
@@ -73,6 +86,14 @@ export interface HerbalProduct {
   ayushLicenseNo: string;
   batchInfo: string;
   customLink?: string;
+  assuranceBadges?: ProductAssuranceBadges;
+}
+
+export interface ProductAssuranceBadges {
+  badge1Title?: string;
+  badge1Subtitle?: string;
+  badge2Title?: string;
+  badge2Subtitle?: string;
 }
 
 export interface ContactNumberItem {
@@ -140,13 +161,18 @@ export interface MessageTemplates {
 export interface SiteSettings {
   brandName: string;
   hindiName: string;
+  brandLogoImage?: string;
+  showBrandLogo?: boolean;
   headPharmacist: string;
   regNumber: string;
   storeAddress: string;
   storeTimings: string;
   shippingNotice: string;
+  heroBadgeText?: string;
   heroTitle: string;
   heroSubtitle: string;
+  catalogSectionTitle?: string;
+  catalogSectionSubtitle?: string;
   contacts: {
     phones: ContactNumberItem[];
     whatsapps: ContactWhatsAppItem[];
@@ -160,7 +186,9 @@ export interface SiteSettings {
   peopleBadgeText?: string;
   peopleSectionTitle?: string;
   peopleSectionSubtitle?: string;
+  peopleSwipeNotice?: string;
   peopleList?: PeopleProfile[];
+  productAssuranceBadges?: ProductAssuranceBadges;
 }
 
 export interface ConsultationInquiry {

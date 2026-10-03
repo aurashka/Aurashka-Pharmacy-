@@ -159,9 +159,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         
         {/* Sort & Deal Badges (Branded Icons without emojis) */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+          {!product.inStock && (
+            <span className="bg-rose-700 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs w-fit">
+              Out of Stock
+            </span>
+          )}
           {renderSortBadge()}
 
-          {discountPercent > 0 && (
+          {discountPercent > 0 && product.inStock && (
             <span className="bg-[#B4741E] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs w-fit">
               Save {discountPercent}%
             </span>
@@ -334,17 +339,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </button>
 
             <button
+              disabled={!product.inStock}
               onClick={(e) => {
                 e.stopPropagation();
-                onAddToCart(product);
+                if (product.inStock) onAddToCart(product);
               }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
-                isInCart
-                  ? 'bg-[#2C5E43] text-white'
-                  : 'bg-[#14291D] text-white hover:bg-[#203E2D]'
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+                !product.inStock
+                  ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                  : isInCart
+                    ? 'bg-[#2C5E43] text-white cursor-pointer'
+                    : 'bg-[#14291D] text-white hover:bg-[#203E2D] cursor-pointer'
               }`}
             >
-              {isInCart ? (
+              {!product.inStock ? (
+                <span>Out of Stock</span>
+              ) : isInCart ? (
                 <>
                   <Check className="w-3.5 h-3.5" />
                   <span>Added</span>

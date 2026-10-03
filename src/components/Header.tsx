@@ -1,14 +1,7 @@
 import React from 'react';
-import { Phone, MessageSquare, ShoppingBag, LogIn, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, LogIn, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SiteSettings } from '../types/pharmacy';
-import { 
-  getPrimaryPhone, 
-  getPrimaryWhatsApp, 
-  formatCustomMessage, 
-  DEFAULT_MESSAGE_TEMPLATES,
-  buildWhatsAppUrl 
-} from '../utils/messageFormatter';
 
 interface HeaderProps {
   cartCount: number;
@@ -31,68 +24,39 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { currentUser, isAdmin, logout } = useAuth();
 
-  const primaryPhone = getPrimaryPhone(siteSettings);
-  const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
-
-  const headerMsgTemplate = siteSettings.messageTemplates?.headerWhatsApp || DEFAULT_MESSAGE_TEMPLATES.headerWhatsApp;
-  const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
-  const formattedHeaderMsg = formatCustomMessage(
-    headerMsgTemplate,
-    { brandName: siteSettings.brandName },
-    currentUser,
-    includeUserInfo
-  );
-  const headerWhatsAppUrl = buildWhatsAppUrl(primaryWhatsApp.number, formattedHeaderMsg);
-
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E7DFD1]">
-      {/* Top Helpline Ribbon */}
-      <div className="bg-[#14291D] text-[#E7EFEA] text-[11px] px-4 py-1.5 border-b border-[#1E3B2A]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#A5D6B6]">{siteSettings.brandName} Apothecary</span>
-            <span aria-hidden="true" className="text-white/30">·</span>
-            <span className="hidden sm:inline text-white/70">{siteSettings.storeTimings}</span>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-4">
-            <a
-              href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
-              title={`Call Direct: ${primaryPhone}`}
-              className="flex items-center gap-1 hover:text-white transition-colors"
-            >
-              <Phone className="w-3 h-3 text-[#A5D6B6]" />
-              <span className="font-mono tabular-nums">{primaryPhone}</span>
-            </a>
-
-            <span aria-hidden="true" className="text-white/30">·</span>
-
-            <a
-              href={headerWhatsAppUrl}
-              target="_blank"
-              rel="noreferrer"
-              title={`WhatsApp: ${primaryWhatsApp.displayNumber}\nMessage: "${formattedHeaderMsg.slice(0, 70)}..."`}
-              className="flex items-center gap-1 text-[#4ADE80] hover:text-[#86efac] font-medium transition-colors"
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>WhatsApp: {primaryWhatsApp.displayNumber}</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
       {/* Main Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        {/* Brand Title */}
+        {/* Brand Title & Logo */}
         <a 
           href="#"
           onClick={(e) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#14291D] hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2.5 sm:gap-3 hover:opacity-90 transition-opacity group"
         >
-          {siteSettings.brandName}
+          {siteSettings.showBrandLogo !== false && siteSettings.brandLogoImage && (
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-[#2C5E43]/40 shadow-xs shrink-0 bg-[#E7EFEA] flex items-center justify-center">
+              <img
+                src={siteSettings.brandLogoImage}
+                alt={siteSettings.brandName}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+          <div className="flex flex-col text-left">
+            <span className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#14291D] leading-none">
+              {siteSettings.brandName}
+            </span>
+            {siteSettings.hindiName && (
+              <span className="text-[10px] sm:text-[11px] font-serif text-[#2C5E43] font-medium leading-tight mt-0.5">
+                {siteSettings.hindiName}
+              </span>
+            )}
+          </div>
         </a>
 
         {/* Minimalist Navigation */}

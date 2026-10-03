@@ -109,8 +109,42 @@ export const fetchSiteSettingsFromFirebase = async (): Promise<SiteSettings | nu
     const res = await fetch(`${firebaseConfig.databaseURL}/site_settings.json`);
     if (res.ok) {
       const data = await res.json();
-      if (data && typeof data === 'object' && data.brandName) {
-        return data as SiteSettings;
+      if (data && typeof data === 'object' && (data.brandName || data.heroTitle || data.contacts)) {
+        // Normalize any object-shaped arrays from Firebase RTDB
+        const phones = Array.isArray(data.contacts?.phones)
+          ? data.contacts.phones
+          : (data.contacts?.phones && typeof data.contacts.phones === 'object'
+            ? Object.values(data.contacts.phones)
+            : undefined);
+
+        const whatsapps = Array.isArray(data.contacts?.whatsapps)
+          ? data.contacts.whatsapps
+          : (data.contacts?.whatsapps && typeof data.contacts.whatsapps === 'object'
+            ? Object.values(data.contacts.whatsapps)
+            : undefined);
+
+        const emails = Array.isArray(data.contacts?.emails)
+          ? data.contacts.emails
+          : (data.contacts?.emails && typeof data.contacts.emails === 'object'
+            ? Object.values(data.contacts.emails)
+            : undefined);
+
+        const peopleList = Array.isArray(data.peopleList)
+          ? data.peopleList
+          : (data.peopleList && typeof data.peopleList === 'object'
+            ? Object.values(data.peopleList)
+            : undefined);
+
+        return {
+          ...data,
+          contacts: {
+            ...data.contacts,
+            ...(phones ? { phones } : {}),
+            ...(whatsapps ? { whatsapps } : {}),
+            ...(emails ? { emails } : {}),
+          },
+          ...(peopleList ? { peopleList } : {}),
+        } as SiteSettings;
       }
     }
   } catch (e) {
@@ -150,12 +184,90 @@ export const fetchCatalogMetaFromFirebase = async (): Promise<{
     const res = await fetch(`${firebaseConfig.databaseURL}/catalog_meta.json`);
     if (res.ok) {
       const data = await res.json();
-      if (data && Array.isArray(data.categories) && Array.isArray(data.forms)) {
-        return data;
+      if (data && typeof data === 'object') {
+        const rawCats = data.categories;
+        const rawForms = data.forms;
+        const categories = Array.isArray(rawCats)
+          ? rawCats
+          : (rawCats && typeof rawCats === 'object' ? Object.values(rawCats) : null);
+        const forms = Array.isArray(rawForms)
+          ? rawForms
+          : (rawForms && typeof rawForms === 'object' ? Object.values(rawForms) : null);
+
+        if (categories && forms) {
+          return { categories: categories as any[], forms: forms as any[] };
+        }
       }
     }
   } catch (e) {
     console.warn('Firebase RTDB catalog meta fetch notice:', e);
   }
   return null;
+};
+
+/**
+ * Fetch all products from Firebase Realtime Database
+ */
+export const fetchProductsFromFirebase = async (): Promise<HerbalProduct[] | null> => {
+  try {
+    const res = await fetch(`${firebaseConfig.databaseURL}/products.json`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        const list: HerbalProduct[] = Object.values(data);
+        if (list.length > 0) {
+          return list;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Firebase RTDB products fetch notice:', e);
+  }
+  return null;
+};
+
+/**
+ * Auto-initialize / seed Firebase Realtime Database if null or empty.
+ * If data exists in Firebase, it gets and returns it. If null, auto-creates it.
+ */
+export const getOrAutoSeedFirebaseData = async (
+  defaultSettings: SiteSettings,
+  defaultCategories: { id: string; label: string }[],
+  defaultForms: string[],
+  defaultProducts: HerbalProduct[]
+): Promise<{
+  settings: SiteSettings;
+  categories: { id: string; label: string }[];
+  forms: string[];
+  products: HerbalProduct[];
+}> => {
+  // 1. Site Settings & Contacts
+  let settings = await fetchSiteSettingsFromFirebase();
+  if (!settings) {
+    console.info('Firebase site_settings is null -> Auto-creating default site settings in Firebase RTDB');
+    await backupSiteSettingsToFirebase(defaultSettings);
+    settings = defaultSettings;
+  }
+
+  // 2. Categories & Forms
+  let meta = await fetchCatalogMetaFromFirebase();
+  let categories = defaultCategories;
+  let forms = defaultForms;
+  if (!meta || !Array.isArray(meta.categories) || meta.categories.length === 0) {
+    console.info('Firebase catalog_meta is null -> Auto-creating default categories & forms in Firebase RTDB');
+    await backupCatalogMetaToFirebase({ categories: defaultCategories, forms: defaultForms });
+  } else {
+    categories = meta.categories;
+    forms = meta.forms;
+  }
+
+  // 3. Products
+  let products = await fetchProductsFromFirebase();
+  if (!products || products.length === 0) {
+    console.info('Firebase products is null -> Auto-creating default product catalog in Firebase RTDB');
+    await backupAllCatalogToFirebase(defaultProducts);
+    products = defaultProducts;
+  }
+
+  return { settings, categories, forms, products };
 };

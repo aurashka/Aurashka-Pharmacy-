@@ -47,10 +47,11 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
           <span className="font-semibold text-[#14291D]">Apothecary Helplines:</span>
           <a
             href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
-            title={`Call Pharmacist: ${primaryPhone}`}
-            className="font-mono font-medium hover:text-[#14291D] transition-colors"
+            title="Call Pharmacist"
+            className="inline-flex items-center gap-1 font-medium text-[#14291D] hover:underline transition-colors"
           >
-            {primaryPhone}
+            <Phone className="w-3.5 h-3.5 text-[#2C5E43]" />
+            <span>Call Pharmacist</span>
           </a>
           <span aria-hidden="true" className="text-[#C5BBA9]">·</span>
           <span className="hidden md:inline text-[#6B6150]">{siteSettings.storeTimings}</span>
@@ -59,11 +60,11 @@ export const FrontContactBar: React.FC<FrontContactBarProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleWhatsApp}
-            title={`WhatsApp Helpline: ${primaryWhatsApp.displayNumber}\nMessage: "${formattedMsg.slice(0, 60)}..."`}
+            title="WhatsApp Helpline"
             className="px-3 py-1.5 rounded-lg bg-[#25D366] text-white font-medium text-xs hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <MessageCircle className="w-3.5 h-3.5" />
-            <span>WhatsApp: {primaryWhatsApp.displayNumber}</span>
+            <span>WhatsApp</span>
           </button>
 
           <button

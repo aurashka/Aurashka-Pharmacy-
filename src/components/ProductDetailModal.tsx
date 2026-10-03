@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { HerbalProduct, SiteSettings } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings, ProductVariant } from '../types/pharmacy';
 import { 
   X, 
   Leaf, 
+  ShieldCheck,
   Clock, 
   MessageCircle, 
   ShoppingBag, 
@@ -58,9 +59,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     return product.image ? [product.image] : [];
   }, [product]);
 
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+
   useEffect(() => {
     setCurrentImageIndex(0);
     setIsZoomed(false);
+    setSelectedVariant(product?.variants && product.variants.length > 0 ? product.variants[0] : null);
   }, [product]);
 
   // Keyboard navigation for gallery & closing modal
@@ -91,10 +95,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   if (!product) return null;
 
-  const savings = product.mrp - product.price;
-  const discountPercent = Math.round((savings / product.mrp) * 100);
+  const currentPrice = selectedVariant?.price ?? product.price;
+  const currentMrp = selectedVariant?.mrp ?? product.mrp;
+  const currentReseller = selectedVariant?.resellerPrice ?? product.resellerPrice;
+  const isAvailableInStock = selectedVariant?.inStock !== undefined ? selectedVariant.inStock : product.inStock;
+  const savings = Math.max(0, currentMrp - currentPrice);
+  const discountPercent = currentMrp > 0 ? Math.round((savings / currentMrp) * 100) : 0;
 
-  const activeImage = imagesList[currentImageIndex] || product.image;
+  const activeImage = (selectedVariant?.image && currentImageIndex === 0) 
+    ? selectedVariant.image 
+    : (imagesList[currentImageIndex] || product.image);
   const isPrimary = currentImageIndex === 0;
 
   const handlePrevImage = (e?: React.MouseEvent) => {
@@ -164,12 +174,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Left Column: Rich Interactive Multiple Images Gallery */}
               <div className="md:col-span-5 space-y-3">
                 {/* Main Large Image Frame with Controls */}
-                <div className="relative rounded-xl overflow-hidden bg-[#EFEAE0] border border-[#DDD5C5] aspect-4/3 group shadow-xs">
+                <div 
+                  className="relative rounded-xl overflow-hidden bg-[#EFEAE0] border border-[#DDD5C5] aspect-4/3 group shadow-xs cursor-zoom-in"
+                  onClick={() => setIsZoomed(true)}
+                  title="Click to view full photo in popup"
+                >
                   <img
                     src={activeImage}
                     alt={`${product.name} - view ${currentImageIndex + 1}`}
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-opacity duration-300"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
                     onError={(e) => {
                       (e.currentTarget as HTMLElement).style.display = 'none';
                     }}
@@ -293,6 +307,32 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Quality & Ayush Assurance Box */}
+                <div className="p-3 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-2 text-xs mt-3 shadow-2xs">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                    <div>
+                      <span className="font-bold text-[#14291D] block text-[10.5px]">
+                        {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
+                      </span>
+                      <span className="text-[9.5px] text-[#716858] block">
+                        {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                    <div>
+                      <span className="font-bold text-[#14291D] block text-[10.5px]">
+                        {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
+                      </span>
+                      <span className="text-[9.5px] text-[#716858] block">
+                        {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Right Column: Formulation Metadata & Buy/Order Actions */}
@@ -362,35 +402,108 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {product.description}
                 </p>
 
+                {/* Packaging / Size Variants Selection */}
+                {product.variants && product.variants.length > 0 && (
+                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#14291D]">Size / Pack Variant:</span>
+                      <span className="text-[#645A4B] text-[11px] font-medium">
+                        {selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {product.variants.map((v) => {
+                        const isSelected = selectedVariant?.id === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedVariant(v);
+                              if (v.image) {
+                                const idx = imagesList.indexOf(v.image);
+                                if (idx !== -1) {
+                                  setCurrentImageIndex(idx);
+                                } else {
+                                  setCurrentImageIndex(0);
+                                }
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
+                                : 'bg-white text-[#2C2419] border-[#DDD5C5] hover:border-[#14291D]'
+                            }`}
+                          >
+                            <span>{v.size} {v.unit}</span>
+                            {v.price && (
+                              <span className={`text-[10px] ${isSelected ? 'text-emerald-300' : 'text-[#2C5E43]'}`}>
+                                ₹{v.price}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Deal Pricing Callout */}
                 <div className="pt-3 border-t border-[#EAE3D4] flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-bold text-[#14291D] tabular-nums">
-                        ₹{product.price}
+                        ₹{currentPrice}
                       </span>
                       <span className="text-sm text-[#877E6F] line-through tabular-nums">
-                        ₹{product.mrp}
+                        ₹{currentMrp}
                       </span>
                       {savings > 0 && (
                         <span className="text-xs font-bold text-[#2C5E43] bg-[#E7EFEA] px-2 py-0.5 rounded">
                           Save ₹{savings}
                         </span>
                       )}
+                      {currentReseller !== undefined && currentReseller > 0 && (
+                        <span className="text-[11px] font-bold text-[#183624] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-mono">
+                          Reseller: ₹{currentReseller}
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[11px] text-[#7E7464]">Inclusive of all taxes & free shipping available</span>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <span className="text-[11px] text-[#7E7464]">
+                        Pack: <strong>{selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}</strong>
+                      </span>
+                      <span className="text-stone-300">·</span>
+                      {isAvailableInStock ? (
+                        <span className="text-[11px] text-emerald-700 font-semibold">In Stock</span>
+                      ) : (
+                        <span className="text-[11px] text-rose-600 font-semibold">Out of Stock</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onAddToCart(product)}
-                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer ${
-                        isInCart
-                          ? 'bg-[#2C5E43] text-white'
-                          : 'bg-[#14291D] text-white hover:bg-[#203E2D]'
+                      disabled={!isAvailableInStock}
+                      onClick={() => onAddToCart({
+                        ...product,
+                        price: currentPrice,
+                        mrp: currentMrp,
+                        resellerPrice: currentReseller,
+                        volumeOrWeight: selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight,
+                        image: (selectedVariant?.image) || product.image,
+                      })}
+                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs ${
+                        !isAvailableInStock
+                          ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                          : isInCart
+                            ? 'bg-[#2C5E43] text-white cursor-pointer'
+                            : 'bg-[#14291D] text-white hover:bg-[#203E2D] cursor-pointer'
                       }`}
                     >
-                      {isInCart ? (
+                      {!isAvailableInStock ? (
+                        <span>Out of Stock</span>
+                      ) : isInCart ? (
                         <>
                           <Check className="w-3.5 h-3.5" />
                           <span>In Order Bag</span>

@@ -240,7 +240,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="lg:col-span-7 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1C3A27] border border-[#2D5A3D] text-[11px] font-medium tracking-wide text-[#A5D6B6]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#A5D6B6] animate-pulse" />
-              <span>Registered Ayurvedic Formulations & Classical Rasayanas</span>
+              <span>{siteSettings.heroBadgeText || 'Registered Ayurvedic Formulations & Classical Rasayanas'}</span>
             </div>
 
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
@@ -281,17 +281,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <button
                 onClick={handleWhatsAppClick}
                 className="px-4 py-2.5 text-xs sm:text-sm font-medium rounded-lg bg-[#25D366] text-white hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Chat on WhatsApp"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp: {primaryWhatsApp.displayNumber}</span>
+                <span>WhatsApp</span>
               </button>
 
               <a
                 href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
                 className="px-3.5 py-2.5 text-xs sm:text-sm text-white/80 hover:text-white transition-colors flex items-center gap-1.5"
+                title="Call Helpline"
               >
                 <Phone className="w-3.5 h-3.5 text-[#A5D6B6]" />
-                <span className="font-mono tabular-nums">{primaryPhone}</span>
+                <span>Call Helpline</span>
               </a>
             </div>
           </div>
@@ -479,43 +481,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                           <span className="text-[11px] text-[#766C5B] font-normal font-mono">
                             {product.volumeOrWeight}
                           </span>
-                        </div>
-
-                        {/* Quick actions for Deal: Add to Cart and WhatsApp */}
-                        <div className="mt-2.5 pt-2 border-t border-[#EAE3D4] grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onAddToCart) onAddToCart(product);
-                            }}
-                            className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
-                              cartProductIds.has(product.id)
-                                ? 'bg-[#183624] text-white hover:bg-[#20442E]'
-                                : 'bg-[#2C5E43] text-white hover:bg-[#234D37]'
-                            }`}
-                          >
-                            {cartProductIds.has(product.id) ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-300" />
-                                <span>In Inquiry Cart</span>
-                              </>
-                            ) : (
-                              <>
-                                <ShoppingBag className="w-3.5 h-3.5" />
-                                <span>Add to Cart</span>
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={(e) => handleWhatsAppDirectDeal(e, product, deal)}
-                            className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            <span>WhatsApp Deal</span>
-                          </button>
                         </div>
                       </div>
                     );

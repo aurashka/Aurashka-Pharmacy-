@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem, ProductVariant } from '../types/pharmacy';
+import { ImageLightboxModal } from './ImageLightboxModal';
 import { 
   ArrowLeft, 
   MessageCircle, 
@@ -19,7 +20,10 @@ import {
   ChevronRight,
   Maximize2,
   Calendar,
-  Layers
+  Layers,
+  Edit3,
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -28,6 +32,7 @@ import {
   DEFAULT_MESSAGE_TEMPLATES, 
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
+import { backupProductToFirebase, backupSiteSettingsToFirebase } from '../utils/firebaseSync';
 
 interface ProductDetailPageProps {
   product: HerbalProduct;
@@ -38,6 +43,10 @@ interface ProductDetailPageProps {
   allProducts: HerbalProduct[];
   onSelectProduct: (product: HerbalProduct) => void;
   onOpenConsultationModal: (productName?: string) => void;
+  isAdmin?: boolean;
+  onUpdateProduct?: (product: HerbalProduct) => void;
+  onUpdateSiteSettings?: (settings: SiteSettings) => void;
+  onOpenAdminPanel?: () => void;
 }
 
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
@@ -49,18 +58,90 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   allProducts,
   onSelectProduct,
   onOpenConsultationModal,
+  isAdmin = false,
+  onUpdateProduct,
+  onUpdateSiteSettings,
+  onOpenAdminPanel,
 }) => {
   const { currentUser } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'indications' | 'ingredients' | 'dosage' | 'action' | 'precautions'>('indications');
+
+  // Secret Quality Assurance Badges quick-edit state
+  const [isSecretEditOpen, setIsSecretEditOpen] = useState(false);
+  const [badge1Title, setBadge1Title] = useState(
+    product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'
+  );
+  const [badge1Subtitle, setBadge1Subtitle] = useState(
+    product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'
+  );
+  const [badge2Title, setBadge2Title] = useState(
+    product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'
+  );
+  const [badge2Subtitle, setBadge2Subtitle] = useState(
+    product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'
+  );
+  const [secretEditSuccess, setSecretEditSuccess] = useState<string | null>(null);
+
+  // Sync badge state if product changes
+  useEffect(() => {
+    setBadge1Title(product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified');
+    setBadge1Subtitle(product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified');
+    setBadge2Title(product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical');
+    setBadge2Subtitle(product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers');
+  }, [product, siteSettings]);
+
+  const handleSaveProductBadges = () => {
+    const updatedProd: HerbalProduct = {
+      ...product,
+      assuranceBadges: {
+        badge1Title: badge1Title.trim() || 'Ayush & GMP Certified',
+        badge1Subtitle: badge1Subtitle.trim() || 'Heavy-metal lab verified',
+        badge2Title: badge2Title.trim() || '100% Pure Botanical',
+        badge2Subtitle: badge2Subtitle.trim() || 'Zero synthetic fillers',
+      },
+    };
+    onUpdateProduct?.(updatedProd);
+    backupProductToFirebase(updatedProd);
+    setSecretEditSuccess('Saved for this product & synced to Firebase!');
+    setTimeout(() => {
+      setSecretEditSuccess(null);
+      setIsSecretEditOpen(false);
+    }, 1800);
+  };
+
+  const handleSaveSiteBadges = () => {
+    const updatedSettings: SiteSettings = {
+      ...siteSettings,
+      productAssuranceBadges: {
+        badge1Title: badge1Title.trim() || 'Ayush & GMP Certified',
+        badge1Subtitle: badge1Subtitle.trim() || 'Heavy-metal lab verified',
+        badge2Title: badge2Title.trim() || '100% Pure Botanical',
+        badge2Subtitle: badge2Subtitle.trim() || 'Zero synthetic fillers',
+      },
+    };
+    onUpdateSiteSettings?.(updatedSettings);
+    backupSiteSettingsToFirebase(updatedSettings);
+    setSecretEditSuccess('Saved as site-wide default for all products!');
+    setTimeout(() => {
+      setSecretEditSuccess(null);
+      setIsSecretEditOpen(false);
+    }, 1800);
+  };
+
+  // Variant Selection State
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(() => {
+    return product.variants && product.variants.length > 0 ? product.variants[0] : null;
+  });
 
   // Scroll to top on product change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentImageIndex(0);
-  }, [product.id]);
+    setSelectedVariant(product.variants && product.variants.length > 0 ? product.variants[0] : null);
+  }, [product.id, product.variants]);
 
   // Clean images list from product
   const imagesList: string[] = React.useMemo(() => {
@@ -70,12 +151,33 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       ? rawImgs
       : (rawImgs && typeof rawImgs === 'object' ? Object.values(rawImgs) : []);
 
+    const list: string[] = [];
     if (imgs.length > 0) {
       const valid = imgs.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
-      if (valid.length > 0) return valid;
+      list.push(...valid);
+    } else if (product.image) {
+      list.push(product.image);
     }
-    return product.image ? [product.image] : [];
-  }, [product]);
+
+    // Include variant image if not already in list
+    if (selectedVariant?.image && !list.includes(selectedVariant.image)) {
+      list.unshift(selectedVariant.image);
+    }
+
+    return list.length > 0 ? list : [product.image];
+  }, [product, selectedVariant]);
+
+  // Active pricing & stock status (considering selected variant)
+  const currentPrice = selectedVariant?.price ?? product.price;
+  const currentMrp = selectedVariant?.mrp ?? product.mrp;
+  const currentReseller = selectedVariant?.resellerPrice ?? product.resellerPrice;
+  const isAvailableInStock = selectedVariant?.inStock !== undefined 
+    ? selectedVariant.inStock 
+    : (product.inStock !== false);
+  const savings = currentMrp - currentPrice;
+  const discountPercent = Math.round((savings / (currentMrp || 1)) * 100);
+
+  const activeImage = imagesList[currentImageIndex] || selectedVariant?.image || product.image;
 
   // Defensive array extractions for product monograph
   const indicationsList: string[] = React.useMemo(() => {
@@ -133,10 +235,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     return [];
   }, [product?.precautionsAndContraindications]);
 
-  const activeImage = imagesList[currentImageIndex] || product.image;
-  const savings = product.mrp - product.price;
-  const discountPercent = Math.round((savings / (product.mrp || 1)) * 100);
-
   // Generate unique direct link
   const productSlug = product.customLink || product.id;
   const directUrl = `${window.location.origin}${window.location.pathname}#product/${productSlug}`;
@@ -152,16 +250,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     const template = siteSettings.messageTemplates?.productInquiryWhatsApp || DEFAULT_MESSAGE_TEMPLATES.productInquiryWhatsApp;
     const includeUserInfo = siteSettings.messageTemplates?.includeUserInfo ?? true;
 
-    const resellerInfo = product.resellerPrice
-      ? ` (Reseller Rate: ₹${product.resellerPrice})`
+    const resellerInfo = currentReseller
+      ? ` (Reseller Rate: ₹${currentReseller})`
       : '';
+
+    const variantLabel = selectedVariant ? ` [Size: ${selectedVariant.size} ${selectedVariant.unit}]` : '';
 
     const formatted = formatCustomMessage(
       template,
       {
         brandName: siteSettings.brandName,
-        productName: product.name,
-        productPrice: product.price,
+        productName: `${product.name}${variantLabel}`,
+        productPrice: currentPrice,
         resellerInfo,
       },
       currentUser,
@@ -236,18 +336,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <img
                 src={activeImage}
                 alt={product.name}
-                className={`w-full h-full object-cover transition-transform duration-300 ${isZoomed ? 'scale-125 cursor-zoom-out' : 'cursor-zoom-in'}`}
-                onClick={() => setIsZoomed(!isZoomed)}
+                className="w-full h-full object-cover cursor-zoom-in group-hover:scale-102 transition-transform duration-300"
+                onClick={() => setIsLightboxOpen(true)}
               />
 
-              {/* Zoom Toggle button */}
+              {/* Lightbox / View Large button */}
               <button
                 type="button"
-                onClick={() => setIsZoomed(!isZoomed)}
-                className="absolute top-3 right-3 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer"
-                title={isZoomed ? 'Zoom Out' : 'Zoom In'}
+                onClick={() => setIsLightboxOpen(true)}
+                className="absolute top-3 right-3 py-1.5 px-2.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1.5 text-xs shadow-md"
+                title="Click image to open in full screen popup"
               >
-                <Maximize2 className="w-4 h-4" />
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-medium hidden sm:inline">Tap to View Large</span>
               </button>
 
               {/* Prev / Next Image arrows if multiple */}
@@ -278,7 +379,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
               {/* Badges on main image */}
               <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                {savings > 0 && (
+                {!isAvailableInStock && (
+                  <span className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold text-xs shadow-sm">
+                    OUT OF STOCK
+                  </span>
+                )}
+                {savings > 0 && isAvailableInStock && (
                   <span className="px-2.5 py-1 rounded-md bg-[#25D366] text-black font-bold text-xs shadow-sm">
                     {discountPercent}% OFF
                   </span>
@@ -300,7 +406,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     type="button"
                     onClick={() => {
                       setCurrentImageIndex(idx);
-                      setIsZoomed(false);
+                      setIsLightboxOpen(false);
                     }}
                     className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                       currentImageIndex === idx
@@ -314,22 +420,53 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             )}
 
-            {/* Quality & Ayush Assurance Box */}
-            <div className="p-4 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                <div>
-                  <span className="font-bold text-[#14291D] block">Ayush & GMP Certified</span>
-                  <span className="text-[11px] text-[#716858]">Heavy-metal lab verified</span>
+            {/* Quality & Ayush Assurance Box (Configurable from Admin Panel or Secretly in Product View) */}
+            <div className="relative group p-4 bg-white rounded-xl border border-[#D5CCBC] text-xs transition-all shadow-2xs hover:border-[#2C5E43]/60">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                  <div>
+                    <span className="font-bold text-[#14291D] block">
+                      {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
+                    </span>
+                    <span className="text-[11px] text-[#716858]">
+                      {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                  <div>
+                    <span className="font-bold text-[#14291D] block">
+                      {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
+                    </span>
+                    <span className="text-[11px] text-[#716858]">
+                      {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                <div>
-                  <span className="font-bold text-[#14291D] block">100% Pure Botanical</span>
-                  <span className="text-[11px] text-[#716858]">Zero synthetic fillers</span>
-                </div>
-              </div>
+
+              {/* Secret Admin Edit Trigger Button (In product view secretly) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBadge1Title(product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified');
+                  setBadge1Subtitle(product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified');
+                  setBadge2Title(product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical');
+                  setBadge2Subtitle(product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers');
+                  setIsSecretEditOpen(true);
+                }}
+                className={`absolute top-2 right-2 px-2 py-1 rounded-md text-[10px] flex items-center gap-1 transition-all cursor-pointer ${
+                  isAdmin
+                    ? 'opacity-85 group-hover:opacity-100 bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6] shadow-2xs'
+                    : 'opacity-0 group-hover:opacity-60 hover:opacity-100! text-stone-500 hover:text-stone-800 bg-white/90 border border-stone-200'
+                }`}
+                title="Secret Admin Edit: Change Ayush & Quality Assurance Badges"
+              >
+                <Edit3 className="w-3 h-3 text-[#2C5E43]" />
+                <span className="font-semibold">Secret Edit</span>
+              </button>
             </div>
           </div>
 
@@ -361,39 +498,90 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </p>
             </div>
 
+            {/* Size / Packaging Variants Selection */}
+            {product.variants && product.variants.length > 0 && (
+              <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#14291D]">Select Size / Packaging:</span>
+                  <span className="text-[#645A4B] text-[11px] font-medium">
+                    {selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((v) => {
+                    const isSelected = selectedVariant?.id === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedVariant(v);
+                          if (v.image) {
+                            const imgIdx = imagesList.indexOf(v.image);
+                            setCurrentImageIndex(imgIdx !== -1 ? imgIdx : 0);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
+                            : 'bg-[#FAF8F5] text-[#2C2419] border-[#DDD5C5] hover:border-[#14291D]'
+                        }`}
+                      >
+                        <span>{v.size} {v.unit}</span>
+                        {v.price && (
+                          <span className={`text-[10px] ${isSelected ? 'text-emerald-300' : 'text-[#2C5E43]'}`}>
+                            ₹{v.price}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Pricing Box */}
             <div className="p-4 sm:p-5 bg-white rounded-xl border border-[#D5CCBC] shadow-xs space-y-3">
               <div className="flex items-baseline gap-3">
                 <span className="font-mono font-bold text-3xl sm:text-4xl text-[#14291D]">
-                  ₹{product.price}
+                  ₹{currentPrice}
                 </span>
                 <span className="font-mono text-base text-[#887E6D] line-through">
-                  ₹{product.mrp}
+                  ₹{currentMrp}
                 </span>
-                <span className="px-2.5 py-0.5 bg-[#E7F8ED] border border-[#A5D6B6] text-[#183624] text-xs font-bold rounded">
-                  Save ₹{savings} ({discountPercent}% OFF)
-                </span>
+                {savings > 0 && (
+                  <span className="px-2.5 py-0.5 bg-[#E7F8ED] border border-[#A5D6B6] text-[#183624] text-xs font-bold rounded">
+                    Save ₹{savings} ({discountPercent}% OFF)
+                  </span>
+                )}
               </div>
 
               {/* Reseller Rate if active */}
-              {product.resellerPrice !== undefined && product.resellerPrice > 0 && (
+              {currentReseller !== undefined && currentReseller > 0 && (
                 <div className="p-2.5 bg-[#FAF5EB] rounded-lg border border-[#E8DCC2] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#B4741E]" />
                     <span className="font-bold text-[#14291D]">Registered Reseller / B2B Rate:</span>
                   </div>
                   <span className="font-mono font-bold text-sm text-[#183624] bg-white px-2 py-0.5 rounded border border-[#D8C7A5]">
-                    ₹{product.resellerPrice} / unit
+                    ₹{currentReseller} / unit
                   </span>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-xs text-[#6A604F] border-t border-[#EAE3D4] pt-2.5">
-                <span>Dispense Pack: <strong className="text-[#14291D] font-mono">{product.volumeOrWeight}</strong></span>
-                <span className="flex items-center gap-1.5 text-emerald-800 font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  In Stock & Ready for Dispatch
-                </span>
+                <span>Dispense Pack: <strong className="text-[#14291D] font-mono">{selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}</strong></span>
+                {isAvailableInStock ? (
+                  <span className="flex items-center gap-1.5 text-emerald-800 font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    In Stock & Ready for Dispatch
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Currently Out of Stock
+                  </span>
+                )}
               </div>
             </div>
 
@@ -402,14 +590,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => onAddToCart(product)}
-                  className={`py-3 px-5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer ${
-                    isInCart
-                      ? 'bg-[#183624] text-white hover:bg-[#20442E]'
-                      : 'bg-[#2C5E43] text-white hover:bg-[#224A35]'
+                  disabled={!isAvailableInStock}
+                  onClick={() => onAddToCart({
+                    ...product,
+                    price: currentPrice,
+                    mrp: currentMrp,
+                    resellerPrice: currentReseller,
+                    volumeOrWeight: selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight,
+                    image: (selectedVariant?.image) || product.image,
+                  })}
+                  className={`py-3 px-5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-xs ${
+                    !isAvailableInStock
+                      ? 'bg-stone-200 text-stone-500 border border-stone-300 cursor-not-allowed'
+                      : isInCart
+                        ? 'bg-[#183624] text-white hover:bg-[#20442E] cursor-pointer'
+                        : 'bg-[#2C5E43] text-white hover:bg-[#224A35] cursor-pointer'
                   }`}
                 >
-                  {isInCart ? (
+                  {!isAvailableInStock ? (
+                    <span>Out of Stock</span>
+                  ) : isInCart ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-300" />
                       <span>In Inquiry Cart</span>
@@ -821,6 +1021,180 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Full-Screen Image Popup Modal */}
+      <ImageLightboxModal
+        isOpen={isLightboxOpen}
+        images={imagesList}
+        currentIndex={currentImageIndex}
+        productName={product.name}
+        onClose={() => setIsLightboxOpen(false)}
+        onNavigate={(idx) => setCurrentImageIndex(idx)}
+      />
+
+      {/* Secret Quick-Edit Modal for Quality Assurance Badges in Product View */}
+      {isSecretEditOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsSecretEditOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#D5CCBC] space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#E7EFEA] flex items-center justify-center text-[#2C5E43] border border-[#B5D6C4]">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-2">
+                    <span>Secret Edit: Quality Assurance Badges</span>
+                  </h3>
+                  <p className="text-[11px] text-[#6E6352]">
+                    Edit these 4 trust indicators right from the product view secretly.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSecretEditOpen(false)}
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {secretEditSuccess && (
+              <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xs">
+                <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span>{secretEditSuccess}</span>
+              </div>
+            )}
+
+            <div className="space-y-3.5 text-xs">
+              {/* Badge 1 */}
+              <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-2.5">
+                <span className="font-bold text-[#14291D] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                  <span>Assurance Badge #1</span>
+                </span>
+                <div>
+                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                    Badge 1 Title (Default: Ayush & GMP Certified)
+                  </label>
+                  <input
+                    type="text"
+                    value={badge1Title}
+                    onChange={(e) => setBadge1Title(e.target.value)}
+                    placeholder="Ayush & GMP Certified"
+                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                    Badge 1 Subtitle / Note (Default: Heavy-metal lab verified)
+                  </label>
+                  <input
+                    type="text"
+                    value={badge1Subtitle}
+                    onChange={(e) => setBadge1Subtitle(e.target.value)}
+                    placeholder="Heavy-metal lab verified"
+                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                  />
+                </div>
+              </div>
+
+              {/* Badge 2 */}
+              <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-2.5">
+                <span className="font-bold text-[#14291D] flex items-center gap-1.5">
+                  <Leaf className="w-4 h-4 text-[#2C5E43]" />
+                  <span>Assurance Badge #2</span>
+                </span>
+                <div>
+                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                    Badge 2 Title (Default: 100% Pure Botanical)
+                  </label>
+                  <input
+                    type="text"
+                    value={badge2Title}
+                    onChange={(e) => setBadge2Title(e.target.value)}
+                    placeholder="100% Pure Botanical"
+                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                    Badge 2 Subtitle / Note (Default: Zero synthetic fillers)
+                  </label>
+                  <input
+                    type="text"
+                    value={badge2Subtitle}
+                    onChange={(e) => setBadge2Subtitle(e.target.value)}
+                    placeholder="Zero synthetic fillers"
+                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Live Visual Preview Inside Modal */}
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-[#716858] block">Live Preview in Product Ribbon:</span>
+              <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                  <div>
+                    <span className="font-bold text-[#14291D] block">{badge1Title || 'Ayush & GMP Certified'}</span>
+                    <span className="text-[11px] text-[#716858]">{badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                  <div>
+                    <span className="font-bold text-[#14291D] block">{badge2Title || '100% Pure Botanical'}</span>
+                    <span className="text-[11px] text-[#716858]">{badge2Subtitle || 'Zero synthetic fillers'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#EAE3D4]">
+              <button
+                type="button"
+                onClick={() => {
+                  setBadge1Title('Ayush & GMP Certified');
+                  setBadge1Subtitle('Heavy-metal lab verified');
+                  setBadge2Title('100% Pure Botanical');
+                  setBadge2Subtitle('Zero synthetic fillers');
+                }}
+                className="text-[11px] text-[#6E6352] hover:text-[#14291D] underline cursor-pointer flex items-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3 text-[#2C5E43]" />
+                <span>Reset to Standard Defaults</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveProductBadges}
+                  className="px-3.5 py-2 bg-[#2C5E43] hover:bg-[#20442E] text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-xs"
+                >
+                  Save for This Product
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSiteBadges}
+                  className="px-3.5 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-xs"
+                >
+                  Save for All Products
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
