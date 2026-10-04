@@ -1,5 +1,6 @@
 import React from 'react';
 import { HerbalProduct, SiteSettings } from '../types/pharmacy';
+import { formatPrice } from '../utils/numberFormatter';
 import { X, Trash2, Plus, Minus, MessageSquare, ShoppingBag, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -149,11 +150,11 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
                       {product.volumeOrWeight} · {product.form}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-bold text-[#14291D] tabular-nums">
-                        ₹{product.price * quantity}
+                      <span className="text-xs font-bold text-[#14291D] tabular-nums" title={`₹${product.price * quantity}`}>
+                        {formatPrice(product.price * quantity)}
                       </span>
-                      <span className="text-[11px] text-[#8C8271] line-through tabular-nums">
-                        ₹{product.mrp * quantity}
+                      <span className="text-[11px] text-[#8C8271] line-through tabular-nums" title={`₹${product.mrp * quantity}`}>
+                        {formatPrice(product.mrp * quantity)}
                       </span>
                     </div>
                   </div>
@@ -208,17 +209,17 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-[#5B5243]">
                 <span>Total Formulation MRP:</span>
-                <span className="tabular-nums">₹{totalMrp}</span>
+                <span className="tabular-nums" title={`₹${totalMrp}`}>{formatPrice(totalMrp)}</span>
               </div>
               {totalSavings > 0 && (
                 <div className="flex justify-between text-[#2C5E43] font-medium">
                   <span>Botanical Savings:</span>
-                  <span className="tabular-nums">-₹{totalSavings}</span>
+                  <span className="tabular-nums">-{formatPrice(totalSavings)}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-bold text-[#14291D] pt-2 border-t border-[#E7DFD1]">
                 <span>Estimated Total:</span>
-                <span className="tabular-nums text-lg text-[#2C5E43]">₹{totalAmount}</span>
+                <span className="tabular-nums text-lg text-[#2C5E43]" title={`₹${totalAmount}`}>{formatPrice(totalAmount)}</span>
               </div>
               <p className="text-[11px] text-[#786F5F] text-center pt-0.5">
                 Free shipping & free practitioner dosage schedule included

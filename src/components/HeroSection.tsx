@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   Phone, 
   MessageCircle, 
@@ -454,18 +455,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
                             {/* Pricing */}
                             <div className="flex items-baseline gap-2 pt-1">
-                              <span className="text-lg font-bold text-[#14291D] tabular-nums font-mono">
-                                ₹{finalPrice}
+                              <span className="text-lg font-bold text-[#14291D] tabular-nums font-mono" title={`₹${finalPrice}`}>
+                                {formatPrice(finalPrice)}
                               </span>
-                              <span className="text-xs text-[#877E6F] line-through tabular-nums font-mono">
-                                ₹{mrp}
+                              <span className="text-xs text-[#877E6F] line-through tabular-nums font-mono" title={`₹${mrp}`}>
+                                {formatPrice(mrp)}
                               </span>
                               <span className="text-[11px] font-semibold text-[#2C5E43]">
-                                Save ₹{savings}
+                                Save {formatPrice(savings)}
                               </span>
                               {product.resellerPrice && (
                                 <span className="text-[10px] text-[#183624] bg-emerald-50 border border-emerald-200 px-1 rounded font-mono">
-                                  Reseller: ₹{product.resellerPrice}
+                                  Reseller: {formatPrice(product.resellerPrice)}
                                 </span>
                               )}
                             </div>

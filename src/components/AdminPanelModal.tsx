@@ -16,6 +16,7 @@ import {
   ProductAssuranceBadges
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
+import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
   Plus, 
@@ -156,6 +157,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   // Product Variants state (Sizes, Units e.g. 100ml, 200ml, 500gm, 1kg, separate images)
   const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
+  const [variantPhotoInput, setVariantPhotoInput] = useState<Record<number, string>>({});
 
   // Product Form state including Reseller Price, Rating Star, Sort Badge, Stock, Display Order, Assurance Badges
   const [productForm, setProductForm] = useState({
@@ -166,12 +168,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     form: 'Churna (Powder)' as ProductForm,
     tagline: '',
     description: '',
-    price: 399,
-    mrp: 499,
-    resellerPrice: 280,
+    price: 0,
+    mrp: 0,
+    resellerPrice: 0,
     rating: 4.9,
     reviewsCount: 120,
     sortBadge: 'none' as SortBadgeType,
+    hasCustomTag: false,
+    customTagText: '',
+    customTagBgColor: '#14291D',
+    customTagTextColor: '#FFFFFF',
     volumeOrWeight: '100g Pure Powder',
     inStock: true,
     displayOrder: 1,
@@ -239,7 +245,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       peopleBadgeText: s.peopleBadgeText || DEFAULT_SITE_SETTINGS.peopleBadgeText,
       peopleSectionTitle: s.peopleSectionTitle || DEFAULT_SITE_SETTINGS.peopleSectionTitle,
       peopleSectionSubtitle: s.peopleSectionSubtitle || DEFAULT_SITE_SETTINGS.peopleSectionSubtitle,
-      peopleSwipeNotice: s.peopleSwipeNotice || DEFAULT_SITE_SETTINGS.peopleSwipeNotice || '👉 Swipe horizontally to view team',
+      peopleSwipeNotice: s.peopleSwipeNotice || DEFAULT_SITE_SETTINGS.peopleSwipeNotice || '',
       peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
         ? s.peopleList
         : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
@@ -396,6 +402,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     const firstCat = categories.find((c) => c.id !== 'all') || { id: 'immunity', label: 'Immunity & Respiratory' };
     const firstForm = forms[0] || 'Churna (Powder)';
     setVariantsList([]);
+    setVariantPhotoInput({});
 
     setProductForm({
       name: '',
@@ -405,12 +412,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       form: firstForm,
       tagline: '',
       description: '',
-      price: 399,
-      mrp: 499,
-      resellerPrice: 280,
+      price: 0,
+      mrp: 0,
+      resellerPrice: 0,
       rating: 4.9,
       reviewsCount: 15,
       sortBadge: 'none',
+      hasCustomTag: false,
+      customTagText: '',
+      customTagBgColor: '#14291D',
+      customTagTextColor: '#FFFFFF',
       volumeOrWeight: '100g Pure Powder',
       inStock: true,
       displayOrder: products.length + 1,
@@ -460,9 +471,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     // Setup variants
     setVariantsList(
       p.variants && p.variants.length > 0
-        ? [...p.variants]
+        ? p.variants.map((v) => ({
+            ...v,
+            images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : []),
+          }))
         : []
     );
+    setVariantPhotoInput({});
 
     setProductForm({
       name: p.name,
@@ -478,6 +493,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       rating: p.rating || 4.9,
       reviewsCount: p.reviewsCount || 1,
       sortBadge: p.sortBadge || 'none',
+      hasCustomTag: Boolean(p.customTag && p.customTag.text),
+      customTagText: p.customTag?.text || '',
+      customTagBgColor: p.customTag?.bgColor || '#14291D',
+      customTagTextColor: p.customTag?.textColor || '#FFFFFF',
       volumeOrWeight: p.volumeOrWeight,
       inStock: p.inStock !== false,
       displayOrder: p.displayOrder !== undefined ? p.displayOrder : (products.indexOf(p) + 1),
@@ -520,6 +539,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleRemoveImageUrl = (index: number) => {
     if (imageUrls.length <= 1) return;
     setImageUrls(imageUrls.filter((_, i) => i !== index));
+  };
+
+  // Variant Separate Photos Helpers (Supports multiple links and add button)
+  const handleAddVariantPhoto = (vIdx: number) => {
+    const raw = (variantPhotoInput[vIdx] || '').trim();
+    if (!raw) return;
+    const links = raw.split(/[\n,]+/).map((s) => s.trim()).filter((s) => s.length > 0);
+    if (links.length === 0) return;
+    const updated = [...variantsList];
+    const currentImgs = Array.isArray(updated[vIdx].images) && updated[vIdx].images!.length > 0
+      ? [...updated[vIdx].images!]
+      : (updated[vIdx].image ? [updated[vIdx].image!] : []);
+
+    links.forEach((link) => {
+      if (!currentImgs.includes(link)) {
+        currentImgs.push(link);
+      }
+    });
+
+    updated[vIdx].images = currentImgs;
+    updated[vIdx].image = currentImgs[0] || '';
+    setVariantsList(updated);
+    setVariantPhotoInput((prev) => ({ ...prev, [vIdx]: '' }));
+  };
+
+  const handleRemoveVariantPhoto = (vIdx: number, pIdx: number) => {
+    const updated = [...variantsList];
+    const currentImgs = Array.isArray(updated[vIdx].images)
+      ? [...updated[vIdx].images!]
+      : (updated[vIdx].image ? [updated[vIdx].image!] : []);
+    currentImgs.splice(pIdx, 1);
+    updated[vIdx].images = currentImgs;
+    updated[vIdx].image = currentImgs[0] || '';
+    setVariantsList(updated);
   };
 
   // Ingredient Helpers
@@ -843,19 +896,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }))
       .sort((a, b) => a.position - b.position);
 
-    // Cleaned variants
+    // Cleaned variants with multi-image support
     const validVariants: ProductVariant[] = variantsList
       .filter((v) => v.size && v.unit)
-      .map((v) => ({
-        id: v.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-        size: v.size.trim(),
-        unit: v.unit.trim(),
-        price: Number(v.price) || Number(productForm.price),
-        mrp: Number(v.mrp) || Number(productForm.mrp),
-        resellerPrice: v.resellerPrice !== undefined ? Number(v.resellerPrice) : undefined,
-        image: v.image?.trim() || undefined,
-        inStock: v.inStock !== false,
-      }));
+      .map((v) => {
+        const varImgs = Array.isArray(v.images)
+          ? v.images.filter((img) => typeof img === 'string' && img.trim().length > 0)
+          : (v.image && v.image.trim() ? [v.image.trim()] : []);
+        const primaryVarImg = varImgs[0] || v.image?.trim() || undefined;
+
+        return {
+          id: v.id || `var_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          size: v.size.trim(),
+          unit: v.unit.trim(),
+          price: Number(v.price) || 0,
+          mrp: Number(v.mrp) || Number(v.price) || 0,
+          resellerPrice: v.resellerPrice !== undefined ? Number(v.resellerPrice) : undefined,
+          image: primaryVarImg,
+          images: varImgs,
+          inStock: v.inStock !== false,
+        };
+      });
+
+    // Derive base price, MRP, and reseller rate from the first variant if available
+    const derivedPrice = validVariants.length > 0 ? validVariants[0].price : (Number(productForm.price) || 0);
+    const derivedMrp = validVariants.length > 0 ? (validVariants[0].mrp || validVariants[0].price) : (Number(productForm.mrp) || 0);
+    const derivedReseller = validVariants.length > 0 ? validVariants[0].resellerPrice : (Number(productForm.resellerPrice) || undefined);
+
+    // Custom manually set tag
+    const customTag = (productForm.hasCustomTag && productForm.customTagText.trim())
+      ? {
+          text: productForm.customTagText.trim(),
+          bgColor: productForm.customTagBgColor || '#14291D',
+          textColor: productForm.customTagTextColor || '#FFFFFF',
+        }
+      : undefined;
 
     const assuranceBadges: ProductAssuranceBadges = {
       badge1Title: productForm.badge1Title.trim() || 'Ayush & GMP Certified',
@@ -874,13 +949,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         form: productForm.form,
         tagline: productForm.tagline.trim() || 'Standardized herbal preparation',
         description: productForm.description.trim() || 'Authentic herbal formulation.',
-        price: Number(productForm.price) || 299,
-        mrp: Number(productForm.mrp) || 399,
-        resellerPrice: Number(productForm.resellerPrice) || 200,
+        price: derivedPrice,
+        mrp: derivedMrp,
+        resellerPrice: derivedReseller,
         rating: Math.min(5, Math.max(1, Number(productForm.rating) || 4.9)),
         reviewsCount: Number(productForm.reviewsCount) || 1,
         sortBadge: productForm.sortBadge || 'none',
-        volumeOrWeight: productForm.volumeOrWeight.trim() || '100g',
+        customTag,
+        volumeOrWeight: productForm.volumeOrWeight.trim() || (validVariants.length > 0 ? `${validVariants[0].size} ${validVariants[0].unit}` : '100g'),
         inStock: Boolean(productForm.inStock),
         displayOrder: Number(productForm.displayOrder) || (products.length + 1),
         variants: validVariants,
@@ -921,13 +997,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         form: productForm.form,
         tagline: productForm.tagline.trim(),
         description: productForm.description.trim(),
-        price: Number(productForm.price),
-        mrp: Number(productForm.mrp),
-        resellerPrice: Number(productForm.resellerPrice),
+        price: derivedPrice,
+        mrp: derivedMrp,
+        resellerPrice: derivedReseller,
         rating: Math.min(5, Math.max(1, Number(productForm.rating) || 4.9)),
         reviewsCount: Number(productForm.reviewsCount),
         sortBadge: productForm.sortBadge || 'none',
-        volumeOrWeight: productForm.volumeOrWeight.trim(),
+        customTag,
+        volumeOrWeight: productForm.volumeOrWeight.trim() || (validVariants.length > 0 ? `${validVariants[0].size} ${validVariants[0].unit}` : editingProduct.volumeOrWeight),
         inStock: Boolean(productForm.inStock),
         displayOrder: Number(productForm.displayOrder) || (editingProduct.displayOrder ?? 1),
         variants: validVariants,
@@ -1541,64 +1618,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* PRICING, RESELLER PRICE, RATING STARS & SORT BADGES (NO EMOJIS, BRANDED ICONS) */}
+                    {/* RATING STARS, REVIEWS & CUSTOM PRODUCT TAGS */}
                     <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-[#B4741E]" />
-                        <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                          Pricing, Reseller Rate, Rating Stars & Sorting Focus
-                        </h5>
+                      <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            Rating Stars, Reviews & Custom Product Tags
+                          </h5>
+                        </div>
+                        <span className="text-[11px] text-[#2C5E43] font-medium bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          Pricing managed via Variants (starts ₹0)
+                        </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                        {/* Selling Price */}
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Retail Selling Price (₹)</label>
-                          <input
-                            type="number"
-                            required
-                            value={productForm.price}
-                            onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold"
-                          />
+                      {/* Notice about Variant-based pricing */}
+                      <div className="p-2.5 bg-white rounded-lg border border-[#D5CCBC] flex items-center justify-between gap-3 text-xs text-[#5B5141]">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                          <span>
+                            <strong>Note:</strong> Product Retail Price, MRP & Reseller Rate are configured exclusively inside <strong>Size & Packaging Variants</strong> below (starts from ₹0).
+                          </span>
                         </div>
+                        <span className="text-[11px] font-mono font-bold text-[#14291D] shrink-0">
+                          {variantsList.length > 0 ? `${variantsList.length} Variant(s) set` : 'Single default size'}
+                        </span>
+                      </div>
 
-                        {/* MRP */}
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">MRP Price (₹)</label>
-                          <input
-                            type="number"
-                            required
-                            value={productForm.mrp}
-                            onChange={(e) => setProductForm({ ...productForm, mrp: Number(e.target.value) })}
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                          />
-                        </div>
-
-                        {/* RESELLER PRICE */}
-                        <div className="bg-[#EBF5EF] p-2 rounded-lg border border-[#BBDDC7]">
-                          <label className="block font-bold text-[#183624] mb-1 flex items-center justify-between">
-                            <span>Reseller Price (₹)</span>
-                            <span className="text-[10px] text-emerald-700 font-normal">B2B Wholesale</span>
-                          </label>
-                          <input
-                            type="number"
-                            value={productForm.resellerPrice}
-                            onChange={(e) => setProductForm({ ...productForm, resellerPrice: Number(e.target.value) })}
-                            placeholder="e.g. 250"
-                            className="w-full px-2.5 py-1.5 bg-white border border-[#A5D6B6] rounded text-xs font-mono font-bold text-[#183624]"
-                          />
-                          <div className="text-[10px] text-[#2C5E43] font-semibold mt-1">
-                            Reseller Margin: ₹{productForm.price - (productForm.resellerPrice || productForm.price)}
-                          </div>
-                        </div>
-
+                      {/* Rating Stars & Reviews Count */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* RATING STARS (BRANDED SVG ICONS) */}
-                        <div>
+                        <div className="p-3 bg-white rounded-xl border border-[#DDD5C5]">
                           <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
-                            <span>Rating Star (1 to 5)</span>
-                            <span className="text-amber-600 font-bold flex items-center gap-0.5">
-                              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                            <span className="text-xs font-semibold">Rating Stars (1.0 to 5.0)</span>
+                            <span className="text-amber-600 font-bold flex items-center gap-0.5 text-xs">
+                              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                               <span>{productForm.rating}</span>
                             </span>
                           </label>
@@ -1610,13 +1664,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             required
                             value={productForm.rating}
                             onChange={(e) => setProductForm({ ...productForm, rating: parseFloat(e.target.value) || 5 })}
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                            className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold"
                           />
-                          <div className="flex text-amber-500 text-xs mt-1">
+                          <div className="flex text-amber-500 text-xs mt-1.5">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
-                                className={`w-3 h-3 ${
+                                className={`w-3.5 h-3.5 ${
                                   i < Math.round(productForm.rating || 5)
                                     ? 'fill-amber-400 text-amber-400'
                                     : 'fill-gray-200 text-gray-300'
@@ -1627,23 +1681,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
 
                         {/* REVIEWS COUNT */}
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Reviews Count</label>
+                        <div className="p-3 bg-white rounded-xl border border-[#DDD5C5]">
+                          <label className="block font-medium text-[#2B251D] mb-1 text-xs font-semibold">
+                            Total Customer Reviews Count
+                          </label>
                           <input
                             type="number"
                             min="0"
                             value={productForm.reviewsCount}
                             onChange={(e) => setProductForm({ ...productForm, reviewsCount: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                            className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono"
                           />
-                          <span className="text-[10px] text-[#786D5C] mt-1 block">Customer reviews</span>
+                          <span className="text-[10px] text-[#786D5C] mt-1 block">
+                            Displayed on product card & monograph header (e.g. {formatCompactNumber(productForm.reviewsCount || 0)} reviews)
+                          </span>
                         </div>
                       </div>
 
                       {/* SORT BADGE SELECTOR (BRANDED LUCIDE ICONS, NO EMOJIS) */}
                       <div className="pt-2 border-t border-[#EAE3D4]">
-                        <label className="block font-semibold text-[#2B251D] mb-1.5">
-                          Product Sort Badge & Status
+                        <label className="block font-semibold text-[#2B251D] mb-1.5 text-xs">
+                          Catalog Standard Sort Category
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                           {SORT_BADGE_OPTIONS.map((opt) => {
@@ -1670,6 +1728,152 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             );
                           })}
                         </div>
+                      </div>
+
+                      {/* CUSTOM MANUAL TAG SETTING (PRESETS OR TYPE MANUALLY WITH BG & TEXT COLOR SELECTION) */}
+                      <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#14291D]">
+                            <input
+                              type="checkbox"
+                              checked={productForm.hasCustomTag}
+                              onChange={(e) => setProductForm({ ...productForm, hasCustomTag: e.target.checked })}
+                              className="rounded border-[#DDD5C5] text-[#2C5E43] focus:ring-[#2C5E43] cursor-pointer"
+                            />
+                            <span>Add Custom Product Tag (Badge on Card & Product View)</span>
+                          </label>
+
+                          {productForm.hasCustomTag && (
+                            <span className="text-[10px] text-[#2C5E43] font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              Custom Tag Active
+                            </span>
+                          )}
+                        </div>
+
+                        {productForm.hasCustomTag && (
+                          <div className="space-y-3 pt-2 border-t border-[#F0EAE0]">
+                            {/* Preset Quick Tags */}
+                            <div>
+                              <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#6E6352] mb-1.5">
+                                Quick Preset Tag Options:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  { label: '🔥 Trending', text: 'Trending', bg: '#DC2626', color: '#FFFFFF' },
+                                  { label: '⭐ Top Seller', text: 'Top Seller', bg: '#D97706', color: '#FFFFFF' },
+                                  { label: '🏷️ Best Deal', text: 'Best Deal', bg: '#059669', color: '#FFFFFF' },
+                                  { label: '✨ Featured', text: 'Featured', bg: '#4F46E5', color: '#FFFFFF' },
+                                  { label: '🚀 New Launch', text: 'New Launch', bg: '#2563EB', color: '#FFFFFF' },
+                                  { label: '🌿 100% Ayurvedic', text: '100% Ayurvedic', bg: '#14291D', color: '#A5D6B6' },
+                                  { label: '⚡ Hot Offer', text: 'Hot Offer', bg: '#EA580C', color: '#FFFFFF' },
+                                ].map((pre, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                      setProductForm({
+                                        ...productForm,
+                                        customTagText: pre.text,
+                                        customTagBgColor: pre.bg,
+                                        customTagTextColor: pre.color,
+                                        hasCustomTag: true,
+                                      });
+                                    }}
+                                    className="px-2.5 py-1 rounded text-[11px] font-semibold border cursor-pointer transition-transform hover:scale-103 shadow-2xs"
+                                    style={{ backgroundColor: pre.bg, color: pre.color, borderColor: pre.bg }}
+                                  >
+                                    {pre.label}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setProductForm({ ...productForm, customTagText: '', hasCustomTag: false })}
+                                  className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded text-[11px] font-medium border border-stone-300 cursor-pointer"
+                                >
+                                  Clear Tag
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Manual Text and Colors */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                              {/* Custom Tag Text */}
+                              <div className="sm:col-span-1">
+                                <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                  Custom Tag Text (Type Manually)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={productForm.customTagText}
+                                  onChange={(e) => setProductForm({ ...productForm, customTagText: e.target.value })}
+                                  placeholder="e.g. Special Deal, Limited Batch, Pure Herb"
+                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                                />
+                              </div>
+
+                              {/* Background Color */}
+                              <div>
+                                <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                  Background Color
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={productForm.customTagBgColor || '#14291D'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagBgColor: e.target.value })}
+                                    className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={productForm.customTagBgColor || '#14291D'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagBgColor: e.target.value })}
+                                    className="flex-1 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Text Color */}
+                              <div>
+                                <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                  Text Color
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={productForm.customTagTextColor || '#FFFFFF'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagTextColor: e.target.value })}
+                                    className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={productForm.customTagTextColor || '#FFFFFF'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagTextColor: e.target.value })}
+                                    className="flex-1 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Live Badge Preview */}
+                            <div className="pt-2 flex items-center gap-3">
+                              <span className="text-[10px] uppercase font-bold text-[#716858]">Live Badge Preview:</span>
+                              {productForm.customTagText.trim() ? (
+                                <span
+                                  className="text-xs font-bold px-2.5 py-1 rounded shadow-xs flex items-center gap-1.5"
+                                  style={{
+                                    backgroundColor: productForm.customTagBgColor || '#14291D',
+                                    color: productForm.customTagTextColor || '#FFFFFF',
+                                  }}
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span>{productForm.customTagText}</span>
+                                </span>
+                              ) : (
+                                <span className="text-xs text-stone-400 italic">Type a tag text above to preview</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1816,10 +2020,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 id: `var_${Date.now()}_${variantsList.length + 1}`,
                                 size: variantsList.length === 0 ? '100' : '200',
                                 unit: 'ml',
-                                price: Number(productForm.price) || 299,
-                                mrp: Number(productForm.mrp) || 399,
-                                resellerPrice: Number(productForm.resellerPrice) || undefined,
+                                price: 0,
+                                mrp: 0,
+                                resellerPrice: undefined,
                                 image: '',
+                                images: [],
                                 inStock: true,
                               }
                             ]);
@@ -1833,7 +2038,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                       {variantsList.length === 0 ? (
                         <div className="p-4 text-center border border-dashed border-[#DDD5C5] rounded-lg bg-white text-xs text-[#7A705E]">
-                          No packaging variants created yet (Single size: <strong>{productForm.volumeOrWeight}</strong>). Click <strong>"+ Add Variant"</strong> to create options like 100ml, 200ml, 500gm, 1kg or 1 Liter with custom prices and separate images.
+                          No packaging variants created yet (Single size: <strong>{productForm.volumeOrWeight}</strong>). Click <strong>"+ Add Variant"</strong> to create options like 100ml, 200ml, 500gm, 1kg or 1 Liter with custom prices and separate images starting from ₹0.
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1921,6 +2126,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   <input
                                     type="number"
                                     required
+                                    min="0"
                                     value={variant.price}
                                     onChange={(e) => {
                                       const updated = [...variantsList];
@@ -1938,6 +2144,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   </label>
                                   <input
                                     type="number"
+                                    min="0"
                                     value={variant.mrp}
                                     onChange={(e) => {
                                       const updated = [...variantsList];
@@ -1955,6 +2162,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   </label>
                                   <input
                                     type="number"
+                                    min="0"
                                     value={variant.resellerPrice ?? ''}
                                     placeholder="Optional"
                                     onChange={(e) => {
@@ -1984,30 +2192,68 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 </div>
                               </div>
 
-                              {/* Separate Variant Image */}
-                              <div className="pt-2 border-t border-[#F0EAE0] flex flex-wrap sm:flex-nowrap items-center gap-2.5">
-                                <label className="text-[11px] font-medium text-[#2B251D] shrink-0">
-                                  Variant Separate Photo:
-                                </label>
-                                <input
-                                  type="url"
-                                  value={variant.image || ''}
-                                  placeholder="https://... (Separate image shown when customer selects this size)"
-                                  onChange={(e) => {
-                                    const updated = [...variantsList];
-                                    updated[vIdx].image = e.target.value;
-                                    setVariantsList(updated);
-                                  }}
-                                  className="flex-1 px-2.5 py-1 bg-white border border-[#DDD5C5] rounded text-xs font-mono"
-                                />
-                                {variant.image && (
-                                  <div className="w-7 h-7 rounded border border-[#DDD5C5] overflow-hidden shrink-0 bg-stone-100">
-                                    <img
-                                      src={variant.image}
-                                      alt={`${variant.size} ${variant.unit}`}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                              {/* Separate Variant Photo(s): Multiple links & Add Button */}
+                              <div className="pt-2.5 border-t border-[#F0EAE0] space-y-2">
+                                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                                  <label className="text-[11px] font-bold text-[#14291D] shrink-0 flex items-center gap-1">
+                                    <ImageIcon className="w-3.5 h-3.5 text-[#2C5E43]" />
+                                    <span>Variant Separate Photo(s):</span>
+                                  </label>
+                                  <div className="flex-1 flex gap-1.5 min-w-[220px]">
+                                    <input
+                                      type="url"
+                                      value={variantPhotoInput[vIdx] || ''}
+                                      placeholder="Paste image link(s) (comma or newline separated)"
+                                      onChange={(e) => setVariantPhotoInput((prev) => ({ ...prev, [vIdx]: e.target.value }))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          handleAddVariantPhoto(vIdx);
+                                        }
+                                      }}
+                                      className="flex-1 px-2.5 py-1 bg-white border border-[#DDD5C5] rounded text-xs font-mono"
                                     />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddVariantPhoto(vIdx)}
+                                      className="px-3 py-1 bg-[#14291D] hover:bg-[#203E2D] text-white rounded text-xs font-semibold flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                                    >
+                                      <Plus className="w-3 h-3 text-amber-300" />
+                                      <span>+ Add Photo</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Variant Photos Gallery Thumbnails List */}
+                                {((variant.images && variant.images.length > 0) || (variant.image && variant.image.trim())) && (
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    {(variant.images && variant.images.length > 0 ? variant.images : [variant.image!]).map((photoUrl, pIdx) => (
+                                      <div
+                                        key={pIdx}
+                                        className="relative group bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg p-1 flex items-center gap-2 pr-2 shadow-2xs"
+                                      >
+                                        <div className="w-9 h-9 rounded bg-white overflow-hidden border border-[#D5CCBC] shrink-0">
+                                          <img
+                                            src={photoUrl}
+                                            alt={`Variant photo ${pIdx + 1}`}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                          />
+                                        </div>
+                                        <div className="text-[10px] font-mono text-[#5B5141] max-w-[120px] truncate" title={photoUrl}>
+                                          {pIdx === 0 ? <span className="font-bold text-[#14291D] bg-[#E7EFEA] px-1 py-0.2 rounded text-[9px] mr-1">#1 Primary</span> : `#${pIdx + 1}`}
+                                          {photoUrl.split('/').pop() || 'photo'}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveVariantPhoto(vIdx, pIdx)}
+                                          className="p-1 text-red-600 hover:bg-red-50 rounded cursor-pointer ml-1"
+                                          title="Remove this photo"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </div>
@@ -2670,15 +2916,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                             {/* Retail Price */}
                             <td className="py-2 px-3">
-                              <div className="font-mono font-bold text-[#14291D]">₹{prod.price}</div>
-                              <div className="text-[10px] text-[#887E6D] line-through">₹{prod.mrp}</div>
+                              <div className="font-mono font-bold text-[#14291D]">{formatPrice(prod.price)}</div>
+                              <div className="text-[10px] text-[#887E6D] line-through">{formatPrice(prod.mrp)}</div>
                             </td>
 
                             {/* Reseller Rate */}
                             <td className="py-2 px-3">
                               {prod.resellerPrice !== undefined && prod.resellerPrice > 0 ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#EBF5EF] text-[#183624] font-mono font-bold border border-[#BBDDC7] text-[11px]">
-                                  ₹{prod.resellerPrice}
+                                  {formatPrice(prod.resellerPrice)}
                                 </span>
                               ) : (
                                 <span className="text-[#998F80] italic text-[11px]">— Not Set —</span>
@@ -2690,7 +2936,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               <div className="flex items-center gap-1 text-amber-600 font-bold">
                                 <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
                                 <span>{prod.rating}</span>
-                                <span className="text-[10px] text-[#786D5C]">({prod.reviewsCount})</span>
+                                <span className="text-[10px] text-[#786D5C]">({formatCompactNumber(prod.reviewsCount)})</span>
                               </div>
                             </td>
 
@@ -2983,7 +3229,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     >
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} ({p.sanskritName}) - MRP ₹{p.mrp} / ₹{p.price}
+                          {p.name} ({p.sanskritName}) - MRP {formatPrice(p.mrp)} / {formatPrice(p.price)}
                         </option>
                       ))}
                     </select>
@@ -3171,7 +3417,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 #{index + 1}
                               </span>
                               <span className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded text-[10px] bg-black/70 text-white font-mono">
-                                ₹{dealPrice}
+                                {formatPrice(dealPrice)}
                               </span>
                             </div>
 
@@ -3250,7 +3496,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 <div className="font-semibold text-[#14291D]">{title}</div>
                                 {prod && (
                                   <div className="text-[10px] text-[#716858]">
-                                    Original: ₹{prod.price} (MRP ₹{prod.mrp})
+                                    Original: {formatPrice(prod.price)} (MRP {formatPrice(prod.mrp)})
                                   </div>
                                 )}
                               </td>
@@ -3903,9 +4149,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={siteForm.peopleSwipeNotice ?? '👉 Swipe horizontally to view team'}
+                      value={siteForm.peopleSwipeNotice ?? ''}
                       onChange={(e) => setSiteForm({ ...siteForm, peopleSwipeNotice: e.target.value })}
-                      placeholder="e.g. 👉 Swipe horizontally to view team"
+                      placeholder="Optional notice (leave blank for clean view)"
                       className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-emerald-900"
                     />
                   </div>
@@ -3920,7 +4166,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         peopleBadgeText: siteForm.peopleBadgeText?.trim() || 'Certified Ayurvedic Doctors & Formulators',
                         peopleSectionTitle: siteForm.peopleSectionTitle?.trim() || 'Our Ayurvedic Doctors & Formulation Specialists',
                         peopleSectionSubtitle: siteForm.peopleSectionSubtitle?.trim() || 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
-                        peopleSwipeNotice: siteForm.peopleSwipeNotice?.trim() || '👉 Swipe horizontally to view team',
+                        peopleSwipeNotice: siteForm.peopleSwipeNotice?.trim() || '',
                       };
                       setSiteForm(updatedSite);
                       onUpdateSiteSettings(updatedSite);
@@ -4389,6 +4635,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </span>
                     <div className="flex flex-wrap gap-2">
                       {[
+                        { label: '👑 Aurashka Official Emblem', url: 'https://i.ibb.co/cKMZvJyJ/IMG-9291.jpg' },
                         { label: '🌿 Green Botanicals', url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=120&q=80' },
                         { label: '🌱 Pure Herbal Leaf', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=120&q=80' },
                         { label: '🪵 Classical Rasayana Bark', url: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=120&q=80' },
@@ -4398,16 +4645,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           key={idx}
                           type="button"
                           onClick={() => setSiteForm({ ...siteForm, brandLogoImage: preset.url, showBrandLogo: true })}
-                          className={`px-2 py-1 rounded-md text-[11px] font-medium border cursor-pointer transition-colors ${
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer transition-colors flex items-center gap-1.5 ${
                             siteForm.brandLogoImage === preset.url
                               ? 'bg-[#14291D] text-white border-[#14291D]'
                               : 'bg-white text-[#4A4031] border-[#DDD5C5] hover:bg-stone-100'
                           }`}
                         >
-                          {preset.label}
+                          <img
+                            src={preset.url}
+                            alt={preset.label}
+                            className="w-3.5 h-3.5 rounded-full object-cover border border-stone-300"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                          />
+                          <span>{preset.label}</span>
                         </button>
                       ))}
                     </div>
+                    <p className="text-[11px] text-[#6E6352] mt-2 bg-white p-2 rounded-lg border border-[#E5DEC\-D]">
+                      🌐 <strong>Web Browser Sync:</strong> When visitors open the website, the browser tab title shows <strong>{siteForm.brandName || 'Aurashka'}</strong>, the browser favicon & OpenGraph social share card automatically preview this official image.
+                    </p>
                   </div>
                 </div>
 

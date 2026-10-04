@@ -1,5 +1,6 @@
 import React from 'react';
 import { HerbalProduct, SiteSettings } from '../types/pharmacy';
+import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   MessageCircle, 
   Eye, 
@@ -164,6 +165,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               Out of Stock
             </span>
           )}
+          {product.customTag?.text && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs w-fit flex items-center gap-1 tracking-wide"
+              style={{
+                backgroundColor: product.customTag.bgColor || '#14291D',
+                color: product.customTag.textColor || '#FFFFFF',
+              }}
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>{product.customTag.text}</span>
+            </span>
+          )}
           {renderSortBadge()}
 
           {discountPercent > 0 && product.inStock && (
@@ -190,7 +203,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
             <span className="font-bold">{product.rating}</span>
             {product.reviewsCount > 0 && (
-              <span className="text-[10px] text-[#7A705E]">({product.reviewsCount})</span>
+              <span className="text-[10px] text-[#7A705E]">({formatCompactNumber(product.reviewsCount)})</span>
             )}
           </div>
         </div>
@@ -247,7 +260,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
             <span className="font-bold text-[#14291D] text-[11px]">{product.rating}</span>
             <span className="text-[11px] text-[#7A705E]">
-              ({product.reviewsCount > 0 ? `${product.reviewsCount} reviews` : 'Verified'})
+              ({product.reviewsCount > 0 ? `${formatCompactNumber(product.reviewsCount)} reviews` : 'Verified'})
             </span>
           </div>
 
@@ -279,11 +292,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-bold text-[#183624] text-xs">
-                    ₹{product.resellerPrice}
+                    {formatPrice(product.resellerPrice)}
                   </span>
                   {product.price > product.resellerPrice && (
                     <span className="text-[10px] text-emerald-800 font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                      Margin ₹{product.price - product.resellerPrice}
+                      Margin {formatPrice(product.price - product.resellerPrice)}
                     </span>
                   )}
                 </div>
@@ -310,16 +323,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="pt-2 border-t border-[#F0EAE0] flex items-center justify-between gap-2">
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold text-[#14291D] tabular-nums">
-                ₹{product.price}
+              <span className="text-lg font-bold text-[#14291D] tabular-nums" title={`₹${product.price}`}>
+                {formatPrice(product.price)}
               </span>
-              <span className="text-xs text-[#8A7F6E] line-through tabular-nums">
-                ₹{product.mrp}
+              <span className="text-xs text-[#8A7F6E] line-through tabular-nums" title={`₹${product.mrp}`}>
+                {formatPrice(product.mrp)}
               </span>
             </div>
             {savings > 0 && (
               <span className="text-[10px] text-[#2C5E43] font-semibold block">
-                Save ₹{savings}
+                Save {formatPrice(savings)}
               </span>
             )}
           </div>

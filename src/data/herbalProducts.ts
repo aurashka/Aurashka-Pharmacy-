@@ -691,7 +691,7 @@ export const PHARMACY_CONTACT_INFO = {
 export const DEFAULT_SITE_SETTINGS = {
   brandName: 'Aurashka',
   hindiName: 'औराश्का हर्बल औषधि भंडार',
-  brandLogoImage: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=120&q=80',
+  brandLogoImage: 'https://i.ibb.co/cKMZvJyJ/IMG-9291.jpg',
   showBrandLogo: true,
   headPharmacist: 'Dr. Harshit Maan (BAMS, MD Ayu.)',
   regNumber: 'AYUR-REG-2018-9941 / Central Ayush Board',
@@ -777,7 +777,7 @@ export const DEFAULT_SITE_SETTINGS = {
   peopleBadgeText: 'Certified Ayurvedic Doctors & Formulators',
   peopleSectionTitle: 'Our Ayurvedic Doctors & Formulation Specialists',
   peopleSectionSubtitle: 'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.',
-  peopleSwipeNotice: '👉 Swipe horizontally to view team',
+  peopleSwipeNotice: '',
   peopleList: [
     {
       id: 'person-1',

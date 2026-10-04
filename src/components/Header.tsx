@@ -2,6 +2,7 @@ import React from 'react';
 import { ShoppingBag, LogIn, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SiteSettings } from '../types/pharmacy';
+import { formatCompactNumber } from '../utils/numberFormatter';
 
 interface HeaderProps {
   cartCount: number;
@@ -129,8 +130,8 @@ export const Header: React.FC<HeaderProps> = ({
             <ShoppingBag className="w-4 h-4" />
             <span className="hidden sm:inline">Bag</span>
             {cartCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-[#D49838] text-[#14291D] font-bold text-[10px] flex items-center justify-center font-mono">
-                {cartCount}
+              <span className="min-w-4 h-4 px-1 rounded-full bg-[#D49838] text-[#14291D] font-bold text-[10px] flex items-center justify-center font-mono">
+                {formatCompactNumber(cartCount)}
               </span>
             )}
           </button>

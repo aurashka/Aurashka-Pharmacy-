@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HerbalProduct, SiteSettings, ProductVariant } from '../types/pharmacy';
+import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
   Leaf, 
@@ -35,6 +36,8 @@ interface ProductDetailModalProps {
   onAddToCart: (product: HerbalProduct) => void;
   isInCart?: boolean;
   siteSettings?: SiteSettings;
+  allProducts?: HerbalProduct[];
+  onSelectProduct?: (product: HerbalProduct) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -43,23 +46,51 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onAddToCart,
   isInCart = false,
   siteSettings,
+  allProducts = [],
+  onSelectProduct,
 }) => {
   const { currentUser } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
-  // Clean images list from product
+  // Clean images list from product and selected variant
   const imagesList: string[] = React.useMemo(() => {
     if (!product) return [];
-    if (product.images && product.images.length > 0) {
-      // filter empty strings
-      const valid = product.images.filter((img) => img && img.trim().length > 0);
-      if (valid.length > 0) return valid;
+    const base: string[] = [];
+    if (selectedVariant?.images && selectedVariant.images.length > 0) {
+      base.push(...selectedVariant.images.filter((img) => img && img.trim().length > 0));
+    } else if (selectedVariant?.image) {
+      base.push(selectedVariant.image);
     }
-    return product.image ? [product.image] : [];
-  }, [product]);
+    if (product.images && product.images.length > 0) {
+      const valid = product.images.filter((img) => img && img.trim().length > 0);
+      valid.forEach((img) => {
+        if (!base.includes(img)) base.push(img);
+      });
+    } else if (product.image && !base.includes(product.image)) {
+      base.push(product.image);
+    }
+    return base.length > 0 ? base : (product.image ? [product.image] : []);
+  }, [product, selectedVariant]);
 
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  // Bottom Other Product Suggestions: Priority Same Category > Others, randomized
+  const suggestedProducts = React.useMemo(() => {
+    if (!product || !allProducts || allProducts.length === 0) return [];
+    const sameCat = allProducts.filter((p) => p.category === product.category && p.id !== product.id);
+    const otherCat = allProducts.filter((p) => p.category !== product.category && p.id !== product.id);
+
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+
+    return [...shuffle(sameCat), ...shuffle(otherCat)];
+  }, [allProducts, product]);
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -369,7 +400,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       ))}
                     </div>
                     <span className="font-bold text-xs text-[#14291D]">{product.rating}</span>
-                    <span className="text-[11px] text-[#7A705E]">({product.reviewsCount} customer reviews)</span>
+                    <span className="text-[11px] text-[#7A705E]">({formatCompactNumber(product.reviewsCount)} customer reviews)</span>
                   </div>
 
                   {product.sortBadge && product.sortBadge !== 'none' && (
@@ -436,9 +467,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             }`}
                           >
                             <span>{v.size} {v.unit}</span>
-                            {v.price && (
+                            {v.price !== undefined && (
                               <span className={`text-[10px] ${isSelected ? 'text-emerald-300' : 'text-[#2C5E43]'}`}>
-                                ₹{v.price}
+                                {formatPrice(v.price)}
                               </span>
                             )}
                           </button>
@@ -452,20 +483,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <div className="pt-3 border-t border-[#EAE3D4] flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-[#14291D] tabular-nums">
-                        ₹{currentPrice}
+                      <span className="text-2xl font-bold text-[#14291D] tabular-nums" title={`₹${currentPrice}`}>
+                        {formatPrice(currentPrice)}
                       </span>
-                      <span className="text-sm text-[#877E6F] line-through tabular-nums">
-                        ₹{currentMrp}
+                      <span className="text-sm text-[#877E6F] line-through tabular-nums" title={`₹${currentMrp}`}>
+                        {formatPrice(currentMrp)}
                       </span>
                       {savings > 0 && (
                         <span className="text-xs font-bold text-[#2C5E43] bg-[#E7EFEA] px-2 py-0.5 rounded">
-                          Save ₹{savings}
+                          Save {formatPrice(savings)}
                         </span>
                       )}
                       {currentReseller !== undefined && currentReseller > 0 && (
                         <span className="text-[11px] font-bold text-[#183624] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-mono">
-                          Reseller: ₹{currentReseller}
+                          Reseller: {formatPrice(currentReseller)}
                         </span>
                       )}
                     </div>
@@ -545,14 +576,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       </span>
                       <div className="flex items-baseline gap-1.5 mt-0.5">
                         <span className="text-xl font-bold font-mono text-[#183624]">
-                          ₹{product.resellerPrice}
+                          {formatPrice(product.resellerPrice)}
                         </span>
                         <span className="text-[11px] text-[#4F6858]">per unit</span>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="text-[11px] font-bold text-emerald-900 bg-white px-2.5 py-1 rounded-md border border-[#A5D6B6] shadow-2xs inline-block">
-                        Reseller Margin: ₹{product.price - product.resellerPrice} ({Math.round(((product.price - product.resellerPrice) / product.price) * 100)}%)
+                        Reseller Margin: {formatPrice(product.price - product.resellerPrice)} ({Math.round(((product.price - product.resellerPrice) / product.price) * 100)}%)
                       </span>
                       <span className="text-[10px] text-[#527760] block mt-0.5">
                         Direct wholesale price for ayurvedic resellers & clinics
@@ -561,16 +592,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Key Indications */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-2">
-              <span className="text-xs font-semibold text-[#14291D] mr-1">Target Health Concerns:</span>
-              {product.keyIndications.map((ind, i) => (
-                <span key={i} className="text-xs px-2.5 py-0.5 bg-white border border-[#DDD5C5] rounded text-[#433B2F]">
-                  {ind}
-                </span>
-              ))}
             </div>
 
             {/* Custom Specifications / Fields (Name, Value & Display Position Order) */}
@@ -626,7 +647,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Key Ingredients Table */}
+            {/* Active Herbal Composition */}
             <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] space-y-2">
               <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#2C5E43]" />
@@ -655,6 +676,80 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </table>
               </div>
             </div>
+
+            {/* Other Product Suggestions (Horizontal Scroll, Same Category > Others, Random) */}
+            {suggestedProducts.length > 0 && (
+              <div className="pt-4 border-t border-[#DDD5C5] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#14291D] flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-[#B4741E]" />
+                    <span>Other Product Suggestions</span>
+                  </h4>
+                </div>
+
+                <div className="flex items-stretch gap-3 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory no-scrollbar touch-pan-x">
+                  {suggestedProducts.map((rel) => {
+                    const isSameCat = rel.category === product.category;
+                    return (
+                      <div
+                        key={rel.id}
+                        onClick={() => {
+                          if (onSelectProduct) {
+                            onSelectProduct(rel);
+                          }
+                        }}
+                        className="w-[150px] sm:w-[170px] shrink-0 snap-start bg-[#FAF8F5] hover:bg-white rounded-xl border border-[#D5CCBC] hover:border-[#14291D] p-2.5 shadow-2xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="relative aspect-square rounded-lg overflow-hidden bg-white border border-[#E8E2D5]">
+                            <img
+                              src={rel.image || (rel.images && rel.images[0]) || ''}
+                              alt={rel.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                            />
+                            {isSameCat ? (
+                              <span className="absolute top-1 left-1 text-[8px] font-bold bg-[#14291D] text-white px-1.5 py-0.5 rounded shadow-xs">
+                                Same Category
+                              </span>
+                            ) : (
+                              <span className="absolute top-1 left-1 text-[8px] font-medium bg-black/60 backdrop-blur-xs text-white px-1.5 py-0.5 rounded shadow-xs">
+                                {rel.categoryLabel}
+                              </span>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] font-serif italic text-[#2C5E43] block truncate">
+                              {rel.sanskritName}
+                            </span>
+                            <h5 className="font-serif font-bold text-xs text-[#14291D] line-clamp-1 group-hover:text-[#2C5E43] transition-colors">
+                              {rel.name}
+                            </h5>
+                          </div>
+                        </div>
+
+                        <div className="pt-1.5 border-t border-[#EAE3D4] flex items-center justify-between mt-1.5">
+                          <div className="flex items-baseline gap-1">
+                            <span className="font-mono font-bold text-xs text-[#14291D]" title={`₹${rel.price}`}>
+                              {formatPrice(rel.price)}
+                            </span>
+                            {rel.mrp > rel.price && (
+                              <span className="font-mono text-[9px] text-[#887E6D] line-through" title={`₹${rel.mrp}`}>
+                                {formatPrice(rel.mrp)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9px] font-bold text-[#2C5E43] group-hover:underline">
+                            View →
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

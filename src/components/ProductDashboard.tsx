@@ -3,6 +3,7 @@ import { HerbalProduct, ProductCategory, CategoryItem, SiteSettings } from '../t
 import { ProductCard } from './ProductCard';
 import { Search, X, RefreshCw, Tag, SlidersHorizontal, Plus, Settings, ShieldAlert, Sparkles, Flame, Trophy, Percent, Star } from 'lucide-react';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS } from '../data/herbalProducts';
+import { formatCompactNumber } from '../utils/numberFormatter';
 
 interface ProductDashboardProps {
   products: HerbalProduct[];
@@ -186,7 +187,9 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
         </div>
 
         <div className="text-xs text-[#635A4B] font-medium flex items-center gap-2">
-          <span className="font-bold text-[#14291D] tabular-nums">{sortedProducts.length}</span> formulations available
+          <span className="font-bold text-[#14291D] tabular-nums" title={`${sortedProducts.length} formulations`}>
+            {formatCompactNumber(sortedProducts.length)}
+          </span> formulations available
         </div>
       </div>
 

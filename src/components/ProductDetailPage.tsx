@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem, ProductVariant } from '../types/pharmacy';
 import { ImageLightboxModal } from './ImageLightboxModal';
+import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   ArrowLeft, 
   MessageCircle, 
@@ -159,8 +160,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       list.push(product.image);
     }
 
-    // Include variant image if not already in list
-    if (selectedVariant?.image && !list.includes(selectedVariant.image)) {
+    // Include variant image or separate photos if variant has them
+    if (selectedVariant?.images && Array.isArray(selectedVariant.images) && selectedVariant.images.length > 0) {
+      const validVarImgs = selectedVariant.images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
+      if (validVarImgs.length > 0) {
+        return [...validVarImgs, ...list.filter(img => !validVarImgs.includes(img))];
+      }
+    } else if (selectedVariant?.image && !list.includes(selectedVariant.image)) {
       list.unshift(selectedVariant.image);
     }
 
@@ -272,10 +278,28 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     window.open(buildWhatsAppUrl(primaryWhatsApp.number, fullMessage), '_blank');
   };
 
-  // Related products from the same category
-  const relatedProducts = allProducts
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  // Other product suggestions for bottom horizontal scroll: Priority Same category > other, randomized
+  const suggestedProducts = React.useMemo(() => {
+    if (!allProducts || allProducts.length === 0) return [];
+
+    const sameCategory = allProducts.filter(
+      (p) => p.category === product.category && p.id !== product.id
+    );
+    const otherCategories = allProducts.filter(
+      (p) => p.category !== product.category && p.id !== product.id
+    );
+
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+
+    return [...shuffle(sameCategory), ...shuffle(otherCategories)];
+  }, [allProducts, product.id, product.category]);
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1E2922]">
@@ -389,6 +413,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     {discountPercent}% OFF
                   </span>
                 )}
+                {product.customTag?.text && (
+                  <span
+                    className="px-2.5 py-1 rounded-md font-bold text-xs shadow-sm flex items-center gap-1 w-fit"
+                    style={{
+                      backgroundColor: product.customTag.bgColor || '#14291D',
+                      color: product.customTag.textColor || '#FFFFFF',
+                    }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{product.customTag.text}</span>
+                  </span>
+                )}
                 {product.sortBadge && product.sortBadge !== 'none' && (
                   <span className="px-2.5 py-0.5 rounded-md bg-[#14291D] text-white font-mono text-[10px] uppercase tracking-wider font-semibold">
                     {product.sortBadge}
@@ -481,7 +517,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#14291D]">
                   <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
                   <span>{product.rating}</span>
-                  <span className="text-[#7A705E] font-normal">({product.reviewsCount} reviews)</span>
+                  <span className="text-[#7A705E] font-normal">({formatCompactNumber(product.reviewsCount)} reviews)</span>
                 </div>
               </div>
 
@@ -528,9 +564,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         }`}
                       >
                         <span>{v.size} {v.unit}</span>
-                        {v.price && (
+                        {v.price !== undefined && (
                           <span className={`text-[10px] ${isSelected ? 'text-emerald-300' : 'text-[#2C5E43]'}`}>
-                            ₹{v.price}
+                            {formatPrice(v.price)}
                           </span>
                         )}
                       </button>
@@ -543,15 +579,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             {/* Pricing Box */}
             <div className="p-4 sm:p-5 bg-white rounded-xl border border-[#D5CCBC] shadow-xs space-y-3">
               <div className="flex items-baseline gap-3">
-                <span className="font-mono font-bold text-3xl sm:text-4xl text-[#14291D]">
-                  ₹{currentPrice}
+                <span className="font-mono font-bold text-3xl sm:text-4xl text-[#14291D]" title={`₹${currentPrice}`}>
+                  {formatPrice(currentPrice)}
                 </span>
-                <span className="font-mono text-base text-[#887E6D] line-through">
-                  ₹{currentMrp}
+                <span className="font-mono text-base text-[#887E6D] line-through" title={`₹${currentMrp}`}>
+                  {formatPrice(currentMrp)}
                 </span>
                 {savings > 0 && (
                   <span className="px-2.5 py-0.5 bg-[#E7F8ED] border border-[#A5D6B6] text-[#183624] text-xs font-bold rounded">
-                    Save ₹{savings} ({discountPercent}% OFF)
+                    Save {formatPrice(savings)} ({discountPercent}% OFF)
                   </span>
                 )}
               </div>
@@ -564,7 +600,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <span className="font-bold text-[#14291D]">Registered Reseller / B2B Rate:</span>
                   </div>
                   <span className="font-mono font-bold text-sm text-[#183624] bg-white px-2 py-0.5 rounded border border-[#D8C7A5]">
-                    ₹{currentReseller} / unit
+                    {formatPrice(currentReseller)} / unit
                   </span>
                 </div>
               )}
@@ -656,7 +692,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
               }`}
             >
-              Indications & Uses
+              Therapeutic Uses & Benefits
             </button>
             <button
               onClick={() => setActiveTab('ingredients')}
@@ -710,21 +746,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   </h4>
                   <p>{product.description}</p>
                 </div>
-
-                {indicationsList.length > 0 && (
-                  <div>
-                    <h4 className="font-serif font-bold text-sm text-[#14291D] mb-2">
-                      Key Indications (Rogadhikar)
-                    </h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {indicationsList.map((ind, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-[#FAF8F5] border border-[#E8E2D5] text-[#14291D] rounded-md font-medium">
-                          {ind}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {benefitsList.length > 0 && (
                   <div>
@@ -973,50 +994,120 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           </div>
         </div>
 
-        {/* Related Formulations in Category */}
-        {relatedProducts.length > 0 && (
-          <div className="mt-12 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-serif text-xl font-bold text-[#14291D]">
-                Complementary Formulations in {product.categoryLabel}
+        {/* Other Product Suggestions (Horizontal Scroll, Same Category > Others, Random) */}
+        {suggestedProducts.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-[#DDD5C5] space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-[#14291D] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#B4741E]" />
+                <span>Other Product Suggestions</span>
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {relatedProducts.map((rel) => (
-                <div
-                  key={rel.id}
-                  onClick={() => onSelectProduct(rel)}
-                  className="bg-white rounded-xl border border-[#D5CCBC] hover:border-[#14291D] p-3 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="aspect-square rounded-lg overflow-hidden bg-[#FAF8F5] border border-[#E8E2D5]">
-                      <img
-                        src={rel.image}
-                        alt={rel.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-serif italic text-[#2C5E43] block truncate">
-                        {rel.sanskritName}
-                      </span>
-                      <h4 className="font-serif font-bold text-xs text-[#14291D] line-clamp-1 group-hover:text-[#2C5E43]">
-                        {rel.name}
-                      </h4>
-                    </div>
-                  </div>
+            {/* Horizontal Scroll Suggestions Container */}
+            <div className="relative group/carousel">
+              <div
+                id="suggested-products-carousel"
+                className="flex items-stretch gap-3.5 overflow-x-auto pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory no-scrollbar touch-pan-x"
+              >
+                {suggestedProducts.map((rel) => {
+                  const isSameCat = rel.category === product.category;
+                  return (
+                    <div
+                      key={rel.id}
+                      onClick={() => {
+                        onSelectProduct(rel);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-[180px] sm:w-[200px] shrink-0 snap-start bg-white rounded-xl border border-[#D5CCBC] hover:border-[#14291D] p-3 shadow-2xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="relative aspect-square rounded-lg overflow-hidden bg-[#FAF8F5] border border-[#E8E2D5]">
+                          <img
+                            src={rel.image || (rel.images && rel.images[0]) || ''}
+                            alt={rel.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                          />
+                          {isSameCat ? (
+                            <span className="absolute top-1.5 left-1.5 text-[9px] font-bold bg-[#14291D] text-white px-1.5 py-0.5 rounded shadow-xs">
+                              Same Category
+                            </span>
+                          ) : (
+                            <span className="absolute top-1.5 left-1.5 text-[9px] font-medium bg-black/60 backdrop-blur-xs text-white px-1.5 py-0.5 rounded shadow-xs">
+                              {rel.categoryLabel}
+                            </span>
+                          )}
+                          {rel.customTag?.text && (
+                            <span
+                              className="absolute bottom-1.5 left-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded shadow-xs"
+                              style={{
+                                backgroundColor: rel.customTag.bgColor || '#14291D',
+                                color: rel.customTag.textColor || '#FFFFFF',
+                              }}
+                            >
+                              {rel.customTag.text}
+                            </span>
+                          )}
+                        </div>
 
-                  <div className="pt-2 border-t border-[#EAE3D4] flex items-center justify-between">
-                    <span className="font-mono font-bold text-xs text-[#14291D]">
-                      ₹{rel.price}
-                    </span>
-                    <span className="text-[11px] font-semibold text-[#2C5E43] group-hover:underline">
-                      View Details →
-                    </span>
-                  </div>
-                </div>
-              ))}
+                        <div>
+                          <span className="text-[10px] font-serif italic text-[#2C5E43] block truncate">
+                            {rel.sanskritName}
+                          </span>
+                          <h4 className="font-serif font-bold text-xs text-[#14291D] line-clamp-1 group-hover:text-[#2C5E43] transition-colors">
+                            {rel.name}
+                          </h4>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#EAE3D4] flex items-center justify-between mt-2">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-mono font-bold text-xs text-[#14291D]" title={`₹${rel.price}`}>
+                            {formatPrice(rel.price)}
+                          </span>
+                          {rel.mrp > rel.price && (
+                            <span className="font-mono text-[10px] text-[#887E6D] line-through" title={`₹${rel.mrp}`}>
+                              {formatPrice(rel.mrp)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-[#2C5E43] group-hover:underline">
+                          View →
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Scroll buttons for desktop */}
+              {suggestedProducts.length > 3 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('suggested-products-carousel');
+                      if (el) el.scrollBy({ left: -320, behavior: 'smooth' });
+                    }}
+                    className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 border border-[#D5CCBC] shadow-md items-center justify-center text-[#14291D] hover:bg-stone-50 cursor-pointer z-10 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                    aria-label="Scroll Left"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('suggested-products-carousel');
+                      if (el) el.scrollBy({ left: 320, behavior: 'smooth' });
+                    }}
+                    className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 border border-[#D5CCBC] shadow-md items-center justify-center text-[#14291D] hover:bg-stone-50 cursor-pointer z-10 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                    aria-label="Scroll Right"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

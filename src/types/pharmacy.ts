@@ -44,6 +44,12 @@ export interface ProductCustomField {
   section?: ProductTabTarget;
 }
 
+export interface ProductCustomTag {
+  text: string;
+  bgColor: string;
+  textColor: string;
+}
+
 export interface ProductVariant {
   id: string;
   size: string; // e.g. "100", "200", "500", "1"
@@ -51,7 +57,8 @@ export interface ProductVariant {
   price: number; // e.g. 299
   mrp: number; // e.g. 399
   resellerPrice?: number; // e.g. 210
-  image?: string; // separate image when this variant is selected
+  image?: string; // primary separate image when this variant is selected
+  images?: string[]; // multiple separate photos for this variant
   inStock?: boolean;
 }
 
@@ -68,6 +75,7 @@ export interface HerbalProduct {
   mrp: number;
   resellerPrice?: number; // Reseller / B2B wholesale price in ₹
   sortBadge?: SortBadgeType; // Trending, Top Seller, Best Deal, etc.
+  customTag?: ProductCustomTag; // Custom manual tag with background and text color
   volumeOrWeight: string;
   rating: number;
   reviewsCount: number;

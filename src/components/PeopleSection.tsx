@@ -31,7 +31,6 @@ export const PeopleSection: React.FC<PeopleSectionProps> = ({
   const sectionSubtitle =
     siteSettings?.peopleSectionSubtitle ||
     'Experienced Ayurvedic Doctors & Botanical Formulators guiding your wellness and personalized dosages.';
-  const swipeNotice = siteSettings?.peopleSwipeNotice || '👉 Swipe horizontally to view team';
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -74,16 +73,6 @@ export const PeopleSection: React.FC<PeopleSectionProps> = ({
 
         {/* Horizontal Swipeable & Scrollable Team Container */}
         <div className="space-y-3">
-          {/* Prominent Swipe Horizontally Indicator */}
-          <div className="flex items-center justify-between gap-3 px-1 text-xs">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300/80 text-[#14291D] font-bold shadow-2xs">
-              <span>{swipeNotice}</span>
-            </div>
-            <span className="hidden sm:inline-block text-[11px] text-[#6E6352]">
-              Drag with mouse or swipe touch screen
-            </span>
-          </div>
-
           <div className="relative group/scroll">
           {/* Scroll Left Button */}
           {people.length > 2 && (

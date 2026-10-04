@@ -82,7 +82,7 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
     peopleBadgeText: s.peopleBadgeText || DEFAULT_SITE_SETTINGS.peopleBadgeText,
     peopleSectionTitle: s.peopleSectionTitle || DEFAULT_SITE_SETTINGS.peopleSectionTitle,
     peopleSectionSubtitle: s.peopleSectionSubtitle || DEFAULT_SITE_SETTINGS.peopleSectionSubtitle,
-    peopleSwipeNotice: s.peopleSwipeNotice || DEFAULT_SITE_SETTINGS.peopleSwipeNotice || '👉 Swipe horizontally to view team',
+    peopleSwipeNotice: s.peopleSwipeNotice || DEFAULT_SITE_SETTINGS.peopleSwipeNotice || '',
     peopleList: Array.isArray(s.peopleList) && s.peopleList.length > 0
       ? s.peopleList
       : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
@@ -241,6 +241,38 @@ function PharmacyApp() {
 
     fetchRemoteData();
   }, []);
+
+  // Dynamically sync Document Title, Favicon and OpenGraph/Twitter meta tags with siteSettings (Brand Name & Logo)
+  useEffect(() => {
+    const brand = siteSettings?.brandName || 'Aurashka';
+    document.title = `${brand} - Classical Herbal Pharmacy & Ayurvedic Formulations`;
+
+    const logo = siteSettings?.brandLogoImage || 'https://i.ibb.co/cKMZvJyJ/IMG-9291.jpg';
+    let iconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement | null;
+    if (!iconLink) {
+      iconLink = document.createElement('link');
+      iconLink.rel = 'icon';
+      document.head.appendChild(iconLink);
+    }
+    iconLink.href = logo;
+
+    // Dynamically update OpenGraph and Twitter tags for web browser preview
+    const updateMeta = (nameOrProp: string, content: string, isName = false) => {
+      let meta = document.querySelector(isName ? `meta[name="${nameOrProp}"]` : `meta[property="${nameOrProp}"]`) as HTMLMetaElement | null;
+      if (!meta) {
+        meta = document.createElement('meta');
+        if (isName) meta.name = nameOrProp;
+        else meta.setAttribute('property', nameOrProp);
+        document.head.appendChild(meta);
+      }
+      meta.content = content;
+    };
+
+    updateMeta('og:title', `${brand} - Classical Herbal Pharmacy & Ayurvedic Formulations`);
+    updateMeta('og:image', logo);
+    updateMeta('twitter:title', `${brand} - Classical Herbal Pharmacy & Ayurvedic Formulations`, true);
+    updateMeta('twitter:image', logo, true);
+  }, [siteSettings?.brandName, siteSettings?.brandLogoImage]);
 
   const saveProducts = (updated: HerbalProduct[]) => {
     setProducts(updated);
