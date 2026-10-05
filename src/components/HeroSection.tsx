@@ -14,6 +14,7 @@ import {
   Flame
 } from 'lucide-react';
 import { HerbalProduct, SiteSettings, WeeklyDealItem } from '../types/pharmacy';
+import { ImageBannerScroller } from './ImageBannerScroller';
 import { useAuth } from '../context/AuthContext';
 import { 
   getPrimaryPhone, 
@@ -27,6 +28,7 @@ interface HeroSectionProps {
   onOpenConsultationModal: () => void;
   onExploreProducts: () => void;
   onSelectProduct: (product: HerbalProduct) => void;
+  onSelectCategory?: (category: string) => void;
   isAdmin?: boolean;
   onOpenAdminPanel?: () => void;
   siteSettings: SiteSettings;
@@ -39,6 +41,7 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({
   onExploreProducts,
   onSelectProduct,
+  onSelectCategory,
   isAdmin = false,
   onOpenAdminPanel,
   siteSettings,
@@ -301,23 +304,35 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Custom Added Deal of the Week (Auto-Scroll & Swipe-Scroll Enabled) */}
-          {isDealsSectionEnabled && dealItems.length > 0 && (
-            <div className="lg:col-span-5">
-              <div 
-                className="bg-white/95 backdrop-blur-md rounded-xl border border-white/20 shadow-xl text-[#1E2922] relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
-                onMouseEnter={() => setIsPaused(true)}
-                onMouseLeave={() => {
-                  setIsPaused(false);
-                  isMouseDown.current = false;
-                }}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-              >
+          {/* Right Column: Image Banner Auto-Scroller & Custom Added Deal of the Week */}
+          {((siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0) || (isDealsSectionEnabled && dealItems.length > 0)) && (
+            <div className="lg:col-span-5 space-y-4">
+              {/* Horizontal Image auto Scroller / Swip slider (above Weekly Deal) */}
+              {siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0 && (
+                <ImageBannerScroller
+                  config={siteSettings.bannerSlider}
+                  products={products}
+                  onSelectProduct={onSelectProduct}
+                  onSelectCategory={onSelectCategory}
+                />
+              )}
+
+              {/* Deal of the Week Carousel Card */}
+              {isDealsSectionEnabled && dealItems.length > 0 && (
+                <div 
+                  className="bg-white/95 backdrop-blur-md rounded-xl border border-white/20 shadow-xl text-[#1E2922] relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                  onMouseEnter={() => setIsPaused(true)}
+                  onMouseLeave={() => {
+                    setIsPaused(false);
+                    isMouseDown.current = false;
+                  }}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                >
                 {/* Auto-Scroll Subtle Progress Bar Indicator */}
                 {dealItems.length > 1 && (
                   <div className="absolute top-0 left-0 right-0 h-1 bg-black/5 z-20 overflow-hidden">
@@ -512,6 +527,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   </div>
                 )}
               </div>
+            )}
             </div>
           )}
         </div>

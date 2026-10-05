@@ -201,6 +201,54 @@ export interface SiteSettings {
   peopleSwipeNotice?: string;
   peopleList?: PeopleProfile[];
   productAssuranceBadges?: ProductAssuranceBadges;
+  bannerSlider?: BannerSliderConfig;
+  productHorizontalLists?: ProductHorizontalList[];
+}
+
+export interface BannerSlideItem {
+  id: string;
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  linkType: 'product' | 'category' | 'custom' | 'none';
+  productId?: string;
+  category?: string;
+  customUrl?: string;
+  altText?: string;
+}
+
+export interface BannerSliderConfig {
+  enabled: boolean;
+  autoScrollSeconds?: number; // e.g. 4 seconds
+  aspectRatio?: 'auto' | 'compact' | 'standard' | 'wide';
+  items: BannerSlideItem[];
+}
+
+export interface HorizontalListCardFields {
+  showImage?: boolean;
+  showName?: boolean;
+  showSanskritName?: boolean;
+  showPrice?: boolean;
+  showResellerPrice?: boolean;
+  showMrpAndOffer?: boolean;
+  showTag?: boolean;
+  showRating?: boolean;
+  showAddToCart?: boolean;
+  showQuickView?: boolean;
+}
+
+export interface ProductHorizontalList {
+  id: string;
+  enabled: boolean;
+  title: string;
+  subtitle?: string;
+  badgeText?: string;
+  displayOrder: number;
+  sourceType: 'category' | 'manual';
+  category?: string;
+  maxProducts?: number;
+  selectedProductIds?: string[];
+  cardFields: HorizontalListCardFields;
 }
 
 export interface ConsultationInquiry {

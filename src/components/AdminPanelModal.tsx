@@ -13,7 +13,11 @@ import {
   WeeklyDealsConfig,
   PeopleProfile,
   ProductVariant,
-  ProductAssuranceBadges
+  ProductAssuranceBadges,
+  BannerSlideItem,
+  BannerSliderConfig,
+  ProductHorizontalList,
+  HorizontalListCardFields
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
@@ -59,11 +63,16 @@ import {
   UserPlus,
   ShieldCheck,
   Package,
-  EyeOff
+  EyeOff,
+  SlidersHorizontal,
+  ListPlus,
+  LayoutGrid,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
-import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS } from '../data/herbalProducts';
+import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS } from '../data/herbalProducts';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -101,7 +110,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -267,6 +276,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         badge2Title: s.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
         badge2Subtitle: s.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
       },
+      bannerSlider: {
+        enabled: s.bannerSlider?.enabled !== undefined ? Boolean(s.bannerSlider.enabled) : (DEFAULT_BANNER_SLIDER?.enabled ?? true),
+        autoScrollSeconds: s.bannerSlider?.autoScrollSeconds || DEFAULT_BANNER_SLIDER?.autoScrollSeconds || 4,
+        aspectRatio: (s.bannerSlider?.aspectRatio as BannerSliderConfig['aspectRatio']) || DEFAULT_BANNER_SLIDER?.aspectRatio || 'auto',
+        items: (Array.isArray(s.bannerSlider?.items)
+          ? s.bannerSlider.items
+          : (s.bannerSlider?.items && typeof s.bannerSlider.items === 'object'
+            ? Object.values(s.bannerSlider.items)
+            : (DEFAULT_BANNER_SLIDER?.items || []))) as BannerSlideItem[],
+      },
+      productHorizontalLists: (Array.isArray(s.productHorizontalLists) && s.productHorizontalLists.length > 0
+        ? s.productHorizontalLists
+        : (s.productHorizontalLists && typeof s.productHorizontalLists === 'object' && Object.values(s.productHorizontalLists).length > 0
+          ? Object.values(s.productHorizontalLists)
+          : (DEFAULT_PRODUCT_HORIZONTAL_LISTS || []))) as ProductHorizontalList[],
     };
   };
 
@@ -336,6 +360,237 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       setSaveSuccessMsg('Restored default Deal of the Week formulations!');
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     }
+  };
+
+  // Banner Slider (Above Weekly Deal) Management Helpers
+  const currentBannerSlider: BannerSliderConfig = {
+    enabled: siteForm.bannerSlider?.enabled ?? true,
+    autoScrollSeconds: siteForm.bannerSlider?.autoScrollSeconds || 4,
+    aspectRatio: siteForm.bannerSlider?.aspectRatio || 'auto',
+    items: Array.isArray(siteForm.bannerSlider?.items)
+      ? siteForm.bannerSlider.items
+      : (siteForm.bannerSlider?.items && typeof siteForm.bannerSlider.items === 'object'
+        ? (Object.values(siteForm.bannerSlider.items) as BannerSlideItem[])
+        : (DEFAULT_BANNER_SLIDER?.items || [])),
+  };
+
+  const handleUpdateBannerSlider = (updates: Partial<BannerSliderConfig>) => {
+    const updated: BannerSliderConfig = {
+      ...currentBannerSlider,
+      ...updates,
+    };
+    setSiteForm({
+      ...siteForm,
+      bannerSlider: updated,
+    });
+  };
+
+  const handleAddBannerSlide = () => {
+    const newSlide: BannerSlideItem = {
+      id: `banner-${Date.now()}`,
+      imageUrl: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1200&q=80',
+      title: 'New Formulation Special',
+      subtitle: 'Pure botanical herbs & classical rasayanas with verified potency',
+      linkType: 'category',
+      category: 'immunity',
+      altText: 'Apothecary Banner',
+    };
+    handleUpdateBannerSlider({ items: [...currentBannerSlider.items, newSlide], enabled: true });
+    setSaveSuccessMsg('Added new banner image slide! Click Save when finished.');
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  const handleUpdateBannerSlide = (idx: number, field: keyof BannerSlideItem, value: any) => {
+    const items = [...currentBannerSlider.items];
+    if (!items[idx]) return;
+    items[idx] = {
+      ...items[idx],
+      [field]: value,
+    };
+    handleUpdateBannerSlider({ items });
+  };
+
+  const handleDeleteBannerSlide = (idx: number) => {
+    const items = currentBannerSlider.items.filter((_, i) => i !== idx);
+    handleUpdateBannerSlider({ items });
+  };
+
+  const handleMoveBannerSlide = (idx: number, direction: 'up' | 'down') => {
+    const items = [...currentBannerSlider.items];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+    handleUpdateBannerSlider({ items });
+  };
+
+  const handleRestoreDefaultBanners = () => {
+    handleUpdateBannerSlider({
+      enabled: true,
+      autoScrollSeconds: 4,
+      aspectRatio: 'auto',
+      items: DEFAULT_BANNER_SLIDER.items,
+    });
+    setSaveSuccessMsg('Restored default banner slides!');
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  // Product Horizontal Lists State & Management Helpers
+  const [editingHorizontalList, setEditingHorizontalList] = useState<ProductHorizontalList | null>(null);
+  const [isCreatingNewHorizontalList, setIsCreatingNewHorizontalList] = useState<boolean>(false);
+  const [horizontalListForm, setHorizontalListForm] = useState<ProductHorizontalList>({
+    id: '',
+    enabled: true,
+    title: '',
+    subtitle: '',
+    badgeText: '',
+    displayOrder: 1,
+    sourceType: 'category',
+    category: 'all',
+    maxProducts: 8,
+    selectedProductIds: [],
+    cardFields: {
+      showImage: true,
+      showName: true,
+      showSanskritName: true,
+      showPrice: true,
+      showResellerPrice: true,
+      showMrpAndOffer: true,
+      showTag: true,
+      showRating: true,
+      showAddToCart: true,
+      showQuickView: true,
+    },
+  });
+  const [productSearchInListForm, setProductSearchInListForm] = useState<string>('');
+
+  const currentHorizontalLists: ProductHorizontalList[] = (Array.isArray(siteForm.productHorizontalLists)
+    ? siteForm.productHorizontalLists
+    : (siteForm.productHorizontalLists && typeof siteForm.productHorizontalLists === 'object'
+      ? (Object.values(siteForm.productHorizontalLists) as ProductHorizontalList[])
+      : (DEFAULT_PRODUCT_HORIZONTAL_LISTS || [])))
+    .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+
+  const handleStartCreateHorizontalList = () => {
+    setHorizontalListForm({
+      id: `hlist-${Date.now()}`,
+      enabled: true,
+      title: 'Doctor Recommended Classical Rasayanas',
+      subtitle: 'Handpicked authentic herbal preparations to restore vitality, immunity & stamina.',
+      badgeText: 'Curated Collection',
+      displayOrder: currentHorizontalLists.length + 1,
+      sourceType: 'category',
+      category: 'immunity',
+      maxProducts: 8,
+      selectedProductIds: [],
+      cardFields: {
+        showImage: true,
+        showName: true,
+        showSanskritName: true,
+        showPrice: true,
+        showResellerPrice: true,
+        showMrpAndOffer: true,
+        showTag: true,
+        showRating: true,
+        showAddToCart: true,
+        showQuickView: true,
+      },
+    });
+    setProductSearchInListForm('');
+    setIsCreatingNewHorizontalList(true);
+    setEditingHorizontalList(null);
+  };
+
+  const handleStartEditHorizontalList = (list: ProductHorizontalList) => {
+    setHorizontalListForm({
+      ...list,
+      cardFields: {
+        showImage: list.cardFields?.showImage !== false,
+        showName: list.cardFields?.showName !== false,
+        showSanskritName: list.cardFields?.showSanskritName !== false,
+        showPrice: list.cardFields?.showPrice !== false,
+        showResellerPrice: list.cardFields?.showResellerPrice !== false,
+        showMrpAndOffer: list.cardFields?.showMrpAndOffer !== false,
+        showTag: list.cardFields?.showTag !== false,
+        showRating: list.cardFields?.showRating !== false,
+        showAddToCart: list.cardFields?.showAddToCart !== false,
+        showQuickView: list.cardFields?.showQuickView !== false,
+      },
+      selectedProductIds: Array.isArray(list.selectedProductIds) ? list.selectedProductIds : [],
+    });
+    setProductSearchInListForm('');
+    setEditingHorizontalList(list);
+    setIsCreatingNewHorizontalList(false);
+  };
+
+  const handleSaveHorizontalListForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let updatedLists: ProductHorizontalList[];
+
+    if (isCreatingNewHorizontalList) {
+      updatedLists = [...currentHorizontalLists, horizontalListForm];
+    } else {
+      updatedLists = currentHorizontalLists.map((l) => (l.id === horizontalListForm.id ? horizontalListForm : l));
+    }
+
+    // Re-index display orders
+    updatedLists = updatedLists.map((l, i) => ({ ...l, displayOrder: l.displayOrder || i + 1 }));
+
+    const updatedSiteSettings: SiteSettings = {
+      ...siteForm,
+      productHorizontalLists: updatedLists,
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+    await backupSiteSettingsToFirebase(updatedSiteSettings);
+    setSaveSuccessMsg(`Horizontal Shelf "${horizontalListForm.title}" saved and synced to Firebase!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+    setIsCreatingNewHorizontalList(false);
+    setEditingHorizontalList(null);
+  };
+
+  const handleDeleteHorizontalList = async (id: string) => {
+    const updatedLists = currentHorizontalLists.filter((l) => l.id !== id);
+    const updatedSiteSettings: SiteSettings = {
+      ...siteForm,
+      productHorizontalLists: updatedLists,
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+    await backupSiteSettingsToFirebase(updatedSiteSettings);
+    setSaveSuccessMsg('Horizontal Shelf deleted from store.');
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleToggleHorizontalList = async (id: string) => {
+    const updatedLists = currentHorizontalLists.map((l) => (l.id === id ? { ...l, enabled: !l.enabled } : l));
+    const updatedSiteSettings: SiteSettings = {
+      ...siteForm,
+      productHorizontalLists: updatedLists,
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+    await backupSiteSettingsToFirebase(updatedSiteSettings);
+  };
+
+  const handleMoveHorizontalList = async (idx: number, direction: 'up' | 'down') => {
+    const lists = [...currentHorizontalLists];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= lists.length) return;
+    const temp = lists[idx];
+    lists[idx] = lists[targetIdx];
+    lists[targetIdx] = temp;
+    const reordered = lists.map((l, i) => ({ ...l, displayOrder: i + 1 }));
+    const updatedSiteSettings: SiteSettings = {
+      ...siteForm,
+      productHorizontalLists: reordered,
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+    await backupSiteSettingsToFirebase(updatedSiteSettings);
+    setSaveSuccessMsg('Updated horizontal shelf display position!');
+    setTimeout(() => setSaveSuccessMsg(null), 2000);
   };
 
   const handleAddDealProduct = (e: React.FormEvent) => {
@@ -1225,7 +1480,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             className="flex-1 py-1.5 px-3 bg-white border border-[#C8BEAB] rounded-lg text-xs font-semibold text-[#183624] shadow-2xs focus:outline-hidden focus:border-[#2C5E43] cursor-pointer"
           >
             <option value="products">🛍️ Products & Reseller Rates ({products.length})</option>
-            <option value="deal_of_week">🔥 Deal of the Week ({currentWeeklyDeals.items.length} deals{currentWeeklyDeals.enabled ? '' : ' - Hidden'})</option>
+            <option value="deal_of_week">🔥 Deal of the Week & Banner Scroller ({currentWeeklyDeals.items.length} deals)</option>
+            <option value="horizontal_lists">📦 Product Horizontal Lists ({currentHorizontalLists.length} shelves)</option>
             <option value="categories_forms">🗂️ Categories & Forms Manager</option>
             <option value="contacts">📞 Multiple Contacts (Phones, WhatsApp, Emails)</option>
             <option value="site_titles">🏷️ Website Titles & Banner Texts</option>
@@ -1275,6 +1531,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   : activeTab === 'deal_of_week' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'
               }`}>
                 {!currentWeeklyDeals.enabled ? 'Off' : currentWeeklyDeals.items.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('horizontal_lists');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+                setIsCreatingNewHorizontalList(false);
+                setEditingHorizontalList(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'horizontal_lists'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <SlidersHorizontal className={`w-3.5 h-3.5 ${activeTab === 'horizontal_lists' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+              <span>Horizontal Shelves</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                activeTab === 'horizontal_lists' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'
+              }`}>
+                {currentHorizontalLists.length}
               </span>
             </button>
 
@@ -3130,6 +3410,303 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         {/* Tab: Deal of the Week (Add, Edit, Reorder, Delete Section & Multiple Products in Horizontal Scroll) */}
         {activeTab === 'deal_of_week' && (
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            {/* 0. Image Banner Auto-Scroller / Swipe Slider (Positioned Above Weekly Deal) */}
+            <div className={`p-5 rounded-xl border shadow-xs transition-colors ${
+              currentBannerSlider.enabled 
+                ? 'bg-linear-to-r from-emerald-50/80 via-white to-amber-50/60 border-[#A5D6B6]' 
+                : 'bg-[#FAF8F5] border-[#DDD5C5]'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE3D4] pb-4 mb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className={`w-5 h-5 ${currentBannerSlider.enabled ? 'text-emerald-700' : 'text-stone-400'}`} />
+                    <h3 className="font-serif text-lg font-bold text-[#14291D]">
+                      Horizontal Image Auto-Scroller & Swipe Banner
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      currentBannerSlider.enabled 
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                        : 'bg-stone-100 text-stone-700 border border-stone-300'
+                    }`}>
+                      {currentBannerSlider.enabled ? 'Active on Website' : 'Hidden'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#594F40]">
+                    Positioned directly above Deal of the Week. Auto-scrolls and supports touch swipe. Clickable images can link to specific products, categories, or custom URLs.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateBannerSlider({ enabled: !currentBannerSlider.enabled })}
+                    className={`px-3.5 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
+                      currentBannerSlider.enabled 
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+                        : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                    }`}
+                  >
+                    {currentBannerSlider.enabled ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Hide Scroller</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Show Scroller</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddBannerSlide}
+                    className="px-3.5 py-2 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Add New Image Slide</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultBanners}
+                    className="px-3 py-2 text-xs font-medium text-[#483F30] hover:text-[#14291D] bg-white hover:bg-[#F2ECE1] border border-[#CFC5B4] rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    title="Restore default promotional banners"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#B4741E]" />
+                    <span>Restore Banners</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Slider Size & Auto-Scroll Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-white p-3.5 rounded-lg border border-[#EAE3D4] mb-4">
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Scroller Size & Position (Screen Height Adjustment)
+                  </label>
+                  <select
+                    value={currentBannerSlider.aspectRatio || 'auto'}
+                    onChange={(e) => handleUpdateBannerSlider({ aspectRatio: e.target.value as any })}
+                    className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                  >
+                    <option value="auto">Auto Responsive (Adaptive Mobile / Tablet / Desktop)</option>
+                    <option value="compact">Compact (Sleek Banner: h-32 to h-40)</option>
+                    <option value="standard">Standard (Medium Height: h-40 to h-52)</option>
+                    <option value="wide">Prominent / Wide (High Impact: h-48 to h-64)</option>
+                  </select>
+                  <p className="text-[10px] text-[#716858] mt-1">
+                    Adjusts height dynamically to match your device screens and banner aspect ratio.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Auto-Scroll Speed (Interval)
+                  </label>
+                  <select
+                    value={currentBannerSlider.autoScrollSeconds || 4}
+                    onChange={(e) => handleUpdateBannerSlider({ autoScrollSeconds: Number(e.target.value) })}
+                    className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                  >
+                    <option value={2}>Fast (2 Seconds per slide)</option>
+                    <option value={3}>Normal (3 Seconds per slide)</option>
+                    <option value={4}>Balanced (4 Seconds per slide)</option>
+                    <option value={6}>Relaxed (6 Seconds per slide)</option>
+                  </select>
+                  <p className="text-[10px] text-[#716858] mt-1">
+                    Visitors can hover or swipe horizontally to navigate slides manually.
+                  </p>
+                </div>
+              </div>
+
+              {/* Multiple Image Slides List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-xs text-[#14291D] uppercase tracking-wider">
+                    Banner Slides ({currentBannerSlider.items.length})
+                  </h4>
+                  <span className="text-[11px] text-[#716858]">
+                    Clickable action: Product, Category, or Custom Link
+                  </span>
+                </div>
+
+                {currentBannerSlider.items.length === 0 ? (
+                  <div className="p-6 text-center bg-white rounded-lg border border-dashed border-[#DDD5C5] space-y-2">
+                    <ImageIcon className="w-8 h-8 text-[#A89F8F] mx-auto" />
+                    <p className="text-xs text-[#52493A] font-medium">No banner image slides currently configured.</p>
+                    <button
+                      type="button"
+                      onClick={handleAddBannerSlide}
+                      className="px-3 py-1.5 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg cursor-pointer"
+                    >
+                      Add First Banner Image
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {currentBannerSlider.items.map((slide, idx) => (
+                      <div 
+                        key={slide.id || idx} 
+                        className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] shadow-2xs space-y-3"
+                      >
+                        <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-[#14291D] text-white text-[10px] font-bold flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <span className="font-bold text-xs text-[#14291D]">
+                              {slide.title || `Slide ${idx + 1}`}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveBannerSlide(idx, 'up')}
+                              disabled={idx === 0}
+                              className="p-1 rounded text-[#716858] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveBannerSlide(idx, 'down')}
+                              disabled={idx === currentBannerSlider.items.length - 1}
+                              className="p-1 rounded text-[#716858] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBannerSlide(idx)}
+                              className="p-1 rounded text-rose-600 hover:text-rose-800 hover:bg-rose-50 cursor-pointer"
+                              title="Delete Slide"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+                          {/* Image preview & URL */}
+                          <div className="sm:col-span-5 flex gap-2">
+                            <div className="w-20 h-16 rounded-lg bg-[#FAF8F5] border border-[#DDD5C5] overflow-hidden shrink-0 relative">
+                              <img
+                                src={slide.imageUrl}
+                                alt={slide.title || 'Slide'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <label className="block text-[11px] font-medium text-[#2F2920]">
+                                Image URL
+                              </label>
+                              <input
+                                type="url"
+                                value={slide.imageUrl}
+                                onChange={(e) => handleUpdateBannerSlide(idx, 'imageUrl', e.target.value)}
+                                placeholder="https://..."
+                                className="w-full px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-[11px]"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Title & Subtitle */}
+                          <div className="sm:col-span-4 space-y-1">
+                            <div>
+                              <label className="block text-[11px] font-medium text-[#2F2920]">
+                                Slide Title (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={slide.title || ''}
+                                onChange={(e) => handleUpdateBannerSlide(idx, 'title', e.target.value)}
+                                placeholder="e.g. Authentic Classical Formulations"
+                                className="w-full px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-[11px]"
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                value={slide.subtitle || ''}
+                                onChange={(e) => handleUpdateBannerSlide(idx, 'subtitle', e.target.value)}
+                                placeholder="Subtitle / botanical notice"
+                                className="w-full px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-[11px]"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Click Action / Link */}
+                          <div className="sm:col-span-3 space-y-1">
+                            <label className="block text-[11px] font-medium text-[#2F2920]">
+                              Clickable Action
+                            </label>
+                            <select
+                              value={slide.linkType || 'none'}
+                              onChange={(e) => handleUpdateBannerSlide(idx, 'linkType', e.target.value as any)}
+                              className="w-full px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-[11px] font-medium"
+                            >
+                              <option value="none">No Link (Display Only)</option>
+                              <option value="product">Open Specific Product</option>
+                              <option value="category">Go to Category</option>
+                              <option value="custom">Custom URL / Anchor</option>
+                            </select>
+
+                            {slide.linkType === 'product' && (
+                              <select
+                                value={slide.productId || ''}
+                                onChange={(e) => handleUpdateBannerSlide(idx, 'productId', e.target.value)}
+                                className="w-full px-2 py-1 bg-white border border-emerald-400 rounded text-[10.5px]"
+                              >
+                                <option value="">-- Choose Product --</option>
+                                {products.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {slide.linkType === 'category' && (
+                              <select
+                                value={slide.category || ''}
+                                onChange={(e) => handleUpdateBannerSlide(idx, 'category', e.target.value)}
+                                className="w-full px-2 py-1 bg-white border border-emerald-400 rounded text-[10.5px]"
+                              >
+                                <option value="">-- Choose Category --</option>
+                                {categories.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {slide.linkType === 'custom' && (
+                              <input
+                                type="text"
+                                value={slide.customUrl || ''}
+                                onChange={(e) => handleUpdateBannerSlide(idx, 'customUrl', e.target.value)}
+                                placeholder="e.g. #deals-catalog"
+                                className="w-full px-2 py-1 bg-white border border-emerald-400 rounded text-[10.5px]"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* 1. Master Section Controls & Visibility Status */}
             <div className={`p-5 rounded-xl border shadow-xs transition-colors ${
               currentWeeklyDeals.enabled 
@@ -3684,6 +4261,791 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <span>Save All Deal of the Week Changes to Firebase & Storefront</span>
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Tab: Horizontal Product Shelves (Create Multiple, Edit, Delete, Position, Category/Manual Source & Card Detail Customizer) */}
+        {activeTab === 'horizontal_lists' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            {isCreatingNewHorizontalList || editingHorizontalList ? (
+              /* CREATE / EDIT SHELF FORM */
+              <form onSubmit={handleSaveHorizontalListForm} className="space-y-6">
+                <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingNewHorizontalList(false);
+                        setEditingHorizontalList(null);
+                      }}
+                      className="p-1.5 rounded-lg border border-[#DDD5C5] text-[#52493A] hover:bg-[#FAF8F5] cursor-pointer"
+                      title="Back to Shelves List"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div>
+                      <h3 className="font-serif text-base font-bold text-[#14291D]">
+                        {isCreatingNewHorizontalList ? 'Create New Horizontal Product Shelf' : `Edit Shelf: ${horizontalListForm.title}`}
+                      </h3>
+                      <p className="text-xs text-[#695F4F]">
+                        Configure shelf title, product sourcing method, and card detail visibility elements.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingNewHorizontalList(false);
+                        setEditingHorizontalList(null);
+                      }}
+                      className="px-3 py-1.5 text-xs text-[#52493A] hover:bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Save Shelf & Sync</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. Shelf Title & Position Information */}
+                <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-[#2C5E43]" />
+                      <h4 className="font-bold text-sm text-[#14291D]">
+                        1. Shelf Section Title & Position
+                      </h4>
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#14291D]">
+                      <input
+                        type="checkbox"
+                        checked={horizontalListForm.enabled}
+                        onChange={(e) => setHorizontalListForm({ ...horizontalListForm, enabled: e.target.checked })}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>Active on Website</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-[#2F2920] mb-1">
+                        Shelf Title *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={horizontalListForm.title}
+                        onChange={(e) => setHorizontalListForm({ ...horizontalListForm, title: e.target.value })}
+                        placeholder="e.g. Doctor Recommended Classical Rasayanas"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-[#2F2920] mb-1">
+                        Badge / Tag Pill Text (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={horizontalListForm.badgeText || ''}
+                        onChange={(e) => setHorizontalListForm({ ...horizontalListForm, badgeText: e.target.value })}
+                        placeholder="e.g. Curated Collection, Doctor's Choice"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block font-semibold text-[#2F2920] mb-1">
+                        Subtitle / Pharmacist Note (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={horizontalListForm.subtitle || ''}
+                        onChange={(e) => setHorizontalListForm({ ...horizontalListForm, subtitle: e.target.value })}
+                        placeholder="e.g. Handpicked authentic herbal preparations to restore vitality, immunity & stamina."
+                        className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-[#2F2920] mb-1">
+                        Display Order / Position
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={horizontalListForm.displayOrder}
+                        onChange={(e) => setHorizontalListForm({ ...horizontalListForm, displayOrder: Number(e.target.value) || 1 })}
+                        className="w-24 px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                      />
+                      <p className="text-[10px] text-[#716858] mt-0.5">
+                        Lower number appears higher on the storefront page.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Product Sourcing: Pre-added Category vs Directly Selected Products */}
+                <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-[#B4741E]" />
+                      <h4 className="font-bold text-sm text-[#14291D]">
+                        2. Add Products: Pre-Added Category or Directly Selected Products
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Mode Selector */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label 
+                      onClick={() => setHorizontalListForm({ ...horizontalListForm, sourceType: 'category' })}
+                      className={`p-3.5 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+                        horizontalListForm.sourceType === 'category'
+                          ? 'bg-emerald-50/70 border-[#2C5E43] ring-1 ring-[#2C5E43]'
+                          : 'bg-[#FAF8F5] border-[#DDD5C5] hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="sourceType"
+                        checked={horizontalListForm.sourceType === 'category'}
+                        onChange={() => setHorizontalListForm({ ...horizontalListForm, sourceType: 'category' })}
+                        className="mt-0.5 text-emerald-700 focus:ring-emerald-600"
+                      />
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-[#2C5E43]" />
+                          <span>Pre-Added Category</span>
+                        </div>
+                        <p className="text-[11px] text-[#594F40]">
+                          Automatically populate shelf from an existing category (e.g. Immunity, Digestion, Mind & Sleep).
+                        </p>
+                      </div>
+                    </label>
+
+                    <label 
+                      onClick={() => setHorizontalListForm({ ...horizontalListForm, sourceType: 'manual' })}
+                      className={`p-3.5 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+                        horizontalListForm.sourceType === 'manual'
+                          ? 'bg-emerald-50/70 border-[#2C5E43] ring-1 ring-[#2C5E43]'
+                          : 'bg-[#FAF8F5] border-[#DDD5C5] hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="sourceType"
+                        checked={horizontalListForm.sourceType === 'manual'}
+                        onChange={() => setHorizontalListForm({ ...horizontalListForm, sourceType: 'manual' })}
+                        className="mt-0.5 text-emerald-700 focus:ring-emerald-600"
+                      />
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                          <CheckSquare className="w-3.5 h-3.5 text-[#B4741E]" />
+                          <span>Directly Selected Products</span>
+                        </div>
+                        <p className="text-[11px] text-[#594F40]">
+                          Handpick specific formulations directly with multi-select checkboxes and custom order.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Category Source Config */}
+                  {horizontalListForm.sourceType === 'category' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-[#FAF8F5] p-3.5 rounded-lg border border-[#EAE3D4]">
+                      <div>
+                        <label className="block font-semibold text-[#2F2920] mb-1">
+                          Select Pre-Added Category *
+                        </label>
+                        <select
+                          value={horizontalListForm.category || 'all'}
+                          onChange={(e) => setHorizontalListForm({ ...horizontalListForm, category: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs font-medium text-[#2F2920]"
+                        >
+                          <option value="all">All Formulations / Top Rated</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-[#2F2920] mb-1">
+                          Max Products to Display
+                        </label>
+                        <input
+                          type="number"
+                          min={2}
+                          max={30}
+                          value={horizontalListForm.maxProducts || 8}
+                          onChange={(e) => setHorizontalListForm({ ...horizontalListForm, maxProducts: Number(e.target.value) || 8 })}
+                          className="w-24 px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
+                        />
+                        <p className="text-[10px] text-[#716858] mt-0.5">
+                          Items will scroll horizontally smoothly across cards.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Direct Selection Config */}
+                  {horizontalListForm.sourceType === 'manual' && (
+                    <div className="space-y-3 bg-[#FAF8F5] p-3.5 rounded-lg border border-[#EAE3D4]">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-[#14291D]">
+                            Select Products ({horizontalListForm.selectedProductIds?.length || 0} selected)
+                          </span>
+                          {horizontalListForm.selectedProductIds && horizontalListForm.selectedProductIds.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setHorizontalListForm({ ...horizontalListForm, selectedProductIds: [] })}
+                              className="text-[10.5px] text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Search in products */}
+                        <div className="relative w-full sm:w-64">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-[#8C8270]" />
+                          <input
+                            type="text"
+                            value={productSearchInListForm}
+                            onChange={(e) => setProductSearchInListForm(e.target.value)}
+                            placeholder="Search by name, herb, or category..."
+                            className="w-full pl-8 pr-2.5 py-1 bg-white border border-[#DDD5C5] rounded text-[11px]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Selected product chips */}
+                      {horizontalListForm.selectedProductIds && horizontalListForm.selectedProductIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded border border-[#EAE3D4] max-h-24 overflow-y-auto">
+                          {horizontalListForm.selectedProductIds.map((id) => {
+                            const p = products.find((prod) => prod.id === id);
+                            if (!p) return null;
+                            return (
+                              <span 
+                                key={id} 
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10.5px] font-medium"
+                              >
+                                <span>{p.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = (horizontalListForm.selectedProductIds || []).filter((it) => it !== id);
+                                    setHorizontalListForm({ ...horizontalListForm, selectedProductIds: next });
+                                  }}
+                                  className="w-3.5 h-3.5 rounded-full hover:bg-emerald-200 flex items-center justify-center cursor-pointer"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Product Checkboxes Grid */}
+                      <div className="max-h-60 overflow-y-auto divide-y divide-[#EAE3D4] bg-white rounded border border-[#DDD5C5]">
+                        {products
+                          .filter((p) => {
+                            if (!productSearchInListForm.trim()) return true;
+                            const query = productSearchInListForm.toLowerCase();
+                            return (
+                              p.name.toLowerCase().includes(query) ||
+                              (p.sanskritName && p.sanskritName.toLowerCase().includes(query)) ||
+                              p.category.toLowerCase().includes(query)
+                            );
+                          })
+                          .map((p) => {
+                            const isChecked = (horizontalListForm.selectedProductIds || []).includes(p.id);
+                            return (
+                              <label
+                                key={p.id}
+                                className={`flex items-center justify-between p-2 hover:bg-[#FAF8F5] transition-colors cursor-pointer text-xs ${
+                                  isChecked ? 'bg-emerald-50/60' : ''
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const current = horizontalListForm.selectedProductIds || [];
+                                      if (e.target.checked) {
+                                        setHorizontalListForm({ ...horizontalListForm, selectedProductIds: [...current, p.id] });
+                                      } else {
+                                        setHorizontalListForm({ ...horizontalListForm, selectedProductIds: current.filter((id) => id !== p.id) });
+                                      }
+                                    }}
+                                    className="rounded text-emerald-700 focus:ring-emerald-600 w-4 h-4 cursor-pointer shrink-0"
+                                  />
+                                  <img
+                                    src={p.image || (p.images && p.images[0]) || ''}
+                                    alt={p.name}
+                                    className="w-8 h-8 rounded object-cover bg-stone-100 shrink-0 border border-[#DDD5C5]"
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-xs text-[#14291D] truncate">
+                                      {p.name}
+                                    </div>
+                                    <div className="text-[10px] text-[#716858] truncate">
+                                      {p.sanskritName || p.category}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0 ml-2">
+                                  <div className="font-mono font-bold text-xs text-[#14291D]">
+                                    {formatPrice(p.price)}
+                                  </div>
+                                  {p.resellerPrice && (
+                                    <div className="text-[10px] text-emerald-700 font-mono font-semibold">
+                                      Reseller: {formatPrice(p.resellerPrice)}
+                                    </div>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Detail Elements Customizer: Name, Image, Price, Reseller Price, Offer, Tag, etc. */}
+                <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                  <div className="border-b border-[#EAE3D4] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-[#2C5E43]" />
+                      <h4 className="font-bold text-sm text-[#14291D]">
+                        3. List Detail Display Elements (Select What to Show on Cards)
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[#695F4F] mt-1">
+                      Choose which elements appear inside each product card on this horizontal shelf: Name, Image, Retail Price, Reseller Price, Offer/Discount, Tag, etc.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
+                    {[
+                      { key: 'showImage', label: 'Product Image', desc: 'Main photo / thumbnail' },
+                      { key: 'showName', label: 'Product Name', desc: 'Primary formulation title' },
+                      { key: 'showSanskritName', label: 'Sanskrit Name', desc: 'Botanical Latin/Sanskrit' },
+                      { key: 'showPrice', label: 'Retail Price (₹)', desc: 'Standard customer rate' },
+                      { key: 'showResellerPrice', label: 'Reseller Price', desc: 'Wholesale clinic margin' },
+                      { key: 'showMrpAndOffer', label: 'MRP & % Offer', desc: 'Strike-through & discount' },
+                      { key: 'showTag', label: 'Formulation Tag', desc: 'Trending/bestseller badge' },
+                      { key: 'showRating', label: 'Rating & Reviews', desc: 'Star rating & review count' },
+                      { key: 'showAddToCart', label: 'Add to Cart', desc: 'Direct inquiry action button' },
+                      { key: 'showQuickView', label: 'Quick View', desc: 'Full monograph button' },
+                    ].map((item) => {
+                      const isChecked = horizontalListForm.cardFields[item.key as keyof HorizontalListCardFields] !== false;
+                      return (
+                        <label
+                          key={item.key}
+                          className={`p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-emerald-50/80 border-[#A5D6B6] ring-1 ring-[#A5D6B6]'
+                              : 'bg-[#FAF8F5] border-[#DDD5C5] text-[#8C8270] opacity-75'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-bold text-xs text-[#14291D]">
+                              {item.label}
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                setHorizontalListForm({
+                                  ...horizontalListForm,
+                                  cardFields: {
+                                    ...horizontalListForm.cardFields,
+                                    [item.key]: e.target.checked,
+                                  },
+                                });
+                              }}
+                              className="rounded text-emerald-700 focus:ring-emerald-600 w-4 h-4 cursor-pointer"
+                            />
+                          </div>
+                          <p className="text-[10px] text-[#695F4F]">
+                            {item.desc}
+                          </p>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {/* Live Interactive Card Preview */}
+                  <div className="pt-3 border-t border-[#F0EAE1]">
+                    <h5 className="font-bold text-xs text-[#14291D] mb-2 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Live Card Preview (How customers will see cards on this shelf):</span>
+                    </h5>
+
+                    <div className="w-[220px] sm:w-[240px] bg-white rounded-xl border border-[#D5CCBC] shadow-sm flex flex-col justify-between overflow-hidden">
+                      <div>
+                        {horizontalListForm.cardFields.showImage !== false && (
+                          <div className="relative aspect-square bg-[#FAF8F5] overflow-hidden border-b border-[#E8E2D5]">
+                            <img
+                              src={products[0]?.image || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80'}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
+                            {horizontalListForm.cardFields.showTag !== false && (
+                              <div className="absolute top-2 left-2 z-10">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold bg-[#14291D] text-white shadow-xs">
+                                  <Tag className="w-2.5 h-2.5 text-amber-300" />
+                                  <span>Trending</span>
+                                </span>
+                              </div>
+                            )}
+                            {horizontalListForm.cardFields.showMrpAndOffer !== false && (
+                              <div className="absolute top-2 right-2 z-10">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                                  28% OFF
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="p-3 space-y-1.5">
+                          {horizontalListForm.cardFields.showRating !== false && (
+                            <div className="flex items-center gap-1 text-[11px] text-[#716858]">
+                              <div className="flex items-center text-amber-500">
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span className="font-bold text-[#14291D] ml-0.5">4.9</span>
+                              </div>
+                              <span className="text-stone-300">·</span>
+                              <span>(312)</span>
+                            </div>
+                          )}
+
+                          {horizontalListForm.cardFields.showName !== false && (
+                            <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] line-clamp-1">
+                              {products[0]?.name || 'Ashwagandha KSM-66 Gold Extract'}
+                            </h4>
+                          )}
+
+                          {horizontalListForm.cardFields.showSanskritName !== false && (
+                            <p className="text-[10.5px] text-[#716858] italic line-clamp-1">
+                              {products[0]?.sanskritName || 'अश्वगंधा चूर्ण / घन सत्व'}
+                            </p>
+                          )}
+
+                          {(horizontalListForm.cardFields.showPrice !== false || 
+                            horizontalListForm.cardFields.showMrpAndOffer !== false || 
+                            horizontalListForm.cardFields.showResellerPrice !== false) && (
+                            <div className="pt-1 border-t border-[#F2ECE1] space-y-1">
+                              <div className="flex items-baseline gap-2">
+                                {horizontalListForm.cardFields.showPrice !== false && (
+                                  <span className="font-mono font-bold text-sm text-[#14291D]">
+                                    ₹649
+                                  </span>
+                                )}
+                                {horizontalListForm.cardFields.showMrpAndOffer !== false && (
+                                  <span className="font-mono text-xs text-[#8C8270] line-through">
+                                    ₹899
+                                  </span>
+                                )}
+                              </div>
+
+                              {horizontalListForm.cardFields.showResellerPrice !== false && (
+                                <div className="flex items-center justify-between text-[10px] bg-[#E7EFEA]/80 px-1.5 py-0.5 rounded border border-[#B5D6C4]">
+                                  <span className="text-[#2C5E43] font-semibold">Reseller:</span>
+                                  <span className="font-mono font-bold text-[#183624]">
+                                    ₹480
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {(horizontalListForm.cardFields.showAddToCart !== false || horizontalListForm.cardFields.showQuickView !== false) && (
+                        <div className="p-3 pt-0 flex items-center gap-1.5">
+                          {horizontalListForm.cardFields.showAddToCart !== false && (
+                            <button
+                              type="button"
+                              className="flex-1 py-1 px-2 rounded-lg text-xs font-bold bg-[#14291D] text-white shadow-2xs text-center"
+                            >
+                              Add to Cart
+                            </button>
+                          )}
+                          {horizontalListForm.cardFields.showQuickView !== false && (
+                            <button
+                              type="button"
+                              className="p-1 rounded-lg border border-[#DDD5C5] text-[#52493A]"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="flex items-center justify-end gap-3 pt-2 pb-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingNewHorizontalList(false);
+                      setEditingHorizontalList(null);
+                    }}
+                    className="px-4 py-2 text-xs font-semibold text-[#52493A] hover:bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer"
+                  >
+                    <Save className="w-4 h-4 text-amber-300" />
+                    <span>Save Horizontal Shelf & Sync to Storefront</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* SHELVES OVERVIEW LIST */
+              <div className="space-y-6">
+                {/* Header Banner */}
+                <div className="p-5 rounded-xl border border-[#A5D6B6] bg-linear-to-r from-emerald-50/80 via-white to-amber-50/50 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <SlidersHorizontal className="w-5 h-5 text-[#2C5E43]" />
+                        <h3 className="font-serif text-lg font-bold text-[#14291D]">
+                          Product Horizontal Shelves Manager
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {currentHorizontalLists.filter((l) => l.enabled).length} Active Shelves
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#594F40]">
+                        Create multiple horizontal scrolling carousels on the storefront. Add formulations via pre-added category or directly selected products, and customize visible card details (Name, Image, Retail Price, Reseller Price, Offer, Tags).
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleStartCreateHorizontalList}
+                        className="px-4 py-2 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4 text-amber-300" />
+                        <span>Create New Shelf</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedSiteSettings: SiteSettings = {
+                            ...siteForm,
+                            productHorizontalLists: DEFAULT_PRODUCT_HORIZONTAL_LISTS,
+                          };
+                          setSiteForm(updatedSiteSettings);
+                          onUpdateSiteSettings(updatedSiteSettings);
+                          backupSiteSettingsToFirebase(updatedSiteSettings);
+                          setSaveSuccessMsg('Restored default curated horizontal shelves!');
+                          setTimeout(() => setSaveSuccessMsg(null), 2500);
+                        }}
+                        className="px-3 py-2 text-xs font-medium text-[#483F30] hover:text-[#14291D] bg-white hover:bg-[#F2ECE1] border border-[#CFC5B4] rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        title="Restore default curated shelves"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-[#B4741E]" />
+                        <span>Reset Defaults</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shelves List */}
+                {currentHorizontalLists.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-xl border border-dashed border-[#DDD5C5] space-y-3">
+                    <SlidersHorizontal className="w-10 h-10 text-[#A89F8F] mx-auto" />
+                    <div>
+                      <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                        No Horizontal Product Shelves Configured
+                      </h4>
+                      <p className="text-xs text-[#695F4F]">
+                        Click the button below to create your first horizontal scroll showcase.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleStartCreateHorizontalList}
+                      className="px-4 py-2 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg cursor-pointer"
+                    >
+                      Create First Shelf
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {currentHorizontalLists.map((shelf, idx) => (
+                      <div
+                        key={shelf.id}
+                        className={`p-4 rounded-xl border transition-all ${
+                          shelf.enabled 
+                            ? 'bg-white border-[#D5CCBC] shadow-xs' 
+                            : 'bg-[#FAF8F5] border-[#E0D7C8] opacity-75'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F0EAE1] pb-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-full bg-[#14291D] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                              {shelf.displayOrder || idx + 1}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-serif text-sm font-bold text-[#14291D]">
+                                  {shelf.title}
+                                </h4>
+                                {shelf.badgeText && (
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold">
+                                    {shelf.badgeText}
+                                  </span>
+                                )}
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  shelf.enabled
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-stone-200 text-stone-700'
+                                }`}>
+                                  {shelf.enabled ? 'Visible' : 'Hidden'}
+                                </span>
+                              </div>
+                              {shelf.subtitle && (
+                                <p className="text-xs text-[#695F4F] mt-0.5 line-clamp-1">
+                                  {shelf.subtitle}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                            {/* Reorder */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveHorizontalList(idx, 'up')}
+                              disabled={idx === 0}
+                              className="p-1 rounded text-[#716858] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveHorizontalList(idx, 'down')}
+                              disabled={idx === currentHorizontalLists.length - 1}
+                              className="p-1 rounded text-[#716858] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+
+                            {/* Toggle visibility */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleHorizontalList(shelf.id)}
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-lg border cursor-pointer ${
+                                shelf.enabled
+                                  ? 'bg-white text-stone-700 hover:bg-stone-50 border-stone-300'
+                                  : 'bg-emerald-700 text-white hover:bg-emerald-800 border-emerald-800'
+                              }`}
+                            >
+                              {shelf.enabled ? 'Hide' : 'Show'}
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditHorizontalList(shelf)}
+                              className="px-3 py-1 text-xs font-bold bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+                              <span>Edit</span>
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHorizontalList(shelf.id)}
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                              title="Delete Shelf"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Shelf Summary Info */}
+                        <div className="pt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[#14291D]">Source:</span>
+                            {shelf.sourceType === 'manual' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-900 border border-emerald-200 text-[11px] font-medium">
+                                <CheckSquare className="w-3 h-3 text-emerald-700" />
+                                <span>Direct Selection ({shelf.selectedProductIds?.length || 0} products)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-medium">
+                                <Layers className="w-3 h-3 text-amber-700" />
+                                <span>Category: {shelf.category || 'all'} (Max {shelf.maxProducts || 8})</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Detail Elements Enabled */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[10px] text-[#716858] font-semibold mr-1">Showing on Card:</span>
+                            {shelf.cardFields?.showImage !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#52493A] border border-[#E0D7C8]">Image</span>
+                            )}
+                            {shelf.cardFields?.showName !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#52493A] border border-[#E0D7C8]">Name</span>
+                            )}
+                            {shelf.cardFields?.showPrice !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#52493A] border border-[#E0D7C8]">Price</span>
+                            )}
+                            {shelf.cardFields?.showResellerPrice !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-emerald-800 border border-emerald-300 font-semibold">Reseller</span>
+                            )}
+                            {shelf.cardFields?.showMrpAndOffer !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-amber-800 border border-amber-300 font-semibold">Offer</span>
+                            )}
+                            {shelf.cardFields?.showTag !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#52493A] border border-[#E0D7C8]">Tag</span>
+                            )}
+                            {shelf.cardFields?.showRating !== false && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#52493A] border border-[#E0D7C8]">Rating</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

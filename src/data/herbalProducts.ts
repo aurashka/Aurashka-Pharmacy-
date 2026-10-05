@@ -1,4 +1,4 @@
-import { HerbalProduct } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings, BannerSliderConfig, ProductHorizontalList } from '../types/pharmacy';
 
 export const HERBAL_PRODUCTS: HerbalProduct[] = [
   {
@@ -688,7 +688,7 @@ export const PHARMACY_CONTACT_INFO = {
   ]
 };
 
-export const DEFAULT_SITE_SETTINGS = {
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   brandName: 'Aurashka',
   hindiName: 'औराश्का हर्बल औषधि भंडार',
   brandLogoImage: 'https://i.ibb.co/cKMZvJyJ/IMG-9291.jpg',
@@ -810,8 +810,93 @@ export const DEFAULT_SITE_SETTINGS = {
     badge1Subtitle: 'Heavy-metal lab verified',
     badge2Title: '100% Pure Botanical',
     badge2Subtitle: 'Zero synthetic fillers',
-  }
+  },
+  bannerSlider: {
+    enabled: true,
+    autoScrollSeconds: 4,
+    aspectRatio: 'auto',
+    items: [
+      {
+        id: 'banner-slide-1',
+        imageUrl: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1200&q=80',
+        title: 'Authentic Classical Formulations',
+        subtitle: '100% Pure Botanicals · Lab Tested for Heavy Metals & Safety',
+        linkType: 'category',
+        category: 'immunity',
+        altText: 'Classical Formulations Banner'
+      },
+      {
+        id: 'banner-slide-2',
+        imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80',
+        title: 'Rasayana & Vitality Specials',
+        subtitle: 'Traditional apothecary herbs with direct verified reseller discounts',
+        linkType: 'category',
+        category: 'rasayana',
+        altText: 'Rasayana Special Banner'
+      },
+      {
+        id: 'banner-slide-3',
+        imageUrl: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=1200&q=80',
+        title: 'Direct Wholesale & Reseller Rates',
+        subtitle: 'High-margin apothecary remedies for clinics, doctors & patients',
+        linkType: 'custom',
+        customUrl: '#deals-catalog',
+        altText: 'Wholesale Apothecary Banner'
+      }
+    ]
+  },
+  productHorizontalLists: [
+    {
+      id: 'hlist-1',
+      enabled: true,
+      title: 'Doctor Recommended Classical Rasayanas',
+      subtitle: 'Handpicked authentic herbal preparations to restore vitality, immunity & stamina.',
+      badgeText: 'Curated Collection',
+      displayOrder: 1,
+      sourceType: 'category',
+      category: 'rasayana',
+      maxProducts: 8,
+      cardFields: {
+        showImage: true,
+        showName: true,
+        showSanskritName: true,
+        showPrice: true,
+        showResellerPrice: true,
+        showMrpAndOffer: true,
+        showTag: true,
+        showRating: true,
+        showAddToCart: true,
+        showQuickView: true,
+      }
+    },
+    {
+      id: 'hlist-2',
+      enabled: true,
+      title: 'Top Rated Immunity & Respiratory Formulations',
+      subtitle: 'Standardized classical extracts and decoctions for strong seasonal immunity.',
+      badgeText: 'Featured Formulations',
+      displayOrder: 2,
+      sourceType: 'category',
+      category: 'immunity',
+      maxProducts: 8,
+      cardFields: {
+        showImage: true,
+        showName: true,
+        showSanskritName: true,
+        showPrice: true,
+        showResellerPrice: true,
+        showMrpAndOffer: true,
+        showTag: true,
+        showRating: true,
+        showAddToCart: true,
+        showQuickView: true,
+      }
+    }
+  ]
 };
+
+export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;
+export const DEFAULT_PRODUCT_HORIZONTAL_LISTS: ProductHorizontalList[] = DEFAULT_SITE_SETTINGS.productHorizontalLists!;
 
 export const COMMON_AILMENT_TAGS = [
   { label: 'All Ailments', value: 'all' },

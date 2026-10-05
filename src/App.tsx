@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { HERBAL_PRODUCTS, DEFAULT_SITE_SETTINGS, DEFAULT_CATEGORIES, DEFAULT_FORMS } from './data/herbalProducts';
-import { HerbalProduct, ProductCategory, SiteSettings, CategoryItem } from './types/pharmacy';
+import { HerbalProduct, ProductCategory, SiteSettings, CategoryItem, BannerSliderConfig, BannerSlideItem, ProductHorizontalList } from './types/pharmacy';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
@@ -13,6 +13,7 @@ import { ProductDashboard } from './components/ProductDashboard';
 import { ProductDetailPage } from './components/ProductDetailPage';
 import { ContactPage } from './components/ContactPage';
 import { PeopleSection } from './components/PeopleSection';
+import { ProductHorizontalListsSection } from './components/ProductHorizontalListsSection';
 import { ConsultationModal } from './components/ConsultationModal';
 import { InquiryCartDrawer, CartItem } from './components/InquiryCartDrawer';
 import { FloatingContactWidget } from './components/FloatingContactWidget';
@@ -100,6 +101,21 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
     },
     footerCopyrightText: s.footerCopyrightText || DEFAULT_SITE_SETTINGS.footerCopyrightText,
     footerBotanicalBadgeText: s.footerBotanicalBadgeText || DEFAULT_SITE_SETTINGS.footerBotanicalBadgeText,
+    bannerSlider: {
+      enabled: s.bannerSlider?.enabled !== undefined ? Boolean(s.bannerSlider.enabled) : (DEFAULT_SITE_SETTINGS.bannerSlider?.enabled ?? true),
+      autoScrollSeconds: s.bannerSlider?.autoScrollSeconds || DEFAULT_SITE_SETTINGS.bannerSlider?.autoScrollSeconds || 4,
+      aspectRatio: (s.bannerSlider?.aspectRatio as BannerSliderConfig['aspectRatio']) || DEFAULT_SITE_SETTINGS.bannerSlider?.aspectRatio || 'auto',
+      items: (Array.isArray(s.bannerSlider?.items)
+        ? s.bannerSlider.items
+        : (s.bannerSlider?.items && typeof s.bannerSlider.items === 'object'
+          ? Object.values(s.bannerSlider.items)
+          : (DEFAULT_SITE_SETTINGS.bannerSlider?.items || []))) as BannerSlideItem[],
+    },
+    productHorizontalLists: (Array.isArray(s.productHorizontalLists) && s.productHorizontalLists.length > 0
+      ? s.productHorizontalLists
+      : (s.productHorizontalLists && typeof s.productHorizontalLists === 'object' && Object.values(s.productHorizontalLists).length > 0
+        ? Object.values(s.productHorizontalLists)
+        : (DEFAULT_SITE_SETTINGS.productHorizontalLists || []))) as ProductHorizontalList[],
   };
 }
 
@@ -535,6 +551,7 @@ function PharmacyApp() {
               onOpenConsultationModal={() => handleOpenConsultationModal()}
               onExploreProducts={() => handleNavigateSection('deals-catalog')}
               onSelectProduct={handleSelectProduct}
+              onSelectCategory={(cat) => setSelectedCategory(cat)}
               isAdmin={isAdmin}
               onOpenAdminPanel={() => {
                 setProductToEditInAdmin(null);
@@ -546,6 +563,22 @@ function PharmacyApp() {
               onAddToCart={handleAddToCart}
               cartProductIds={cartProductIds}
             />
+
+            {/* Custom Curated Product Horizontal Lists / Shelves */}
+            {siteSettings.productHorizontalLists && siteSettings.productHorizontalLists.length > 0 && (
+              <ProductHorizontalListsSection
+                lists={siteSettings.productHorizontalLists}
+                products={products}
+                onSelectProduct={handleSelectProduct}
+                onAddToCart={handleAddToCart}
+                cartProductIds={cartProductIds}
+                isAdmin={isAdmin}
+                onOpenAdminPanel={() => {
+                  setProductToEditInAdmin(null);
+                  setIsAdminPanelOpen(true);
+                }}
+              />
+            )}
 
             {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
             <ProductDashboard
