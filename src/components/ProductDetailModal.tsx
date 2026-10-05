@@ -124,6 +124,29 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     };
   }, [product, onClose, isZoomed, imagesList.length]);
 
+  const isBadgesMasterVisible = () => {
+    if (!product) return false;
+    if (product.assuranceBadges?.showBadges === false) return false;
+    if (product.assuranceBadges?.showBadges === true) return true;
+    return siteSettings?.productAssuranceBadges?.showBadges !== false;
+  };
+
+  const isBadge1Visible = () => {
+    if (!isBadgesMasterVisible() || !product) return false;
+    if (product.assuranceBadges?.showBadge1 === false) return false;
+    if (product.assuranceBadges?.showBadge1 === true) return true;
+    return siteSettings?.productAssuranceBadges?.showBadge1 !== false;
+  };
+
+  const isBadge2Visible = () => {
+    if (!isBadgesMasterVisible() || !product) return false;
+    if (product.assuranceBadges?.showBadge2 === false) return false;
+    if (product.assuranceBadges?.showBadge2 === true) return true;
+    return siteSettings?.productAssuranceBadges?.showBadge2 !== false;
+  };
+
+  const hasAnyBadgeVisible = isBadge1Visible() || isBadge2Visible();
+
   if (!product) return null;
 
   const currentPrice = selectedVariant?.price ?? product.price;
@@ -340,30 +363,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
 
                 {/* Quality & Ayush Assurance Box */}
-                <div className="p-3 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-2 text-xs mt-3 shadow-2xs">
-                  <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
-                    <div>
-                      <span className="font-bold text-[#14291D] block text-[10.5px]">
-                        {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
-                      </span>
-                      <span className="text-[9.5px] text-[#716858] block">
-                        {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
-                      </span>
-                    </div>
+                {hasAnyBadgeVisible && (
+                  <div className={`p-3 bg-white rounded-xl border border-[#D5CCBC] grid ${isBadge1Visible() && isBadge2Visible() ? 'grid-cols-2 gap-2' : 'grid-cols-1'} text-xs mt-3 shadow-2xs`}>
+                    {isBadge1Visible() && (
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                        <div>
+                          <span className="font-bold text-[#14291D] block text-[10.5px]">
+                            {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
+                          </span>
+                          <span className="text-[9.5px] text-[#716858] block">
+                            {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {isBadge2Visible() && (
+                      <div className="flex items-center gap-1.5">
+                        <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                        <div>
+                          <span className="font-bold text-[#14291D] block text-[10.5px]">
+                            {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
+                          </span>
+                          <span className="text-[9.5px] text-[#716858] block">
+                            {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
-                    <div>
-                      <span className="font-bold text-[#14291D] block text-[10.5px]">
-                        {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
-                      </span>
-                      <span className="text-[9.5px] text-[#716858] block">
-                        {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Right Column: Formulation Metadata & Buy/Order Actions */}

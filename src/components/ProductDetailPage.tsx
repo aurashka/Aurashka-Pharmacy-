@@ -72,6 +72,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   // Secret Quality Assurance Badges quick-edit state
   const [isSecretEditOpen, setIsSecretEditOpen] = useState(false);
+  const [showBadges, setShowBadges] = useState<boolean>(
+    product.assuranceBadges?.showBadges !== undefined
+      ? Boolean(product.assuranceBadges.showBadges)
+      : (siteSettings?.productAssuranceBadges?.showBadges ?? true)
+  );
+  const [showBadge1, setShowBadge1] = useState<boolean>(
+    product.assuranceBadges?.showBadge1 !== undefined
+      ? Boolean(product.assuranceBadges.showBadge1)
+      : (siteSettings?.productAssuranceBadges?.showBadge1 ?? true)
+  );
+  const [showBadge2, setShowBadge2] = useState<boolean>(
+    product.assuranceBadges?.showBadge2 !== undefined
+      ? Boolean(product.assuranceBadges.showBadge2)
+      : (siteSettings?.productAssuranceBadges?.showBadge2 ?? true)
+  );
   const [badge1Title, setBadge1Title] = useState(
     product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'
   );
@@ -88,16 +103,57 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   // Sync badge state if product changes
   useEffect(() => {
+    setShowBadges(
+      product.assuranceBadges?.showBadges !== undefined
+        ? Boolean(product.assuranceBadges.showBadges)
+        : (siteSettings?.productAssuranceBadges?.showBadges ?? true)
+    );
+    setShowBadge1(
+      product.assuranceBadges?.showBadge1 !== undefined
+        ? Boolean(product.assuranceBadges.showBadge1)
+        : (siteSettings?.productAssuranceBadges?.showBadge1 ?? true)
+    );
+    setShowBadge2(
+      product.assuranceBadges?.showBadge2 !== undefined
+        ? Boolean(product.assuranceBadges.showBadge2)
+        : (siteSettings?.productAssuranceBadges?.showBadge2 ?? true)
+    );
     setBadge1Title(product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified');
     setBadge1Subtitle(product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified');
     setBadge2Title(product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical');
     setBadge2Subtitle(product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers');
   }, [product, siteSettings]);
 
+  // Helper to determine if assurance trust badges are visible (separately or globally)
+  const isBadgesMasterVisible = () => {
+    if (product.assuranceBadges?.showBadges === false) return false;
+    if (product.assuranceBadges?.showBadges === true) return true;
+    return siteSettings?.productAssuranceBadges?.showBadges !== false;
+  };
+
+  const isBadge1Visible = () => {
+    if (!isBadgesMasterVisible()) return false;
+    if (product.assuranceBadges?.showBadge1 === false) return false;
+    if (product.assuranceBadges?.showBadge1 === true) return true;
+    return siteSettings?.productAssuranceBadges?.showBadge1 !== false;
+  };
+
+  const isBadge2Visible = () => {
+    if (!isBadgesMasterVisible()) return false;
+    if (product.assuranceBadges?.showBadge2 === false) return false;
+    if (product.assuranceBadges?.showBadge2 === true) return true;
+    return siteSettings?.productAssuranceBadges?.showBadge2 !== false;
+  };
+
+  const hasAnyBadgeVisible = isBadge1Visible() || isBadge2Visible();
+
   const handleSaveProductBadges = () => {
     const updatedProd: HerbalProduct = {
       ...product,
       assuranceBadges: {
+        showBadges: Boolean(showBadges),
+        showBadge1: Boolean(showBadge1),
+        showBadge2: Boolean(showBadge2),
         badge1Title: badge1Title.trim() || 'Ayush & GMP Certified',
         badge1Subtitle: badge1Subtitle.trim() || 'Heavy-metal lab verified',
         badge2Title: badge2Title.trim() || '100% Pure Botanical',
@@ -117,6 +173,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     const updatedSettings: SiteSettings = {
       ...siteSettings,
       productAssuranceBadges: {
+        showBadges: Boolean(showBadges),
+        showBadge1: Boolean(showBadge1),
+        showBadge2: Boolean(showBadge2),
         badge1Title: badge1Title.trim() || 'Ayush & GMP Certified',
         badge1Subtitle: badge1Subtitle.trim() || 'Heavy-metal lab verified',
         badge2Title: badge2Title.trim() || '100% Pure Botanical',
@@ -457,53 +516,81 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             )}
 
             {/* Quality & Ayush Assurance Box (Configurable from Admin Panel or Secretly in Product View) */}
-            <div className="relative group p-4 bg-white rounded-xl border border-[#D5CCBC] text-xs transition-all shadow-2xs hover:border-[#2C5E43]/60">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                  <div>
-                    <span className="font-bold text-[#14291D] block">
-                      {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
-                    </span>
-                    <span className="text-[11px] text-[#716858]">
-                      {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
-                    </span>
-                  </div>
+            {hasAnyBadgeVisible ? (
+              <div className="relative group p-4 bg-white rounded-xl border border-[#D5CCBC] text-xs transition-all shadow-2xs hover:border-[#2C5E43]/60">
+                <div className={`grid ${isBadge1Visible() && isBadge2Visible() ? 'grid-cols-2 gap-3' : 'grid-cols-1'}`}>
+                  {isBadge1Visible() && (
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                      <div>
+                        <span className="font-bold text-[#14291D] block">
+                          {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
+                        </span>
+                        <span className="text-[11px] text-[#716858]">
+                          {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {isBadge2Visible() && (
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                      <div>
+                        <span className="font-bold text-[#14291D] block">
+                          {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
+                        </span>
+                        <span className="text-[11px] text-[#716858]">
+                          {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                  <div>
-                    <span className="font-bold text-[#14291D] block">
-                      {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
-                    </span>
-                    <span className="text-[11px] text-[#716858]">
-                      {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Secret Admin Edit Trigger Button (In product view secretly) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setBadge1Title(product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified');
-                  setBadge1Subtitle(product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified');
-                  setBadge2Title(product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical');
-                  setBadge2Subtitle(product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers');
-                  setIsSecretEditOpen(true);
-                }}
-                className={`absolute top-2 right-2 px-2 py-1 rounded-md text-[10px] flex items-center gap-1 transition-all cursor-pointer ${
-                  isAdmin
-                    ? 'opacity-85 group-hover:opacity-100 bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6] shadow-2xs'
-                    : 'opacity-0 group-hover:opacity-60 hover:opacity-100! text-stone-500 hover:text-stone-800 bg-white/90 border border-stone-200'
-                }`}
-                title="Secret Admin Edit: Change Ayush & Quality Assurance Badges"
-              >
-                <Edit3 className="w-3 h-3 text-[#2C5E43]" />
-                <span className="font-semibold">Secret Edit</span>
-              </button>
-            </div>
+                {/* Secret Admin Edit Trigger Button (In product view secretly) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBadge1Title(product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified');
+                    setBadge1Subtitle(product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified');
+                    setBadge2Title(product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical');
+                    setBadge2Subtitle(product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers');
+                    setShowBadges(isBadgesMasterVisible());
+                    setShowBadge1(isBadge1Visible());
+                    setShowBadge2(isBadge2Visible());
+                    setIsSecretEditOpen(true);
+                  }}
+                  className={`absolute top-2 right-2 px-2 py-1 rounded-md text-[10px] flex items-center gap-1 transition-all cursor-pointer ${
+                    isAdmin
+                      ? 'opacity-85 group-hover:opacity-100 bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6] shadow-2xs'
+                      : 'opacity-0 group-hover:opacity-60 hover:opacity-100! text-stone-500 hover:text-stone-800 bg-white/90 border border-stone-200'
+                  }`}
+                  title="Secret Admin Edit: Change Ayush & Quality Assurance Badges"
+                >
+                  <Edit3 className="w-3 h-3 text-[#2C5E43]" />
+                  <span className="font-semibold">Edit Badges</span>
+                </button>
+              </div>
+            ) : (
+              isAdmin && (
+                <div className="relative group p-3 bg-stone-50/80 rounded-xl border border-dashed border-stone-300 text-xs flex items-center justify-between text-[#716858]">
+                  <span className="text-[11px] italic">Quality Assurance Badges: Currently Hidden</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBadges(true);
+                      setShowBadge1(true);
+                      setShowBadge2(true);
+                      setIsSecretEditOpen(true);
+                    }}
+                    className="px-2 py-1 rounded bg-white border border-[#DDD5C5] text-[#14291D] text-[10px] font-semibold flex items-center gap-1 hover:bg-stone-100 cursor-pointer shadow-2xs"
+                  >
+                    <Edit3 className="w-3 h-3 text-[#2C5E43]" />
+                    <span>Show & Configure</span>
+                  </button>
+                </div>
+              )
+            )}
           </div>
 
           {/* Right Column: Product Core Details & Actions */}
@@ -1163,13 +1250,43 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             )}
 
-            <div className="space-y-3.5 text-xs">
+            {/* Master Show / Hide Toggle */}
+            <div className="p-3 bg-white rounded-xl border border-[#DDD5C5] flex items-center justify-between">
+              <div>
+                <span className="font-bold text-xs text-[#14291D] block">Display Quality Assurance Badges</span>
+                <span className="text-[11px] text-[#716858]">Show or hide these trust badges on this product view</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBadges(!showBadges)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  showBadges
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                }`}
+              >
+                {showBadges ? '✓ Shown' : '✕ Hidden'}
+              </button>
+            </div>
+
+            <div className={`space-y-3.5 text-xs transition-opacity ${showBadges ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
               {/* Badge 1 */}
               <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-2.5">
-                <span className="font-bold text-[#14291D] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
-                  <span>Assurance Badge #1</span>
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#14291D] flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                    <span>Assurance Badge #1</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBadge1(!showBadge1)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      showBadge1 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-stone-200 text-stone-600'
+                    }`}
+                  >
+                    {showBadge1 ? 'Badge 1: Visible' : 'Badge 1: Hidden'}
+                  </button>
+                </div>
                 <div>
                   <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
                     Badge 1 Title (Default: Ayush & GMP Certified)
@@ -1198,10 +1315,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
               {/* Badge 2 */}
               <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-2.5">
-                <span className="font-bold text-[#14291D] flex items-center gap-1.5">
-                  <Leaf className="w-4 h-4 text-[#2C5E43]" />
-                  <span>Assurance Badge #2</span>
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#14291D] flex items-center gap-1.5">
+                    <Leaf className="w-4 h-4 text-[#2C5E43]" />
+                    <span>Assurance Badge #2</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBadge2(!showBadge2)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      showBadge2 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-stone-200 text-stone-600'
+                    }`}
+                  >
+                    {showBadge2 ? 'Badge 2: Visible' : 'Badge 2: Hidden'}
+                  </button>
+                </div>
                 <div>
                   <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
                     Badge 2 Title (Default: 100% Pure Botanical)
@@ -1232,22 +1360,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             {/* Live Visual Preview Inside Modal */}
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-bold text-[#716858] block">Live Preview in Product Ribbon:</span>
-              <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs shadow-2xs">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                  <div>
-                    <span className="font-bold text-[#14291D] block">{badge1Title || 'Ayush & GMP Certified'}</span>
-                    <span className="text-[11px] text-[#716858]">{badge1Subtitle || 'Heavy-metal lab verified'}</span>
-                  </div>
+              {showBadges && (showBadge1 || showBadge2) ? (
+                <div className={`p-3.5 bg-white rounded-xl border border-[#D5CCBC] grid ${showBadge1 && showBadge2 ? 'grid-cols-2 gap-3' : 'grid-cols-1'} text-xs shadow-2xs`}>
+                  {showBadge1 && (
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                      <div>
+                        <span className="font-bold text-[#14291D] block">{badge1Title || 'Ayush & GMP Certified'}</span>
+                        <span className="text-[11px] text-[#716858]">{badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                      </div>
+                    </div>
+                  )}
+                  {showBadge2 && (
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                      <div>
+                        <span className="font-bold text-[#14291D] block">{badge2Title || '100% Pure Botanical'}</span>
+                        <span className="text-[11px] text-[#716858]">{badge2Subtitle || 'Zero synthetic fillers'}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                  <div>
-                    <span className="font-bold text-[#14291D] block">{badge2Title || '100% Pure Botanical'}</span>
-                    <span className="text-[11px] text-[#716858]">{badge2Subtitle || 'Zero synthetic fillers'}</span>
-                  </div>
+              ) : (
+                <div className="p-3 bg-stone-100 rounded-xl border border-stone-200 text-center text-xs text-stone-500 font-medium">
+                  Badges are currently set to HIDDEN
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Actions */}

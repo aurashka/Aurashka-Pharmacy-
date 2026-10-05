@@ -239,10 +239,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           {/* Left Column: Brand & Hero Copy */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1C3A27] border border-[#2D5A3D] text-[11px] font-medium tracking-wide text-[#A5D6B6]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#A5D6B6] animate-pulse" />
-              <span>{siteSettings.heroBadgeText || 'Registered Ayurvedic Formulations & Classical Rasayanas'}</span>
-            </div>
+            {siteSettings.showHeroBadge !== false && (siteSettings.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas').trim() !== '' && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1C3A27] border border-[#2D5A3D] text-[11px] font-medium tracking-wide text-[#A5D6B6]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#A5D6B6] animate-pulse" />
+                <span>{siteSettings.heroBadgeText || 'Registered Ayurvedic Formulations & Classical Rasayanas'}</span>
+              </div>
+            )}
 
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
               {siteSettings.heroTitle}

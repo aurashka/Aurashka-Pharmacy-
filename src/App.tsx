@@ -74,6 +74,7 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
           ? (Object.values(s.weeklyDeals.items) as any[])
           : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
     },
+    showHeroBadge: s.showHeroBadge !== undefined ? Boolean(s.showHeroBadge) : true,
     heroBadgeText: s.heroBadgeText || DEFAULT_SITE_SETTINGS.heroBadgeText,
     heroTitle: s.heroTitle || DEFAULT_SITE_SETTINGS.heroTitle,
     heroSubtitle: s.heroSubtitle || DEFAULT_SITE_SETTINGS.heroSubtitle,
@@ -88,7 +89,15 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
       : (s.peopleList && typeof s.peopleList === 'object' && Object.values(s.peopleList).length > 0
         ? (Object.values(s.peopleList) as any[])
         : (DEFAULT_SITE_SETTINGS.peopleList || [])),
-    productAssuranceBadges: s.productAssuranceBadges || DEFAULT_SITE_SETTINGS.productAssuranceBadges,
+    productAssuranceBadges: {
+      showBadges: s.productAssuranceBadges?.showBadges !== undefined ? Boolean(s.productAssuranceBadges.showBadges) : (DEFAULT_SITE_SETTINGS.productAssuranceBadges?.showBadges ?? true),
+      showBadge1: s.productAssuranceBadges?.showBadge1 !== undefined ? Boolean(s.productAssuranceBadges.showBadge1) : (DEFAULT_SITE_SETTINGS.productAssuranceBadges?.showBadge1 ?? true),
+      showBadge2: s.productAssuranceBadges?.showBadge2 !== undefined ? Boolean(s.productAssuranceBadges.showBadge2) : (DEFAULT_SITE_SETTINGS.productAssuranceBadges?.showBadge2 ?? true),
+      badge1Title: s.productAssuranceBadges?.badge1Title || DEFAULT_SITE_SETTINGS.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
+      badge1Subtitle: s.productAssuranceBadges?.badge1Subtitle || DEFAULT_SITE_SETTINGS.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
+      badge2Title: s.productAssuranceBadges?.badge2Title || DEFAULT_SITE_SETTINGS.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
+      badge2Subtitle: s.productAssuranceBadges?.badge2Subtitle || DEFAULT_SITE_SETTINGS.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
+    },
     footerCopyrightText: s.footerCopyrightText || DEFAULT_SITE_SETTINGS.footerCopyrightText,
     footerBotanicalBadgeText: s.footerBotanicalBadgeText || DEFAULT_SITE_SETTINGS.footerBotanicalBadgeText,
   };

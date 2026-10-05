@@ -98,6 +98,9 @@ export interface HerbalProduct {
 }
 
 export interface ProductAssuranceBadges {
+  showBadges?: boolean;
+  showBadge1?: boolean;
+  showBadge2?: boolean;
   badge1Title?: string;
   badge1Subtitle?: string;
   badge2Title?: string;
@@ -176,6 +179,7 @@ export interface SiteSettings {
   storeAddress: string;
   storeTimings: string;
   shippingNotice: string;
+  showHeroBadge?: boolean;
   heroBadgeText?: string;
   heroTitle: string;
   heroSubtitle: string;

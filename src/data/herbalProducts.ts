@@ -698,6 +698,7 @@ export const DEFAULT_SITE_SETTINGS = {
   storeAddress: 'Shop #14-16, Ayur Mandir Road, Near Central Botanical Garden, New Delhi - 110001, India',
   storeTimings: 'Mon – Sat: 9:00 AM – 8:00 PM | Sun: 10:00 AM – 2:00 PM',
   shippingNotice: 'Complimentary shipping across India with sealed cold-pressed freshness guarantee.',
+  showHeroBadge: true,
   heroBadgeText: 'Registered Ayurvedic Formulations & Classical Rasayanas',
   heroTitle: 'Essential Herbal Formulations & Apothecary Deals',
   heroSubtitle: 'Clinically standardized Rasayanas and pure plant extracts. Explore detailed therapeutic uses, prescribed dosages, and direct apothecary pricing.',
@@ -802,6 +803,9 @@ export const DEFAULT_SITE_SETTINGS = {
     },
   ],
   productAssuranceBadges: {
+    showBadges: true,
+    showBadge1: true,
+    showBadge2: true,
     badge1Title: 'Ayush & GMP Certified',
     badge1Subtitle: 'Heavy-metal lab verified',
     badge2Title: '100% Pure Botanical',

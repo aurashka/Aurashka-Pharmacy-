@@ -58,10 +58,11 @@ import {
   Users,
   UserPlus,
   ShieldCheck,
-  Package
+  Package,
+  EyeOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase } from '../utils/firebaseSync';
+import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS } from '../data/herbalProducts';
 
 interface AdminPanelModalProps {
@@ -181,6 +182,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     volumeOrWeight: '100g Pure Powder',
     inStock: true,
     displayOrder: 1,
+    showAssuranceBadges: true,
+    showBadge1: true,
+    showBadge2: true,
     badge1Title: 'Ayush & GMP Certified',
     badge1Subtitle: 'Heavy-metal lab verified',
     badge2Title: '100% Pure Botanical',
@@ -237,6 +241,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             ? (Object.values(s.weeklyDeals.items) as WeeklyDealItem[])
             : (DEFAULT_SITE_SETTINGS.weeklyDeals?.items || [])),
       },
+      showHeroBadge: s.showHeroBadge !== undefined ? Boolean(s.showHeroBadge) : true,
       heroBadgeText: s.heroBadgeText || DEFAULT_SITE_SETTINGS.heroBadgeText,
       heroTitle: s.heroTitle || DEFAULT_SITE_SETTINGS.heroTitle,
       heroSubtitle: s.heroSubtitle || DEFAULT_SITE_SETTINGS.heroSubtitle,
@@ -253,7 +258,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           : (DEFAULT_SITE_SETTINGS.peopleList || [])),
       brandLogoImage: s.brandLogoImage ?? DEFAULT_SITE_SETTINGS.brandLogoImage,
       showBrandLogo: s.showBrandLogo !== undefined ? Boolean(s.showBrandLogo) : true,
-      productAssuranceBadges: s.productAssuranceBadges || DEFAULT_SITE_SETTINGS.productAssuranceBadges,
+      productAssuranceBadges: {
+        showBadges: s.productAssuranceBadges?.showBadges !== undefined ? Boolean(s.productAssuranceBadges.showBadges) : true,
+        showBadge1: s.productAssuranceBadges?.showBadge1 !== undefined ? Boolean(s.productAssuranceBadges.showBadge1) : true,
+        showBadge2: s.productAssuranceBadges?.showBadge2 !== undefined ? Boolean(s.productAssuranceBadges.showBadge2) : true,
+        badge1Title: s.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
+        badge1Subtitle: s.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
+        badge2Title: s.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
+        badge2Subtitle: s.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
+      },
     };
   };
 
@@ -425,10 +438,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       volumeOrWeight: '100g Pure Powder',
       inStock: true,
       displayOrder: products.length + 1,
-      badge1Title: 'Ayush & GMP Certified',
-      badge1Subtitle: 'Heavy-metal lab verified',
-      badge2Title: '100% Pure Botanical',
-      badge2Subtitle: 'Zero synthetic fillers',
+      showAssuranceBadges: true,
+      showBadge1: true,
+      showBadge2: true,
+      badge1Title: siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
+      badge1Subtitle: siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
+      badge2Title: siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
+      badge2Subtitle: siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
       customLink: '',
       keyIndications: 'Immunity, Vital Energy, Respiratory Tone',
       primaryBenefits: 'Strengthens innate biological vitality\nCleanses cellular ama toxins\nRestores healthy tissue tone',
@@ -500,6 +516,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       volumeOrWeight: p.volumeOrWeight,
       inStock: p.inStock !== false,
       displayOrder: p.displayOrder !== undefined ? p.displayOrder : (products.indexOf(p) + 1),
+      showAssuranceBadges: p.assuranceBadges?.showBadges !== undefined ? p.assuranceBadges.showBadges : true,
+      showBadge1: p.assuranceBadges?.showBadge1 !== undefined ? p.assuranceBadges.showBadge1 : true,
+      showBadge2: p.assuranceBadges?.showBadge2 !== undefined ? p.assuranceBadges.showBadge2 : true,
       badge1Title: p.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
       badge1Subtitle: p.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
       badge2Title: p.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
@@ -933,6 +952,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       : undefined;
 
     const assuranceBadges: ProductAssuranceBadges = {
+      showBadges: Boolean(productForm.showAssuranceBadges),
+      showBadge1: Boolean(productForm.showBadge1),
+      showBadge2: Boolean(productForm.showBadge2),
       badge1Title: productForm.badge1Title.trim() || 'Ayush & GMP Certified',
       badge1Subtitle: productForm.badge1Subtitle.trim() || 'Heavy-metal lab verified',
       badge2Title: productForm.badge2Title.trim() || '100% Pure Botanical',
@@ -1058,6 +1080,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setIsBackingUp(false);
     setSaveSuccessMsg('Saved all products, multiple images, categories, forms, contacts & titles to Firebase!');
     setTimeout(() => setSaveSuccessMsg(null), 3500);
+  };
+
+  // Toggle Quality Assurance Badges separately for an individual product
+  const handleToggleProductBadge = async (prod: HerbalProduct, badgeType: 'all' | 'badge1' | 'badge2') => {
+    const curBadges = prod.assuranceBadges || {};
+    let updatedBadges: ProductAssuranceBadges;
+    if (badgeType === 'all') {
+      const isCurrentlyShown = curBadges.showBadges !== undefined ? curBadges.showBadges : (siteForm.productAssuranceBadges?.showBadges ?? true);
+      updatedBadges = { ...curBadges, showBadges: !isCurrentlyShown };
+    } else if (badgeType === 'badge1') {
+      const isCurrentlyShown = curBadges.showBadge1 !== undefined ? curBadges.showBadge1 : (siteForm.productAssuranceBadges?.showBadge1 ?? true);
+      updatedBadges = { ...curBadges, showBadge1: !isCurrentlyShown };
+    } else {
+      const isCurrentlyShown = curBadges.showBadge2 !== undefined ? curBadges.showBadge2 : (siteForm.productAssuranceBadges?.showBadge2 ?? true);
+      updatedBadges = { ...curBadges, showBadge2: !isCurrentlyShown };
+    }
+    const updatedProd: HerbalProduct = {
+      ...prod,
+      assuranceBadges: updatedBadges,
+    };
+    onUpdateProduct(updatedProd);
+    await backupProductToFirebase(updatedProd);
+    setSaveSuccessMsg(`Badges updated for "${prod.name}" and saved to Firebase!`);
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
   };
 
   // Move product up (closer to top of list)
@@ -2731,115 +2777,169 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               6. Product View Quality Assurance Badges (Ayush & Trust Ribbon)
                             </h5>
                             <p className="text-[11px] text-[#6E6352]">
-                              These 4 trust indicators appear in the product view secretly and on customer monographs.
+                              These 4 trust indicators appear on this product's detail page. You can show or hide them separately for this product.
                             </p>
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProductForm({
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setProductForm({
                               ...productForm,
-                              badge1Title: siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
-                              badge1Subtitle: siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
-                              badge2Title: siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
-                              badge2Subtitle: siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
-                            });
-                          }}
-                          className="px-2.5 py-1 bg-white border border-[#DDD5C5] text-[#14291D] hover:bg-stone-50 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          <RotateCcw className="w-3 h-3 text-[#2C5E43]" />
-                          <span>Reset to Site Defaults</span>
-                        </button>
-                      </div>
+                              showAssuranceBadges: !productForm.showAssuranceBadges,
+                            })}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              productForm.showAssuranceBadges
+                                ? 'bg-emerald-700 text-white shadow-2xs'
+                                : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
+                            }`}
+                          >
+                            {productForm.showAssuranceBadges ? '✓ Badges Shown' : '✕ Badges Hidden'}
+                          </button>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Badge 1 */}
-                        <div className="p-3 bg-white rounded-xl border border-[#E0D7C6] space-y-2.5 shadow-2xs">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
-                            <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
-                            <span>Assurance Badge 1 (e.g. Ayush & GMP Certified)</span>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                              Badge 1 Title
-                            </label>
-                            <input
-                              type="text"
-                              value={productForm.badge1Title}
-                              onChange={(e) => setProductForm({ ...productForm, badge1Title: e.target.value })}
-                              placeholder="Ayush & GMP Certified"
-                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                              Badge 1 Subtitle / Note
-                            </label>
-                            <input
-                              type="text"
-                              value={productForm.badge1Subtitle}
-                              onChange={(e) => setProductForm({ ...productForm, badge1Subtitle: e.target.value })}
-                              placeholder="Heavy-metal lab verified"
-                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Badge 2 */}
-                        <div className="p-3 bg-white rounded-xl border border-[#E0D7C6] space-y-2.5 shadow-2xs">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
-                            <Leaf className="w-4 h-4 text-[#2C5E43]" />
-                            <span>Assurance Badge 2 (e.g. 100% Pure Botanical)</span>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                              Badge 2 Title
-                            </label>
-                            <input
-                              type="text"
-                              value={productForm.badge2Title}
-                              onChange={(e) => setProductForm({ ...productForm, badge2Title: e.target.value })}
-                              placeholder="100% Pure Botanical"
-                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                              Badge 2 Subtitle / Note
-                            </label>
-                            <input
-                              type="text"
-                              value={productForm.badge2Subtitle}
-                              onChange={(e) => setProductForm({ ...productForm, badge2Subtitle: e.target.value })}
-                              placeholder="Zero synthetic fillers"
-                              className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
-                            />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductForm({
+                                ...productForm,
+                                showAssuranceBadges: true,
+                                showBadge1: true,
+                                showBadge2: true,
+                                badge1Title: siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified',
+                                badge1Subtitle: siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified',
+                                badge2Title: siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical',
+                                badge2Subtitle: siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers',
+                              });
+                            }}
+                            className="px-2.5 py-1 bg-white border border-[#DDD5C5] text-[#14291D] hover:bg-stone-50 rounded text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <RotateCcw className="w-3 h-3 text-[#2C5E43]" />
+                            <span>Reset Defaults</span>
+                          </button>
                         </div>
                       </div>
 
-                      {/* Live preview in product form */}
-                      <div className="pt-1">
-                        <span className="text-[10px] uppercase font-bold text-[#716858] block mb-1">
-                          Product View Preview:
-                        </span>
-                        <div className="p-3 bg-white rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs max-w-md">
-                          <div className="flex items-center gap-2">
-                            <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                      <div className={`space-y-4 transition-opacity ${productForm.showAssuranceBadges ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Badge 1 */}
+                          <div className="p-3 bg-white rounded-xl border border-[#E0D7C6] space-y-2.5 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                                <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                                <span>Badge 1 (Ayush & GMP)</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setProductForm({ ...productForm, showBadge1: !productForm.showBadge1 })}
+                                className={`px-2 py-0.5 rounded text-[10.5px] font-semibold transition-all cursor-pointer ${
+                                  productForm.showBadge1 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-stone-200 text-stone-600'
+                                }`}
+                              >
+                                {productForm.showBadge1 ? 'Visible' : 'Hidden'}
+                              </button>
+                            </div>
                             <div>
-                              <span className="font-bold text-[#14291D] block">{productForm.badge1Title || 'Ayush & GMP Certified'}</span>
-                              <span className="text-[11px] text-[#716858]">{productForm.badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                              <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                Badge 1 Title
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm.badge1Title}
+                                onChange={(e) => setProductForm({ ...productForm, badge1Title: e.target.value })}
+                                placeholder="Ayush & GMP Certified"
+                                className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                Badge 1 Subtitle / Note
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm.badge1Subtitle}
+                                onChange={(e) => setProductForm({ ...productForm, badge1Subtitle: e.target.value })}
+                                placeholder="Heavy-metal lab verified"
+                                className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                              />
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+
+                          {/* Badge 2 */}
+                          <div className="p-3 bg-white rounded-xl border border-[#E0D7C6] space-y-2.5 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                                <Leaf className="w-4 h-4 text-[#2C5E43]" />
+                                <span>Badge 2 (Botanical & Fillers)</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setProductForm({ ...productForm, showBadge2: !productForm.showBadge2 })}
+                                className={`px-2 py-0.5 rounded text-[10.5px] font-semibold transition-all cursor-pointer ${
+                                  productForm.showBadge2 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-stone-200 text-stone-600'
+                                }`}
+                              >
+                                {productForm.showBadge2 ? 'Visible' : 'Hidden'}
+                              </button>
+                            </div>
                             <div>
-                              <span className="font-bold text-[#14291D] block">{productForm.badge2Title || '100% Pure Botanical'}</span>
-                              <span className="text-[11px] text-[#716858]">{productForm.badge2Subtitle || 'Zero synthetic fillers'}</span>
+                              <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                Badge 2 Title
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm.badge2Title}
+                                onChange={(e) => setProductForm({ ...productForm, badge2Title: e.target.value })}
+                                placeholder="100% Pure Botanical"
+                                className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                Badge 2 Subtitle / Note
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm.badge2Subtitle}
+                                onChange={(e) => setProductForm({ ...productForm, badge2Subtitle: e.target.value })}
+                                placeholder="Zero synthetic fillers"
+                                className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#524838]"
+                              />
                             </div>
                           </div>
+                        </div>
+
+                        {/* Live preview in product form */}
+                        <div className="pt-1">
+                          <span className="text-[10px] uppercase font-bold text-[#716858] block mb-1">
+                            Product View Live Preview:
+                          </span>
+                          {productForm.showAssuranceBadges && (productForm.showBadge1 || productForm.showBadge2) ? (
+                            <div className={`p-3 bg-white rounded-xl border border-[#D5CCBC] grid ${productForm.showBadge1 && productForm.showBadge2 ? 'grid-cols-2 gap-3' : 'grid-cols-1'} text-xs max-w-md`}>
+                              {productForm.showBadge1 && (
+                                <div className="flex items-center gap-2">
+                                  <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                                  <div>
+                                    <span className="font-bold text-[#14291D] block">{productForm.badge1Title || 'Ayush & GMP Certified'}</span>
+                                    <span className="text-[11px] text-[#716858]">{productForm.badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                                  </div>
+                                </div>
+                              )}
+                              {productForm.showBadge2 && (
+                                <div className="flex items-center gap-2">
+                                  <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                                  <div>
+                                    <span className="font-bold text-[#14291D] block">{productForm.badge2Title || '100% Pure Botanical'}</span>
+                                    <span className="text-[11px] text-[#716858]">{productForm.badge2Subtitle || 'Zero synthetic fillers'}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-stone-100 rounded-xl border border-stone-200 text-xs text-stone-500 font-medium max-w-md">
+                              Quality Assurance Badges are HIDDEN on this product view.
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -4667,21 +4767,59 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
                 </div>
 
-                {/* Hero Badge & Titles */}
-                <div>
-                  <label className="block font-medium text-[#2B251D] mb-1">
-                    Hero Top Badge Text
-                  </label>
-                  <input
-                    type="text"
-                    value={siteForm.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas'}
-                    onChange={(e) => setSiteForm({ ...siteForm, heroBadgeText: e.target.value })}
-                    placeholder="e.g. Registered Ayurvedic Formulations & Classical Rasayanas"
-                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold"
-                  />
-                  <span className="text-[10px] text-[#716858] mt-0.5 block">
-                    Pill badge shown at the top of the main website hero banner.
-                  </span>
+                {/* Hero Badge & Titles (Registered Ayurvedic Formulations & Classical Rasayanas) */}
+                <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E8E2D5] pb-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-[#B4741E]" />
+                        <label className="font-bold text-xs text-[#14291D]">
+                          Hero Top Badge: &quot;Registered Ayurvedic Formulations &amp; Classical Rasayanas&quot;
+                        </label>
+                      </div>
+                      <span className="text-[10.5px] text-[#716858] block mt-0.5">
+                        Can show or hide this top pill badge from the main website hero banner.
+                      </span>
+                    </div>
+
+                    {/* Show / Hide Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={() => setSiteForm({ ...siteForm, showHeroBadge: siteForm.showHeroBadge === false ? true : false })}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                        siteForm.showHeroBadge !== false
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'bg-stone-300 text-stone-700 hover:bg-stone-400'
+                      }`}
+                    >
+                      <span>{siteForm.showHeroBadge !== false ? '✓ Badge Visible' : '✕ Badge Hidden'}</span>
+                    </button>
+                  </div>
+
+                  {/* Badge Text Input (enabled when badge is shown) */}
+                  <div className={siteForm.showHeroBadge === false ? 'opacity-50 pointer-events-none' : 'opacity-100'}>
+                    <label className="block font-medium text-[#2B251D] mb-1">
+                      Hero Badge Custom Text:
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas'}
+                      onChange={(e) => setSiteForm({ ...siteForm, heroBadgeText: e.target.value })}
+                      placeholder="e.g. Registered Ayurvedic Formulations & Classical Rasayanas"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                    />
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-[#554B3B]">
+                      <span className="font-semibold">Live Hero Preview:</span>
+                      {siteForm.showHeroBadge !== false ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1C3A27] text-[#A5D6B6] text-[10px] font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#A5D6B6] animate-pulse" />
+                          <span>{siteForm.heroBadgeText || 'Registered Ayurvedic Formulations & Classical Rasayanas'}</span>
+                        </span>
+                      ) : (
+                        <span className="text-stone-500 italic text-[11px]">[Hidden on Hero Banner]</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -4810,29 +4948,74 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
                 {/* Product View Quality Assurance Badges (Ayush & Trust Box) */}
                 <div className="pt-4 border-t border-[#EAE3D4] space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
                       <div>
                         <h5 className="font-bold text-xs text-[#14291D]">
-                          Product View Quality Assurance Badges (Ayush & Quality Trust Box)
+                          Product View Quality Assurance Badges (Ayush &amp; Quality Trust Box)
                         </h5>
                         <p className="text-[11px] text-[#716858]">
-                          These 4 trust badges appear in the product view monograph ribbon for all products.
+                          Can show or hide the 4 trust badges ribbon globally for all products, or per badge.
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold bg-[#E7EFEA] text-[#183624] px-2 py-0.5 rounded border border-[#A5D6B6]">
-                      Product View Ribbon
-                    </span>
+                    
+                    {/* Master Global Show/Hide Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = siteForm.productAssuranceBadges?.showBadges !== false;
+                        setSiteForm({
+                          ...siteForm,
+                          productAssuranceBadges: {
+                            ...siteForm.productAssuranceBadges,
+                            showBadges: !current,
+                          },
+                        });
+                      }}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                        siteForm.productAssuranceBadges?.showBadges !== false
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'bg-stone-300 text-stone-700 hover:bg-stone-400'
+                      }`}
+                    >
+                      <span>
+                        {siteForm.productAssuranceBadges?.showBadges !== false
+                          ? '✓ Badges Shown Globally'
+                          : '✕ Badges Hidden Globally'}
+                      </span>
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 transition-opacity ${siteForm.productAssuranceBadges?.showBadges === false ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                     {/* Badge 1 */}
                     <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#2C5E43]" />
-                        <span>Assurance Badge #1</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#2C5E43]" />
+                          <span>Assurance Badge #1</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = siteForm.productAssuranceBadges?.showBadge1 !== false;
+                            setSiteForm({
+                              ...siteForm,
+                              productAssuranceBadges: {
+                                ...siteForm.productAssuranceBadges,
+                                showBadge1: !current,
+                              },
+                            });
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10.5px] font-bold transition-all cursor-pointer ${
+                            siteForm.productAssuranceBadges?.showBadge1 !== false
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          {siteForm.productAssuranceBadges?.showBadge1 !== false ? '✓ Shown' : '✕ Hidden'}
+                        </button>
                       </div>
                       <div>
                         <label className="block text-[11px] font-medium text-[#2B251D] mb-0.5">
@@ -4874,9 +5057,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                     {/* Badge 2 */}
                     <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
-                        <Leaf className="w-3.5 h-3.5 text-[#2C5E43]" />
-                        <span>Assurance Badge #2</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#14291D]">
+                          <Leaf className="w-3.5 h-3.5 text-[#2C5E43]" />
+                          <span>Assurance Badge #2</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = siteForm.productAssuranceBadges?.showBadge2 !== false;
+                            setSiteForm({
+                              ...siteForm,
+                              productAssuranceBadges: {
+                                ...siteForm.productAssuranceBadges,
+                                showBadge2: !current,
+                              },
+                            });
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10.5px] font-bold transition-all cursor-pointer ${
+                            siteForm.productAssuranceBadges?.showBadge2 !== false
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          {siteForm.productAssuranceBadges?.showBadge2 !== false ? '✓ Shown' : '✕ Hidden'}
+                        </button>
                       </div>
                       <div>
                         <label className="block text-[11px] font-medium text-[#2B251D] mb-0.5">
@@ -4922,22 +5127,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     <span className="text-[10px] uppercase font-bold text-[#716858] block mb-1">
                       Product View Ribbon Preview:
                     </span>
-                    <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] grid grid-cols-2 gap-3 text-xs max-w-md">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
-                        <div>
-                          <span className="font-bold text-[#14291D] block">{siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}</span>
-                          <span className="text-[11px] text-[#716858]">{siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}</span>
-                        </div>
+                    {siteForm.productAssuranceBadges?.showBadges !== false && (siteForm.productAssuranceBadges?.showBadge1 !== false || siteForm.productAssuranceBadges?.showBadge2 !== false) ? (
+                      <div className={`p-3 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] grid ${siteForm.productAssuranceBadges?.showBadge1 !== false && siteForm.productAssuranceBadges?.showBadge2 !== false ? 'grid-cols-2 gap-3' : 'grid-cols-1'} text-xs max-w-md`}>
+                        {siteForm.productAssuranceBadges?.showBadge1 !== false && (
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                            <div>
+                              <span className="font-bold text-[#14291D] block">{siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}</span>
+                              <span className="text-[11px] text-[#716858]">{siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}</span>
+                            </div>
+                          </div>
+                        )}
+                        {siteForm.productAssuranceBadges?.showBadge2 !== false && (
+                          <div className="flex items-center gap-2">
+                            <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                            <div>
+                              <span className="font-bold text-[#14291D] block">{siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}</span>
+                              <span className="text-[11px] text-[#716858]">{siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Leaf className="w-4 h-4 text-[#2C5E43] shrink-0" />
-                        <div>
-                          <span className="font-bold text-[#14291D] block">{siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}</span>
-                          <span className="text-[11px] text-[#716858]">{siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}</span>
-                        </div>
+                    ) : (
+                      <div className="p-2.5 bg-stone-100 rounded-lg border border-dashed border-stone-300 text-stone-500 italic text-[11px] max-w-md">
+                        Quality assurance badges ribbon is currently hidden globally.
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -4962,7 +5177,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
               {/* Header Box */}
               <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE3D4] pb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-[#E7EFEA] border border-[#B5D6C4] flex items-center justify-center text-[#2C5E43]">
                       <ShieldCheck className="w-5 h-5" />
@@ -4972,7 +5187,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         Product View Quality Assurance Badges
                       </h4>
                       <p className="text-[11px] text-[#6E6352]">
-                        Configure the 4 core trust badges: "Ayush & GMP Certified", "Heavy-metal lab verified", "100% Pure Botanical", "Zero synthetic fillers".
+                        Show or hide trust badges (&quot;Ayush &amp; GMP Certified&quot;, &quot;Heavy-metal lab verified&quot;, &quot;100% Pure Botanical&quot;, &quot;Zero synthetic fillers&quot;) globally for all products, or separately per product.
                       </p>
                     </div>
                   </div>
@@ -4986,6 +5201,46 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </button>
                 </div>
 
+                {/* Global Master Show/Hide Toggle (For All Products) */}
+                <div className="p-3.5 bg-emerald-50/80 border border-[#A5D6B6] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#2C5E43]" />
+                      <span className="font-bold text-xs sm:text-sm text-[#14291D]">
+                        Global Visibility (For All Products)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#4F6858] mt-0.5">
+                      Show or hide the Ayush &amp; Quality Assurance ribbon on product pages &amp; modals for all products at once.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = siteForm.productAssuranceBadges?.showBadges !== false;
+                      setSiteForm({
+                        ...siteForm,
+                        productAssuranceBadges: {
+                          ...siteForm.productAssuranceBadges,
+                          showBadges: !current,
+                        },
+                      });
+                    }}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                      siteForm.productAssuranceBadges?.showBadges !== false
+                        ? 'bg-[#14291D] text-white shadow-xs'
+                        : 'bg-stone-300 text-stone-700 hover:bg-stone-400'
+                    }`}
+                  >
+                    <span>
+                      {siteForm.productAssuranceBadges?.showBadges !== false
+                        ? '✓ Badges Shown Globally'
+                        : '✕ Badges Hidden Globally'}
+                    </span>
+                  </button>
+                </div>
+
                 {/* Quick Presets */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <span className="text-[11px] font-semibold text-[#6E6352]">Quick Presets:</span>
@@ -4995,6 +5250,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       setSiteForm({
                         ...siteForm,
                         productAssuranceBadges: {
+                          ...siteForm.productAssuranceBadges,
                           badge1Title: 'Ayush & GMP Certified',
                           badge1Subtitle: 'Heavy-metal lab verified',
                           badge2Title: '100% Pure Botanical',
@@ -5012,6 +5268,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       setSiteForm({
                         ...siteForm,
                         productAssuranceBadges: {
+                          ...siteForm.productAssuranceBadges,
                           badge1Title: '100% Certified Organic',
                           badge1Subtitle: 'Wild-harvested botanicals',
                           badge2Title: 'Pure Phytochemical Assay',
@@ -5029,6 +5286,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       setSiteForm({
                         ...siteForm,
                         productAssuranceBadges: {
+                          ...siteForm.productAssuranceBadges,
                           badge1Title: 'AYUSH Pharmacopoeia Grade',
                           badge1Subtitle: 'Standardized extracts',
                           badge2Title: 'Ancient Shastra Formulation',
@@ -5043,12 +5301,36 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
 
                 {/* Editor Inputs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 transition-opacity ${siteForm.productAssuranceBadges?.showBadges === false ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                   {/* Badge 1 Card */}
                   <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
-                    <div className="flex items-center gap-2 border-b border-[#E8E2D5] pb-2">
-                      <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
-                      <span className="font-bold text-xs text-[#14291D]">Assurance Badge #1</span>
+                    <div className="flex items-center justify-between border-b border-[#E8E2D5] pb-2">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                        <span className="font-bold text-xs text-[#14291D]">Assurance Badge #1</span>
+                      </div>
+
+                      {/* Badge 1 Show/Hide Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = siteForm.productAssuranceBadges?.showBadge1 !== false;
+                          setSiteForm({
+                            ...siteForm,
+                            productAssuranceBadges: {
+                              ...siteForm.productAssuranceBadges,
+                              showBadge1: !current,
+                            },
+                          });
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          siteForm.productAssuranceBadges?.showBadge1 !== false
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-stone-300 text-stone-700'
+                        }`}
+                      >
+                        {siteForm.productAssuranceBadges?.showBadge1 !== false ? '✓ Shown' : '✕ Hidden'}
+                      </button>
                     </div>
 
                     <div>
@@ -5093,9 +5375,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   {/* Badge 2 Card */}
                   <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
-                    <div className="flex items-center gap-2 border-b border-[#E8E2D5] pb-2">
-                      <Leaf className="w-4 h-4 text-[#2C5E43]" />
-                      <span className="font-bold text-xs text-[#14291D]">Assurance Badge #2</span>
+                    <div className="flex items-center justify-between border-b border-[#E8E2D5] pb-2">
+                      <div className="flex items-center gap-2">
+                        <Leaf className="w-4 h-4 text-[#2C5E43]" />
+                        <span className="font-bold text-xs text-[#14291D]">Assurance Badge #2</span>
+                      </div>
+
+                      {/* Badge 2 Show/Hide Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = siteForm.productAssuranceBadges?.showBadge2 !== false;
+                          setSiteForm({
+                            ...siteForm,
+                            productAssuranceBadges: {
+                              ...siteForm.productAssuranceBadges,
+                              showBadge2: !current,
+                            },
+                          });
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          siteForm.productAssuranceBadges?.showBadge2 !== false
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-stone-300 text-stone-700'
+                        }`}
+                      >
+                        {siteForm.productAssuranceBadges?.showBadge2 !== false ? '✓ Shown' : '✕ Hidden'}
+                      </button>
                     </div>
 
                     <div>
@@ -5120,7 +5426,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                     <div>
                       <label className="block font-medium text-[#2B251D] mb-1">
-                        Badge 2 Subtitle / Filler & Purity Detail
+                        Badge 2 Subtitle / Filler &amp; Purity Detail
                       </label>
                       <input
                         type="text"
@@ -5144,42 +5450,52 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <span className="text-[10px] uppercase font-bold text-[#716858] block">
                     Live Product View Ribbon Preview:
                   </span>
-                  <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs max-w-lg shadow-2xs">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#14291D] block">
-                          {siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
-                        </span>
-                        <span className="text-[11px] text-[#716858]">
-                          {siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
-                        </span>
-                      </div>
+                  {siteForm.productAssuranceBadges?.showBadges !== false && (siteForm.productAssuranceBadges?.showBadge1 !== false || siteForm.productAssuranceBadges?.showBadge2 !== false) ? (
+                    <div className={`p-4 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] grid ${siteForm.productAssuranceBadges?.showBadge1 !== false && siteForm.productAssuranceBadges?.showBadge2 !== false ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-3 text-xs max-w-lg shadow-2xs`}>
+                      {siteForm.productAssuranceBadges?.showBadge1 !== false && (
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                          <div>
+                            <span className="font-bold text-[#14291D] block">
+                              {siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
+                            </span>
+                            <span className="text-[11px] text-[#716858]">
+                              {siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {siteForm.productAssuranceBadges?.showBadge2 !== false && (
+                        <div className="flex items-center gap-2">
+                          <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
+                          <div>
+                            <span className="font-bold text-[#14291D] block">
+                              {siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
+                            </span>
+                            <span className="text-[11px] text-[#716858]">
+                              {siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#14291D] block">
-                          {siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
-                        </span>
-                        <span className="text-[11px] text-[#716858]">
-                          {siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
-                        </span>
-                      </div>
+                  ) : (
+                    <div className="p-3 bg-stone-100 rounded-xl border border-dashed border-stone-300 text-stone-500 italic text-xs max-w-lg">
+                      Quality Assurance Badges ribbon is currently hidden globally across all products.
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               {/* Product Catalog Status Table */}
               <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE3D4] pb-2">
                   <div>
                     <h4 className="font-serif text-sm font-bold text-[#14291D]">
-                      Individual Product Overrides ({products.length} Products)
+                      Individual Product Overrides ({products.length} Products) - Show / Hide Separately
                     </h4>
                     <p className="text-[11px] text-[#6E6352]">
-                      Each product automatically uses the site defaults above, or you can customize badges per product.
+                      Click any toggle button below to instantly show or hide badges for a specific product.
                     </p>
                   </div>
                 </div>
@@ -5188,20 +5504,35 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="bg-[#FAF8F5] border-b border-[#DDD5C5] text-[#695F4F]">
-                        <th className="py-2 px-3">Product</th>
-                        <th className="py-2 px-3">Badge 1 (Ayush/GMP)</th>
-                        <th className="py-2 px-3">Badge 2 (Botanical/Fillers)</th>
-                        <th className="py-2 px-3">Status</th>
-                        <th className="py-2 px-3 text-right">Edit</th>
+                        <th className="py-2.5 px-3">Product</th>
+                        <th className="py-2.5 px-3">All Badges</th>
+                        <th className="py-2.5 px-3">Badge 1 (Ayush/GMP)</th>
+                        <th className="py-2.5 px-3">Badge 2 (Botanical)</th>
+                        <th className="py-2.5 px-3">Override Status</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#EAE3D4]">
                       {products.map((p) => {
-                        const hasCustom = Boolean(p.assuranceBadges?.badge1Title || p.assuranceBadges?.badge2Title);
+                        const hasCustom = Boolean(
+                          p.assuranceBadges?.badge1Title ||
+                          p.assuranceBadges?.badge2Title ||
+                          p.assuranceBadges?.showBadges !== undefined ||
+                          p.assuranceBadges?.showBadge1 !== undefined ||
+                          p.assuranceBadges?.showBadge2 !== undefined
+                        );
+                        const isMasterShown = p.assuranceBadges?.showBadges !== undefined
+                          ? p.assuranceBadges.showBadges
+                          : (siteForm.productAssuranceBadges?.showBadges ?? true);
+                        const isB1Shown = p.assuranceBadges?.showBadge1 !== undefined
+                          ? p.assuranceBadges.showBadge1
+                          : (siteForm.productAssuranceBadges?.showBadge1 ?? true);
+                        const isB2Shown = p.assuranceBadges?.showBadge2 !== undefined
+                          ? p.assuranceBadges.showBadge2
+                          : (siteForm.productAssuranceBadges?.showBadge2 ?? true);
+
                         const b1Title = p.assuranceBadges?.badge1Title || siteForm.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified';
-                        const b1Sub = p.assuranceBadges?.badge1Subtitle || siteForm.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified';
                         const b2Title = p.assuranceBadges?.badge2Title || siteForm.productAssuranceBadges?.badge2Title || '100% Pure Botanical';
-                        const b2Sub = p.assuranceBadges?.badge2Subtitle || siteForm.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers';
 
                         return (
                           <tr key={p.id} className="hover:bg-[#FAF8F5] transition-colors">
@@ -5209,14 +5540,61 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               <span className="font-bold text-[#14291D] block">{p.name}</span>
                               <span className="text-[10px] text-[#716858] italic">{p.sanskritName}</span>
                             </td>
+
+                            {/* All Badges Toggle for this product */}
                             <td className="py-2.5 px-3">
-                              <span className="font-semibold text-[#183624] block">{b1Title}</span>
-                              <span className="text-[10.5px] text-[#716858]">{b1Sub}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleProductBadge(p, 'all')}
+                                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                  isMasterShown
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                    : 'bg-stone-200 text-stone-600 border border-stone-300 hover:bg-stone-300'
+                                }`}
+                                title="Click to show or hide all assurance badges for this product"
+                              >
+                                {isMasterShown ? '✓ Shown' : '✕ Hidden'}
+                              </button>
                             </td>
+
+                            {/* Badge 1 Toggle for this product */}
                             <td className="py-2.5 px-3">
-                              <span className="font-semibold text-[#183624] block">{b2Title}</span>
-                              <span className="text-[10.5px] text-[#716858]">{b2Sub}</span>
+                              <div className="space-y-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleProductBadge(p, 'badge1')}
+                                  className={`px-2 py-0.5 rounded text-[10.5px] font-bold transition-all cursor-pointer ${
+                                    isB1Shown
+                                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-stone-200 text-stone-600 border border-stone-300 hover:bg-stone-300'
+                                  }`}
+                                  title="Toggle Ayush & GMP badge for this product"
+                                >
+                                  {isB1Shown ? '✓ Shown' : '✕ Hidden'}
+                                </button>
+                                <span className="text-[10px] text-[#716858] block truncate max-w-[140px]">{b1Title}</span>
+                              </div>
                             </td>
+
+                            {/* Badge 2 Toggle for this product */}
+                            <td className="py-2.5 px-3">
+                              <div className="space-y-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleProductBadge(p, 'badge2')}
+                                  className={`px-2 py-0.5 rounded text-[10.5px] font-bold transition-all cursor-pointer ${
+                                    isB2Shown
+                                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-stone-200 text-stone-600 border border-stone-300 hover:bg-stone-300'
+                                  }`}
+                                  title="Toggle Botanical & Fillers badge for this product"
+                                >
+                                  {isB2Shown ? '✓ Shown' : '✕ Hidden'}
+                                </button>
+                                <span className="text-[10px] text-[#716858] block truncate max-w-[140px]">{b2Title}</span>
+                              </div>
+                            </td>
+
                             <td className="py-2.5 px-3">
                               {hasCustom ? (
                                 <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold">
@@ -5228,6 +5606,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 </span>
                               )}
                             </td>
+
                             <td className="py-2.5 px-3 text-right">
                               <button
                                 type="button"
