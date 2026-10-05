@@ -155,14 +155,14 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
   const getAspectRatioClasses = () => {
     switch (config?.aspectRatio) {
       case 'compact':
-        return 'h-32 sm:h-36 md:h-40';
+        return 'h-24 sm:h-28 md:h-32';
       case 'wide':
-        return 'h-48 sm:h-56 md:h-64';
+        return 'h-36 sm:h-42 md:h-48';
       case 'standard':
-        return 'h-40 sm:h-48 md:h-52';
+        return 'h-32 sm:h-36 md:h-40';
       case 'auto':
       default:
-        return 'h-36 sm:h-44 md:h-48';
+        return 'h-28 sm:h-32 md:h-36';
     }
   };
 
@@ -223,17 +223,17 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
 
                 {/* Optional Title & Subtitle Badge */}
                 {(slide.title || slide.subtitle) && (
-                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white z-10 space-y-1">
+                  <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 text-white z-10 space-y-0.5">
                     {slide.title && (
                       <div className="flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                        <h4 className="font-serif text-xs sm:text-sm md:text-base font-bold text-white tracking-wide drop-shadow-xs line-clamp-1">
+                        <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+                        <h4 className="font-serif text-xs sm:text-sm font-bold text-white tracking-wide drop-shadow-xs line-clamp-1">
                           {slide.title}
                         </h4>
                       </div>
                     )}
                     {slide.subtitle && (
-                      <p className="text-[10px] sm:text-xs text-[#E1EADF] line-clamp-1 max-w-xl drop-shadow-2xs">
+                      <p className="text-[10px] sm:text-[11px] text-[#E1EADF] line-clamp-1 max-w-xl drop-shadow-2xs">
                         {slide.subtitle}
                       </p>
                     )}

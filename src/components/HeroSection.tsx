@@ -233,15 +233,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   };
 
   return (
-    <section className="relative bg-[#14291D] text-white pt-8 pb-12 sm:pt-12 sm:pb-16 px-4 sm:px-6 border-b border-[#234D34] overflow-hidden">
+    <section className="relative bg-[#14291D] text-white pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-6 border-b border-[#234D34] overflow-hidden">
       {/* Decorative Atmosphere Watermarks */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2C5E43]/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-[#B4741E]/15 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
           {/* Left Column: Brand & Hero Copy */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className={`${
+            ((siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0) || (isDealsSectionEnabled && dealItems.length > 0))
+              ? 'lg:col-span-7'
+              : 'lg:col-span-12 max-w-3xl'
+          } space-y-3.5`}>
             {siteSettings.showHeroBadge !== false && (siteSettings.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas').trim() !== '' && (
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1C3A27] border border-[#2D5A3D] text-[11px] font-medium tracking-wide text-[#A5D6B6]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#A5D6B6] animate-pulse" />
@@ -259,7 +263,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
             {/* Admin Launch app banner */}
             {isAdmin && onOpenAdminPanel && (
-              <div className="p-3 bg-amber-500/15 border border-amber-400/40 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-200">
+              <div className="p-2.5 bg-amber-500/15 border border-amber-400/40 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-200">
                 <div className="flex items-center gap-2">
                   <Settings className="w-4 h-4 text-amber-300 shrink-0" />
                   <span>Admin Access Active: Manage Catalog, Deal of the Week & Site Texts</span>
@@ -275,10 +279,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             )}
 
             {/* Call to action buttons */}
-            <div className="pt-2 flex flex-wrap items-center gap-3">
+            <div className="pt-1 flex flex-wrap items-center gap-2.5">
               <button
                 onClick={onExploreProducts}
-                className="px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-lg bg-[#E7EFEA] text-[#14291D] hover:bg-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
+                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-[#E7EFEA] text-[#14291D] hover:bg-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
               >
                 <span>Browse Products & Deals</span>
                 <ArrowRight className="w-4 h-4" />
@@ -286,7 +290,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               <button
                 onClick={handleWhatsAppClick}
-                className="px-4 py-2.5 text-xs sm:text-sm font-medium rounded-lg bg-[#25D366] text-white hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg bg-[#25D366] text-white hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
                 title="Chat on WhatsApp"
               >
                 <MessageCircle className="w-4 h-4" />
@@ -295,7 +299,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               <a
                 href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
-                className="px-3.5 py-2.5 text-xs sm:text-sm text-white/80 hover:text-white transition-colors flex items-center gap-1.5"
+                className="px-3 py-2 text-xs sm:text-sm text-white/80 hover:text-white transition-colors flex items-center gap-1.5"
                 title="Call Helpline"
               >
                 <Phone className="w-3.5 h-3.5 text-[#A5D6B6]" />
@@ -306,7 +310,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
           {/* Right Column: Image Banner Auto-Scroller & Custom Added Deal of the Week */}
           {((siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0) || (isDealsSectionEnabled && dealItems.length > 0)) && (
-            <div className="lg:col-span-5 space-y-4">
+            <div className="lg:col-span-5 space-y-2.5">
               {/* Horizontal Image auto Scroller / Swip slider (above Weekly Deal) */}
               {siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0 && (
                 <ImageBannerScroller

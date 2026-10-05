@@ -43,7 +43,7 @@ export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSecti
   if (activeLists.length === 0) return null;
 
   return (
-    <div className="space-y-10 sm:space-y-14 py-6 sm:py-8">
+    <div className="space-y-6 sm:space-y-8 pt-4 pb-2 sm:pt-5 sm:pb-3">
       {activeLists.map((list) => (
         <SingleHorizontalShelf
           key={list.id}
@@ -126,44 +126,44 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 relative">
       {/* Shelf Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4 border-b border-[#DDD5C5]/60 pb-3">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 mb-2.5 border-b border-[#DDD5C5]/60 pb-2">
+        <div className="space-y-0.5">
           {list.badgeText && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#14291D]/10 text-[#14291D] text-[10.5px] font-bold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#14291D]/10 text-[#14291D] text-[10px] font-bold uppercase tracking-wider mb-0.5">
               <Sparkles className="w-3 h-3 text-[#B4741E]" />
               <span>{list.badgeText}</span>
             </div>
           )}
-          <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#14291D] tracking-tight">
+          <h3 className="font-serif text-lg sm:text-xl font-bold text-[#14291D] tracking-tight">
             {list.title}
           </h3>
           {list.subtitle && (
-            <p className="text-xs text-[#635A4B] max-w-2xl leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-[#635A4B] max-w-2xl leading-relaxed">
               {list.subtitle}
             </p>
           )}
         </div>
 
         {/* Navigation & Count Controls */}
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-          <span className="text-xs text-[#7A705E] font-medium mr-1">
+        <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+          <span className="text-[11px] text-[#7A705E] font-medium mr-1">
             {formatCompactNumber(shelfProducts.length)} items
           </span>
           <button
             type="button"
             onClick={() => handleScroll('left')}
-            className="w-8 h-8 rounded-full bg-white hover:bg-stone-100 text-[#14291D] border border-[#DDD5C5] shadow-2xs flex items-center justify-center transition-all cursor-pointer"
+            className="w-7 h-7 rounded-full bg-white hover:bg-stone-100 text-[#14291D] border border-[#DDD5C5] shadow-2xs flex items-center justify-center transition-all cursor-pointer"
             aria-label="Scroll left"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => handleScroll('right')}
-            className="w-8 h-8 rounded-full bg-white hover:bg-stone-100 text-[#14291D] border border-[#DDD5C5] shadow-2xs flex items-center justify-center transition-all cursor-pointer"
+            className="w-7 h-7 rounded-full bg-white hover:bg-stone-100 text-[#14291D] border border-[#DDD5C5] shadow-2xs flex items-center justify-center transition-all cursor-pointer"
             aria-label="Scroll right"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -172,7 +172,7 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
       <div className="relative group/track">
         <div
           ref={scrollRef}
-          className="flex items-stretch gap-4 overflow-x-auto pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory touch-pan-x cursor-grab active:cursor-grabbing no-scrollbar"
+          className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto pb-2.5 pt-1 px-1 scroll-smooth snap-x snap-mandatory touch-pan-x cursor-grab active:cursor-grabbing no-scrollbar"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {shelfProducts.map((prod) => {

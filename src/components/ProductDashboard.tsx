@@ -135,7 +135,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   };
 
   return (
-    <section id="deals-catalog" className="py-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-6">
+    <section id="deals-catalog" className="pt-3 pb-8 sm:pt-4 sm:pb-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-4 sm:space-y-5">
       {/* Anchor alias */}
       <div id="products-catalog" className="-top-20 relative" />
 
