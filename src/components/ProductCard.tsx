@@ -14,7 +14,8 @@ import {
   Trophy,
   Tag,
   Rocket,
-  Sparkles
+  Sparkles,
+  Play
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -50,6 +51,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // STRICT REQUIREMENT: Only the primary set image shows on product list view
   const primaryImage = product.image || (product.images && product.images.length > 0 ? product.images[0] : '');
   const totalImagesCount = product.images && product.images.length > 0 ? product.images.length : 1;
+  const hasVideo = Boolean(
+    (product.videoUrl && product.videoUrl.trim().length > 0) ||
+    (product.variants && product.variants.some((v) => v.videoUrl && v.videoUrl.trim().length > 0))
+  );
 
   const handleWhatsAppConsult = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -208,13 +213,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Multiple Photos Indicator Pill on Card bottom (Shows customer that multiple photos exist) */}
-        {totalImagesCount > 1 && (
-          <div className="absolute bottom-2.5 left-2.5 bg-black/65 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 z-10">
-            <Camera className="w-3 h-3 text-[#A5D6B6]" />
-            <span>{totalImagesCount} Photos</span>
-          </div>
-        )}
+        {/* Multiple Photos & Video Indicator Pills on Card bottom */}
+        <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+          {totalImagesCount > 1 && (
+            <div className="bg-black/65 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+              <Camera className="w-3 h-3 text-[#A5D6B6]" />
+              <span>{totalImagesCount} Photos</span>
+            </div>
+          )}
+          {hasVideo && (
+            <div className="bg-red-600/90 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+              <Play className="w-2.5 h-2.5 fill-white" />
+              <span>Video</span>
+            </div>
+          )}
+        </div>
 
         {/* Hover preview pill */}
         <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">

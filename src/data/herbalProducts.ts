@@ -19,6 +19,36 @@ export const HERBAL_PRODUCTS: HerbalProduct[] = [
     reviewsCount: 312,
     inStock: true,
     image: '/src/assets/images/herbal_ashwagandha_1790596671337.jpg',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    videoType: 'youtube',
+    variants: [
+      {
+        id: 'ashwa-var-60',
+        size: '60',
+        unit: 'Capsules',
+        price: 649,
+        mrp: 899,
+        resellerPrice: 480,
+        image: '/src/assets/images/herbal_ashwagandha_1790596671337.jpg',
+        images: ['/src/assets/images/herbal_ashwagandha_1790596671337.jpg'],
+        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoType: 'youtube',
+        inStock: true,
+      },
+      {
+        id: 'ashwa-var-120',
+        size: '120',
+        unit: 'Capsules',
+        price: 1149,
+        mrp: 1599,
+        resellerPrice: 850,
+        image: '/src/assets/images/herbal_ashwagandha_1790596671337.jpg',
+        images: ['/src/assets/images/herbal_ashwagandha_1790596671337.jpg'],
+        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoType: 'youtube',
+        inStock: true,
+      }
+    ],
     keyIndications: ['Chronic Mental Fatigue', 'High Cortisol & Anxiety', 'Restless Insomnia', 'Low Stamina & Weakness'],
     detailedUses: {
       primaryBenefits: [

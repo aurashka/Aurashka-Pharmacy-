@@ -24,7 +24,10 @@ import {
   Layers,
   Edit3,
   X,
-  RotateCcw
+  RotateCcw,
+  Play,
+  Video,
+  Film
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -34,6 +37,7 @@ import {
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
 import { backupProductToFirebase, backupSiteSettingsToFirebase } from '../utils/firebaseSync';
+import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
 
 interface ProductDetailPageProps {
   product: HerbalProduct;
@@ -203,34 +207,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     setSelectedVariant(product.variants && product.variants.length > 0 ? product.variants[0] : null);
   }, [product.id, product.variants]);
 
-  // Clean images list from product
-  const imagesList: string[] = React.useMemo(() => {
-    if (!product) return [];
-    const rawImgs = product.images;
-    const imgs = Array.isArray(rawImgs)
-      ? rawImgs
-      : (rawImgs && typeof rawImgs === 'object' ? Object.values(rawImgs) : []);
-
-    const list: string[] = [];
-    if (imgs.length > 0) {
-      const valid = imgs.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
-      list.push(...valid);
-    } else if (product.image) {
-      list.push(product.image);
-    }
-
-    // Include variant image or separate photos if variant has them
-    if (selectedVariant?.images && Array.isArray(selectedVariant.images) && selectedVariant.images.length > 0) {
-      const validVarImgs = selectedVariant.images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
-      if (validVarImgs.length > 0) {
-        return [...validVarImgs, ...list.filter(img => !validVarImgs.includes(img))];
-      }
-    } else if (selectedVariant?.image && !list.includes(selectedVariant.image)) {
-      list.unshift(selectedVariant.image);
-    }
-
-    return list.length > 0 ? list : [product.image];
+  // Combined product and selected variety media (images + video)
+  const mediaList: ProductMediaItem[] = React.useMemo(() => {
+    return buildProductMediaList(product, selectedVariant);
   }, [product, selectedVariant]);
+
+  // Clean images list from product and variants for zoom/lightbox
+  const imagesList: string[] = React.useMemo(() => {
+    return mediaList
+      .filter((m): m is ProductMediaItem & { type: 'image' } => m.type === 'image')
+      .map((m) => m.url);
+  }, [mediaList]);
 
   // Active pricing & stock status (considering selected variant)
   const currentPrice = selectedVariant?.price ?? product.price;
@@ -242,7 +229,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const savings = currentMrp - currentPrice;
   const discountPercent = Math.round((savings / (currentMrp || 1)) * 100);
 
-  const activeImage = imagesList[currentImageIndex] || selectedVariant?.image || product.image;
+  const activeMedia = mediaList[currentImageIndex] || mediaList[0] || { type: 'image', url: product.image };
+  const activeImage = activeMedia.type === 'image' ? activeMedia.url : (imagesList[0] || product.image);
 
   // Defensive array extractions for product monograph
   const indicationsList: string[] = React.useMemo(() => {
@@ -413,105 +401,205 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       {/* Main Product Presentation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-          {/* Left Column: Image Gallery */}
+          {/* Left Column: Image & Video Gallery */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="bg-white rounded-2xl border border-[#D5CCBC] overflow-hidden shadow-xs relative group aspect-4/3 sm:aspect-square flex items-center justify-center bg-[#F7F4EC]">
-              <img
-                src={activeImage}
-                alt={product.name}
-                className="w-full h-full object-cover cursor-zoom-in group-hover:scale-102 transition-transform duration-300"
-                onClick={() => setIsLightboxOpen(true)}
-              />
-
-              {/* Lightbox / View Large button */}
-              <button
-                type="button"
-                onClick={() => setIsLightboxOpen(true)}
-                className="absolute top-3 right-3 py-1.5 px-2.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1.5 text-xs shadow-md"
-                title="Click image to open in full screen popup"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-medium hidden sm:inline">Tap to View Large</span>
-              </button>
-
-              {/* Prev / Next Image arrows if multiple */}
-              {imagesList.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex((prev) => (prev - 1 + imagesList.length) % imagesList.length);
-                    }}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex((prev) => (prev + 1) % imagesList.length);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-
-              {/* Badges on main image */}
-              <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                {!isAvailableInStock && (
-                  <span className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold text-xs shadow-sm">
-                    OUT OF STOCK
-                  </span>
+            {activeMedia.type === 'video' ? (
+              <div className="bg-black rounded-2xl border border-[#D5CCBC] overflow-hidden shadow-xs relative aspect-4/3 sm:aspect-square flex items-center justify-center">
+                {activeMedia.videoType === 'youtube' ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(activeMedia.url, true) || ''}
+                    title={`${product.name} Video`}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={activeMedia.url}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
                 )}
-                {savings > 0 && isAvailableInStock && (
-                  <span className="px-2.5 py-1 rounded-md bg-[#25D366] text-black font-bold text-xs shadow-sm">
-                    {discountPercent}% OFF
+
+                {/* Video Type Badge */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10 pointer-events-none">
+                  <span className="px-2.5 py-1 rounded-md bg-red-600 text-white font-bold text-xs shadow-sm flex items-center gap-1">
+                    <Play className="w-3 h-3 fill-white" />
+                    <span>{activeMedia.videoType === 'youtube' ? 'YouTube Video' : 'Video Player'}</span>
                   </span>
-                )}
-                {product.customTag?.text && (
-                  <span
-                    className="px-2.5 py-1 rounded-md font-bold text-xs shadow-sm flex items-center gap-1 w-fit"
-                    style={{
-                      backgroundColor: product.customTag.bgColor || '#14291D',
-                      color: product.customTag.textColor || '#FFFFFF',
-                    }}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{product.customTag.text}</span>
-                  </span>
-                )}
-                {product.sortBadge && product.sortBadge !== 'none' && (
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#14291D] text-white font-mono text-[10px] uppercase tracking-wider font-semibold">
-                    {product.sortBadge}
-                  </span>
+                  {activeMedia.label && (
+                    <span className="px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-xs text-white font-semibold text-xs shadow-sm">
+                      {activeMedia.label}
+                    </span>
+                  )}
+                </div>
+
+                {/* Prev / Next arrows */}
+                {mediaList.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) => (prev + 1) % mediaList.length);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </>
                 )}
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-[#D5CCBC] overflow-hidden shadow-xs relative group aspect-4/3 sm:aspect-square flex items-center justify-center bg-[#F7F4EC]">
+                <img
+                  src={activeImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover cursor-zoom-in group-hover:scale-102 transition-transform duration-300"
+                  onClick={() => setIsLightboxOpen(true)}
+                />
 
-            {/* Thumbnail Strip */}
-            {imagesList.length > 1 && (
+                {/* Lightbox / View Large button */}
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="absolute top-3 right-3 py-1.5 px-2.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1.5 text-xs shadow-md"
+                  title="Click image to open in full screen popup"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-medium hidden sm:inline">Tap to View Large</span>
+                </button>
+
+                {/* Prev / Next Image arrows if multiple */}
+                {mediaList.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) => (prev + 1) % mediaList.length);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+
+                {/* Badges on main image */}
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                  {!isAvailableInStock && (
+                    <span className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold text-xs shadow-sm">
+                      OUT OF STOCK
+                    </span>
+                  )}
+                  {savings > 0 && isAvailableInStock && (
+                    <span className="px-2.5 py-1 rounded-md bg-[#25D366] text-black font-bold text-xs shadow-sm">
+                      {discountPercent}% OFF
+                    </span>
+                  )}
+                  {product.customTag?.text && (
+                    <span
+                      className="px-2.5 py-1 rounded-md font-bold text-xs shadow-sm flex items-center gap-1 w-fit"
+                      style={{
+                        backgroundColor: product.customTag.bgColor || '#14291D',
+                        color: product.customTag.textColor || '#FFFFFF',
+                      }}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{product.customTag.text}</span>
+                    </span>
+                  )}
+                  {product.sortBadge && product.sortBadge !== 'none' && (
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#14291D] text-white font-mono text-[10px] uppercase tracking-wider font-semibold">
+                      {product.sortBadge}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Thumbnail Strip (Images + Videos) */}
+            {mediaList.length > 1 && (
               <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
-                {imagesList.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setCurrentImageIndex(idx);
-                      setIsLightboxOpen(false);
-                    }}
-                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
-                      currentImageIndex === idx
-                        ? 'border-[#2C5E43] ring-2 ring-[#2C5E43]/30 scale-102'
-                        : 'border-[#DDD5C5] opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
+                {mediaList.map((item, idx) => {
+                  const isSelected = currentImageIndex === idx;
+                  if (item.type === 'video') {
+                    const poster = item.poster || (item.videoType === 'youtube' ? getYouTubeThumbnail(item.url) : null);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCurrentImageIndex(idx);
+                          setIsLightboxOpen(false);
+                        }}
+                        className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer bg-black flex items-center justify-center ${
+                          isSelected
+                            ? 'border-red-600 ring-2 ring-red-400/40 scale-102 shadow-md'
+                            : 'border-[#DDD5C5] opacity-75 hover:opacity-100 hover:border-red-500'
+                        }`}
+                        title="Watch Product Video"
+                      >
+                        {poster ? (
+                          <img src={poster} alt="Video thumbnail" className="w-full h-full object-cover opacity-80" />
+                        ) : (
+                          <div className="w-full h-full bg-linear-to-br from-stone-900 to-black flex items-center justify-center">
+                            <Film className="w-6 h-6 text-stone-400" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                          <div className="w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md">
+                            <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
+                          </div>
+                        </div>
+                        <span className="absolute bottom-0 inset-x-0 bg-red-600/90 text-white text-[8px] font-bold text-center py-0.5">
+                          VIDEO
+                        </span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setCurrentImageIndex(idx);
+                        setIsLightboxOpen(false);
+                      }}
+                      className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-[#2C5E43] ring-2 ring-[#2C5E43]/30 scale-102'
+                          : 'border-[#DDD5C5] opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={item.url} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -639,10 +727,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         type="button"
                         onClick={() => {
                           setSelectedVariant(v);
-                          if (v.image) {
-                            const imgIdx = imagesList.indexOf(v.image);
-                            setCurrentImageIndex(imgIdx !== -1 ? imgIdx : 0);
-                          }
+                          setCurrentImageIndex(0);
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
                           isSelected

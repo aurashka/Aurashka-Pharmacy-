@@ -4,7 +4,7 @@ import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
   Leaf, 
-  ShieldCheck,
+  ShieldCheck, 
   Clock, 
   MessageCircle, 
   ShoppingBag, 
@@ -20,7 +20,10 @@ import {
   Trophy,
   Tag,
   Rocket,
-  Sliders
+  Sliders,
+  Play,
+  Video,
+  Film
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -29,6 +32,7 @@ import {
   DEFAULT_MESSAGE_TEMPLATES, 
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
+import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
 
 interface ProductDetailModalProps {
   product: HerbalProduct | null;
@@ -50,29 +54,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onSelectProduct,
 }) => {
   const { currentUser } = useAuth();
-  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
-  // Clean images list from product and selected variant
-  const imagesList: string[] = React.useMemo(() => {
-    if (!product) return [];
-    const base: string[] = [];
-    if (selectedVariant?.images && selectedVariant.images.length > 0) {
-      base.push(...selectedVariant.images.filter((img) => img && img.trim().length > 0));
-    } else if (selectedVariant?.image) {
-      base.push(selectedVariant.image);
-    }
-    if (product.images && product.images.length > 0) {
-      const valid = product.images.filter((img) => img && img.trim().length > 0);
-      valid.forEach((img) => {
-        if (!base.includes(img)) base.push(img);
-      });
-    } else if (product.image && !base.includes(product.image)) {
-      base.push(product.image);
-    }
-    return base.length > 0 ? base : (product.image ? [product.image] : []);
+  // Combined product and selected variety media (images + video)
+  const mediaList: ProductMediaItem[] = React.useMemo(() => {
+    return buildProductMediaList(product, selectedVariant);
   }, [product, selectedVariant]);
+
+  // For zoom / lightbox or image-only fallbacks
+  const imagesList: string[] = React.useMemo(() => {
+    return mediaList
+      .filter((m): m is ProductMediaItem & { type: 'image' } => m.type === 'image')
+      .map((m) => m.url);
+  }, [mediaList]);
 
   // Bottom Other Product Suggestions: Priority Same Category > Others, randomized
   const suggestedProducts = React.useMemo(() => {
@@ -93,7 +89,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   }, [allProducts, product]);
 
   useEffect(() => {
-    setCurrentImageIndex(0);
+    setCurrentMediaIndex(0);
     setIsZoomed(false);
     setSelectedVariant(product?.variants && product.variants.length > 0 ? product.variants[0] : null);
   }, [product]);
@@ -107,10 +103,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         } else {
           onClose();
         }
-      } else if (e.key === 'ArrowRight' && imagesList.length > 1) {
-        setCurrentImageIndex((prev) => (prev + 1) % imagesList.length);
-      } else if (e.key === 'ArrowLeft' && imagesList.length > 1) {
-        setCurrentImageIndex((prev) => (prev - 1 + imagesList.length) % imagesList.length);
+      } else if (e.key === 'ArrowRight' && mediaList.length > 1) {
+        setCurrentMediaIndex((prev) => (prev + 1) % mediaList.length);
+      } else if (e.key === 'ArrowLeft' && mediaList.length > 1) {
+        setCurrentMediaIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
       }
     };
 
@@ -122,7 +118,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [product, onClose, isZoomed, imagesList.length]);
+  }, [product, onClose, isZoomed, mediaList.length]);
 
   const isBadgesMasterVisible = () => {
     if (!product) return false;
@@ -156,19 +152,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const savings = Math.max(0, currentMrp - currentPrice);
   const discountPercent = currentMrp > 0 ? Math.round((savings / currentMrp) * 100) : 0;
 
-  const activeImage = (selectedVariant?.image && currentImageIndex === 0) 
-    ? selectedVariant.image 
-    : (imagesList[currentImageIndex] || product.image);
-  const isPrimary = currentImageIndex === 0;
+  const activeMedia = mediaList[currentMediaIndex] || mediaList[0] || { type: 'image', url: product.image };
+  const isPrimary = currentMediaIndex === 0 && activeMedia.type === 'image';
 
-  const handlePrevImage = (e?: React.MouseEvent) => {
+  const handlePrevMedia = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev - 1 + imagesList.length) % imagesList.length);
+    setCurrentMediaIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
   };
 
-  const handleNextImage = (e?: React.MouseEvent) => {
+  const handleNextMedia = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev + 1) % imagesList.length);
+    setCurrentMediaIndex((prev) => (prev + 1) % mediaList.length);
   };
 
   const handleWhatsAppConsult = () => {
@@ -225,111 +219,209 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Top Section: Multiple Image Gallery + Product Details */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
               
-              {/* Left Column: Rich Interactive Multiple Images Gallery */}
+              {/* Left Column: Rich Interactive Multiple Images & Video Gallery */}
               <div className="md:col-span-5 space-y-3">
-                {/* Main Large Image Frame with Controls */}
-                <div 
-                  className="relative rounded-xl overflow-hidden bg-[#EFEAE0] border border-[#DDD5C5] aspect-4/3 group shadow-xs cursor-zoom-in"
-                  onClick={() => setIsZoomed(true)}
-                  title="Click to view full photo in popup"
-                >
-                  <img
-                    src={activeImage}
-                    alt={`${product.name} - view ${currentImageIndex + 1}`}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
+                {/* Main Large Image / Video Frame with Controls */}
+                {activeMedia.type === 'video' ? (
+                  <div className="relative rounded-xl overflow-hidden bg-black border border-[#DDD5C5] aspect-4/3 group shadow-xs flex items-center justify-center">
+                    {activeMedia.videoType === 'youtube' ? (
+                      <iframe
+                        src={getYouTubeEmbedUrl(activeMedia.url, true) || ''}
+                        title={`${product.name} Video`}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        src={activeMedia.url}
+                        controls
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-contain"
+                      />
+                    )}
 
-                  {/* Primary Badge or Image Position Tag */}
-                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
-                    {discountPercent > 0 && (
-                      <div className="bg-[#B4741E] text-white text-[11px] font-bold px-2 py-0.5 rounded shadow-xs">
-                        Save {discountPercent}%
+                    {/* Video Type Badge */}
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10 pointer-events-none">
+                      <span className="bg-red-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                        <Play className="w-2.5 h-2.5 fill-white" />
+                        <span>{activeMedia.videoType === 'youtube' ? 'YouTube Video' : 'Video Player'}</span>
+                      </span>
+                      {activeMedia.label && (
+                        <span className="bg-black/70 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-xs">
+                          {activeMedia.label}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Media Counter Badge */}
+                    {mediaList.length > 1 && (
+                      <div className="absolute top-2.5 right-2.5 bg-black/65 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1.5 z-10 pointer-events-none">
+                        <Video className="w-3 h-3 text-red-400" />
+                        <span>{currentMediaIndex + 1} / {mediaList.length}</span>
                       </div>
                     )}
-                    {isPrimary ? (
-                      <div className="bg-[#14291D]/85 backdrop-blur-xs text-[#A5D6B6] text-[10px] font-bold px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-emerald-300 text-emerald-300" />
-                        <span>Primary View</span>
-                      </div>
-                    ) : (
-                      <div className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-xs">
-                        Angle #{currentImageIndex + 1}
-                      </div>
+
+                    {/* Previous / Next Arrow Controls */}
+                    {mediaList.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePrevMedia}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center opacity-85 hover:opacity-100 transition-all z-10 cursor-pointer active:scale-95"
+                          aria-label="Previous Media"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextMedia}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center opacity-85 hover:opacity-100 transition-all z-10 cursor-pointer active:scale-95"
+                          aria-label="Next Media"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </>
                     )}
                   </div>
-
-                  {/* Multiple Images Counter Badge */}
-                  {imagesList.length > 1 && (
-                    <div className="absolute top-2.5 right-2.5 bg-black/65 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1.5 z-10">
-                      <Camera className="w-3 h-3 text-[#A5D6B6]" />
-                      <span>{currentImageIndex + 1} / {imagesList.length}</span>
-                    </div>
-                  )}
-
-                  {/* Zoom Full Size Button */}
-                  <button
-                    type="button"
+                ) : (
+                  <div 
+                    className="relative rounded-xl overflow-hidden bg-[#EFEAE0] border border-[#DDD5C5] aspect-4/3 group shadow-xs cursor-zoom-in"
                     onClick={() => setIsZoomed(true)}
-                    className="absolute bottom-2.5 right-2.5 p-1.5 bg-black/60 hover:bg-black/85 text-white rounded-lg opacity-80 group-hover:opacity-100 transition-opacity z-10 cursor-pointer shadow-xs"
-                    title="View Full Resolution"
+                    title="Click to view full photo in popup"
                   >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
+                    <img
+                      src={activeMedia.url}
+                      alt={`${product.name} - view ${currentMediaIndex + 1}`}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
 
-                  {/* Previous / Next Arrow Controls (When multiple images exist) */}
-                  {imagesList.length > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handlePrevImage}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center opacity-85 hover:opacity-100 transition-all z-10 cursor-pointer active:scale-95"
-                        aria-label="Previous Image"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleNextImage}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center opacity-85 hover:opacity-100 transition-all z-10 cursor-pointer active:scale-95"
-                        aria-label="Next Image"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                    </>
-                  )}
-                </div>
+                    {/* Primary Badge or Image Position Tag */}
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+                      {discountPercent > 0 && (
+                        <div className="bg-[#B4741E] text-white text-[11px] font-bold px-2 py-0.5 rounded shadow-xs">
+                          Save {discountPercent}%
+                        </div>
+                      )}
+                      {isPrimary ? (
+                        <div className="bg-[#14291D]/85 backdrop-blur-xs text-[#A5D6B6] text-[10px] font-bold px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-emerald-300 text-emerald-300" />
+                          <span>Primary View</span>
+                        </div>
+                      ) : (
+                        <div className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-xs">
+                          Photo #{currentMediaIndex + 1}
+                        </div>
+                      )}
+                    </div>
 
-                {/* Multiple Images Thumbnails Strip */}
-                {imagesList.length > 1 && (
+                    {/* Media Counter Badge */}
+                    {mediaList.length > 1 && (
+                      <div className="absolute top-2.5 right-2.5 bg-black/65 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1.5 z-10">
+                        <Camera className="w-3 h-3 text-[#A5D6B6]" />
+                        <span>{currentMediaIndex + 1} / {mediaList.length}</span>
+                      </div>
+                    )}
+
+                    {/* Zoom Full Size Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsZoomed(true)}
+                      className="absolute bottom-2.5 right-2.5 p-1.5 bg-black/60 hover:bg-black/85 text-white rounded-lg opacity-80 group-hover:opacity-100 transition-opacity z-10 cursor-pointer shadow-xs"
+                      title="View Full Resolution"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Previous / Next Arrow Controls */}
+                    {mediaList.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePrevMedia}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center opacity-85 hover:opacity-100 transition-all z-10 cursor-pointer active:scale-95"
+                          aria-label="Previous Media"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextMedia}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center opacity-85 hover:opacity-100 transition-all z-10 cursor-pointer active:scale-95"
+                          aria-label="Next Media"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Multiple Media (Images + Video) Thumbnails Strip */}
+                {mediaList.length > 1 && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-[11px] text-[#766C5B] px-0.5">
                       <span className="font-semibold text-[#183624]">
-                        Product Gallery ({imagesList.length} Images)
+                        Product Gallery ({mediaList.length} Items)
                       </span>
-                      <span>Click thumbnail to switch view</span>
+                      <span>Click thumbnail to switch photo / video</span>
                     </div>
 
                     <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-thin">
-                      {imagesList.map((img, idx) => {
-                        const isSelected = currentImageIndex === idx;
+                      {mediaList.map((item, idx) => {
+                        const isSelected = currentMediaIndex === idx;
+                        if (item.type === 'video') {
+                          const poster = item.poster || (item.videoType === 'youtube' ? getYouTubeThumbnail(item.url) : null);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setCurrentMediaIndex(idx)}
+                              className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer bg-black flex items-center justify-center ${
+                                isSelected
+                                  ? 'border-red-600 ring-2 ring-red-400/40 shadow-md scale-102'
+                                  : 'border-[#DDD5C5] opacity-80 hover:opacity-100 hover:border-red-500'
+                              }`}
+                              title={`Watch ${item.label || 'Video'}`}
+                            >
+                              {poster ? (
+                                <img src={poster} alt="Video thumbnail" className="w-full h-full object-cover opacity-80" />
+                              ) : (
+                                <div className="w-full h-full bg-linear-to-br from-stone-900 to-black flex items-center justify-center">
+                                  <Film className="w-5 h-5 text-stone-400" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                                <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md">
+                                  <Play className="w-3 h-3 fill-white ml-0.5" />
+                                </div>
+                              </div>
+                              <span className="absolute bottom-0 inset-x-0 bg-red-600/90 text-white text-[7.5px] font-bold text-center py-0.2">
+                                VIDEO
+                              </span>
+                            </button>
+                          );
+                        }
+
                         return (
                           <button
                             key={idx}
                             type="button"
-                            onClick={() => setCurrentImageIndex(idx)}
+                            onClick={() => setCurrentMediaIndex(idx)}
                             className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                               isSelected
                                 ? 'border-[#2C5E43] ring-2 ring-[#2C5E43]/30 shadow-md scale-102'
                                 : 'border-[#DDD5C5] opacity-75 hover:opacity-100 hover:border-[#8E8371]'
                             }`}
-                            title={`View image ${idx + 1}${idx === 0 ? ' (Primary)' : ''}`}
+                            title={`View photo ${idx + 1}${idx === 0 ? ' (Primary)' : ''}`}
                           >
                             <img
-                              src={img}
+                              src={item.url}
                               alt={`Thumbnail ${idx + 1}`}
                               className="w-full h-full object-cover"
                             />
@@ -345,17 +437,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                     {/* Pagination Dots */}
                     <div className="flex items-center justify-center gap-1.5 pt-1">
-                      {imagesList.map((_, dotIdx) => (
+                      {mediaList.map((m, dotIdx) => (
                         <button
                           key={dotIdx}
                           type="button"
-                          onClick={() => setCurrentImageIndex(dotIdx)}
+                          onClick={() => setCurrentMediaIndex(dotIdx)}
                           className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                            currentImageIndex === dotIdx
-                              ? 'w-5 bg-[#2C5E43]'
+                            currentMediaIndex === dotIdx
+                              ? m.type === 'video' ? 'w-5 bg-red-600' : 'w-5 bg-[#2C5E43]'
                               : 'w-1.5 bg-[#DDD5C5] hover:bg-[#A89D8B]'
                           }`}
-                          aria-label={`Go to image ${dotIdx + 1}`}
+                          aria-label={`Go to media ${dotIdx + 1}`}
                         />
                       ))}
                     </div>
@@ -480,14 +572,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             type="button"
                             onClick={() => {
                               setSelectedVariant(v);
-                              if (v.image) {
-                                const idx = imagesList.indexOf(v.image);
-                                if (idx !== -1) {
-                                  setCurrentImageIndex(idx);
-                                } else {
-                                  setCurrentImageIndex(0);
-                                }
-                              }
+                              setCurrentMediaIndex(0);
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
                               isSelected
@@ -791,37 +876,62 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         >
           <div className="absolute top-4 right-4 flex items-center gap-3 text-white">
             <span className="text-xs text-white/80">
-              Photo {currentImageIndex + 1} of {imagesList.length}
+              Media {currentMediaIndex + 1} of {mediaList.length}
             </span>
             <button
+              type="button"
               onClick={() => setIsZoomed(false)}
-              className="p-2 text-white/70 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="p-2 text-white/70 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
           <div 
-            className="relative max-w-4xl max-h-[85vh] flex items-center justify-center"
+            className="relative max-w-4xl max-h-[85vh] flex items-center justify-center w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={activeImage}
-              alt="Zoomed view"
-              className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
-            />
+            {activeMedia.type === 'video' ? (
+              <div className="w-[90vw] max-w-4xl aspect-16/9 bg-black rounded-lg overflow-hidden flex items-center justify-center shadow-2xl">
+                {activeMedia.videoType === 'youtube' ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(activeMedia.url, true) || ''}
+                    title="Fullscreen Video"
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={activeMedia.url}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            ) : (
+              <img
+                src={activeMedia.url}
+                alt="Zoomed view"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+              />
+            )}
 
-            {imagesList.length > 1 && (
+            {mediaList.length > 1 && (
               <>
                 <button
-                  onClick={handlePrevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center"
+                  type="button"
+                  onClick={handlePrevMedia}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center cursor-pointer"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
-                  onClick={handleNextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center"
+                  type="button"
+                  onClick={handleNextMedia}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center cursor-pointer"
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>

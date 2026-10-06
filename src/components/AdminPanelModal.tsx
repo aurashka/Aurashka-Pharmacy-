@@ -68,11 +68,15 @@ import {
   ListPlus,
   LayoutGrid,
   CheckSquare,
-  Square
+  Square,
+  Play,
+  Video,
+  Film
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS } from '../data/herbalProducts';
+import { detectVideoType, getYouTubeEmbedUrl, getYouTubeThumbnail, isValidVideoUrl } from '../utils/videoHelper';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -212,6 +216,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     storageGuideline: 'Store in an airtight container below 25°C away from humidity.',
     ayushLicenseNo: 'AYUSH-DL-2026-HERB-9901',
     batchInfo: 'Batch #VK-2026-01 | Exp: 2028',
+    videoUrl: '',
+    videoType: 'none' as 'youtube' | 'direct' | 'none',
   });
 
   // Helper to normalize siteSettings data
@@ -714,6 +720,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       storageGuideline: 'Reseal airtight after opening. Store away from moisture.',
       ayushLicenseNo: `AYUSH-NEW-${Math.floor(1000 + Math.random() * 9000)}`,
       batchInfo: `Batch #AUR-2026-${Math.floor(10 + Math.random() * 90)} | Exp: 2028`,
+      videoUrl: '',
+      videoType: 'none',
     });
   };
 
@@ -745,6 +753,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         ? p.variants.map((v) => ({
             ...v,
             images: Array.isArray(v.images) && v.images.length > 0 ? v.images : (v.image ? [v.image] : []),
+            videoUrl: v.videoUrl || '',
+            videoType: v.videoType || (v.videoUrl ? detectVideoType(v.videoUrl) : 'none'),
           }))
         : []
     );
@@ -792,6 +802,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       storageGuideline: p.storageGuideline || '',
       ayushLicenseNo: p.ayushLicenseNo || '',
       batchInfo: p.batchInfo || '',
+      videoUrl: p.videoUrl || '',
+      videoType: p.videoType || (p.videoUrl ? detectVideoType(p.videoUrl) : 'none'),
     });
   };
 
@@ -1188,6 +1200,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           resellerPrice: v.resellerPrice !== undefined ? Number(v.resellerPrice) : undefined,
           image: primaryVarImg,
           images: varImgs,
+          videoUrl: v.videoUrl ? v.videoUrl.trim() : undefined,
+          videoType: v.videoUrl?.trim() ? detectVideoType(v.videoUrl.trim()) : undefined,
           inStock: v.inStock !== false,
         };
       });
@@ -1260,6 +1274,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         storageGuideline: productForm.storageGuideline,
         ayushLicenseNo: productForm.ayushLicenseNo,
         batchInfo: productForm.batchInfo,
+        videoUrl: productForm.videoUrl?.trim() || undefined,
+        videoType: productForm.videoUrl?.trim() ? detectVideoType(productForm.videoUrl.trim()) : undefined,
       };
 
       onAddProduct(newProd);
@@ -1288,6 +1304,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         assuranceBadges,
         image: primaryImg,
         images: cleanImgs,
+        videoUrl: productForm.videoUrl?.trim() || undefined,
+        videoType: productForm.videoUrl?.trim() ? detectVideoType(productForm.videoUrl.trim()) : undefined,
         customLink: productForm.customLink.trim() || undefined,
         customFields: validCustomFields,
         keyIndications: parsedIndications,
@@ -2550,7 +2568,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   </div>
                                 </div>
 
-                                {/* Variant Photos Gallery Thumbnails List */}
+                                 {/* Variant Photos Gallery Thumbnails List */}
                                 {((variant.images && variant.images.length > 0) || (variant.image && variant.image.trim())) && (
                                   <div className="flex flex-wrap gap-2 pt-1">
                                     {(variant.images && variant.images.length > 0 ? variant.images : [variant.image!]).map((photoUrl, pIdx) => (
@@ -2580,6 +2598,98 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                         </button>
                                       </div>
                                     ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Variety Video Attachment: YouTube or Direct Playable Video (MP4 / WebM) */}
+                              <div className="pt-2.5 border-t border-[#F0EAE0] space-y-2 bg-[#FBF9F5] p-2.5 rounded-lg border border-[#E7E0D2]">
+                                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                                  <label className="text-[11px] font-bold text-[#14291D] shrink-0 flex items-center gap-1.5">
+                                    <Video className="w-3.5 h-3.5 text-red-600" />
+                                    <span>Variety Video (YouTube / Direct Playable Video):</span>
+                                  </label>
+                                  {variant.videoUrl?.trim() && (
+                                    <div className="flex items-center gap-1.5">
+                                      {detectVideoType(variant.videoUrl) === 'youtube' && (
+                                        <span className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
+                                          <Play className="w-2.5 h-2.5 fill-white" />
+                                          <span>YouTube Video</span>
+                                        </span>
+                                      )}
+                                      {detectVideoType(variant.videoUrl) === 'direct' && (
+                                        <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
+                                          <Film className="w-2.5 h-2.5" />
+                                          <span>Direct Video (.mp4 / webm)</span>
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = [...variantsList];
+                                          updated[vIdx].videoUrl = '';
+                                          updated[vIdx].videoType = 'none';
+                                          setVariantsList(updated);
+                                        }}
+                                        className="text-[10px] text-red-600 hover:underline font-semibold ml-1 cursor-pointer"
+                                      >
+                                        Remove Video
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="url"
+                                    value={variant.videoUrl || ''}
+                                    placeholder="Paste YouTube link (watch / shorts / youtu.be) or direct playable video URL (.mp4 / .webm)"
+                                    onChange={(e) => {
+                                      const updated = [...variantsList];
+                                      const val = e.target.value;
+                                      updated[vIdx].videoUrl = val;
+                                      updated[vIdx].videoType = detectVideoType(val);
+                                      setVariantsList(updated);
+                                    }}
+                                    className="flex-1 px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs font-mono"
+                                  />
+                                </div>
+
+                                <div className="text-[10px] text-[#716858] flex items-center justify-between">
+                                  <span>Attach an explainer video or demonstration specifically for this variety.</span>
+                                  {variant.videoUrl?.trim() && !isValidVideoUrl(variant.videoUrl) && (
+                                    <span className="text-amber-700 font-medium">Please enter a valid YouTube or direct video link</span>
+                                  )}
+                                </div>
+
+                                {/* Live Video Player Preview for Variety */}
+                                {variant.videoUrl?.trim() && isValidVideoUrl(variant.videoUrl) && (
+                                  <div className="mt-2 p-2 bg-white rounded-lg border border-[#DDD5C5] space-y-1.5">
+                                    <div className="flex items-center justify-between text-[10px] text-[#716858]">
+                                      <span className="font-bold text-[#14291D] flex items-center gap-1">
+                                        <Play className="w-3 h-3 text-[#2C5E43]" />
+                                        <span>Live Variety Video Player Preview:</span>
+                                      </span>
+                                      <span className="italic">Customer will see this video alongside variety photos</span>
+                                    </div>
+                                    <div className="rounded-lg overflow-hidden bg-black aspect-16/9 max-h-48 flex items-center justify-center">
+                                      {detectVideoType(variant.videoUrl) === 'youtube' ? (
+                                        <iframe
+                                          src={getYouTubeEmbedUrl(variant.videoUrl, false) || ''}
+                                          title={`Variant ${vIdx + 1} Video Preview`}
+                                          className="w-full h-full border-0"
+                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                          allowFullScreen
+                                        />
+                                      ) : (
+                                        <video
+                                          src={variant.videoUrl}
+                                          controls
+                                          preload="metadata"
+                                          className="w-full h-full object-contain"
+                                        />
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -2677,6 +2787,93 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </button>
                         </div>
                       </div>
+                    </div>
+
+                    {/* PRODUCT MAIN VIDEO SECTION (YOUTUBE / DIRECT PLAYABLE VIDEO) */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Video className="w-4 h-4 text-red-600" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            Product Video (YouTube or Direct Playable Video)
+                          </h5>
+                        </div>
+                        {productForm.videoUrl?.trim() && (
+                          <div className="flex items-center gap-1.5">
+                            {detectVideoType(productForm.videoUrl) === 'youtube' && (
+                              <span className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
+                                <Play className="w-2.5 h-2.5 fill-white" />
+                                <span>YouTube Video</span>
+                              </span>
+                            )}
+                            {detectVideoType(productForm.videoUrl) === 'direct' && (
+                              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
+                                <Film className="w-2.5 h-2.5" />
+                                <span>Direct Video (.mp4 / webm)</span>
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setProductForm({ ...productForm, videoUrl: '', videoType: 'none' })}
+                              className="text-[10px] text-red-600 hover:underline font-semibold ml-1 cursor-pointer"
+                            >
+                              Remove Video
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-[#695E4F] bg-white p-2.5 rounded-lg border border-[#E2D8C7] leading-relaxed">
+                        Attach an official product presentation video (YouTube watch/shorts/embed URL or direct MP4/WebM video). Customers can play this video directly inside the product gallery alongside photos!
+                      </p>
+
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="url"
+                          value={productForm.videoUrl || ''}
+                          placeholder="Paste YouTube link (https://youtube.com/watch?v=... / shorts) or direct MP4/WebM URL"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setProductForm({
+                              ...productForm,
+                              videoUrl: val,
+                              videoType: detectVideoType(val),
+                            });
+                          }}
+                          className="flex-1 px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                        />
+                      </div>
+
+                      {/* Live Main Product Video Preview */}
+                      {productForm.videoUrl?.trim() && isValidVideoUrl(productForm.videoUrl) && (
+                        <div className="mt-2 p-2.5 bg-white rounded-lg border border-[#DDD5C5] space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] text-[#716858]">
+                            <span className="font-bold text-[#14291D] flex items-center gap-1">
+                              <Play className="w-3.5 h-3.5 text-[#2C5E43]" />
+                              <span>Live Product Video Player Preview:</span>
+                            </span>
+                            <span className="italic">Appears inside product gallery & monograph view</span>
+                          </div>
+                          <div className="rounded-lg overflow-hidden bg-black aspect-16/9 max-h-56 flex items-center justify-center">
+                            {detectVideoType(productForm.videoUrl) === 'youtube' ? (
+                              <iframe
+                                src={getYouTubeEmbedUrl(productForm.videoUrl, false) || ''}
+                                title="Product Main Video Preview"
+                                className="w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            ) : (
+                              <video
+                                src={productForm.videoUrl}
+                                controls
+                                preload="metadata"
+                                className="w-full h-full object-contain"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* ══════════════════════════════════════════════════════════════ */}

@@ -59,6 +59,8 @@ export interface ProductVariant {
   resellerPrice?: number; // e.g. 210
   image?: string; // primary separate image when this variant is selected
   images?: string[]; // multiple separate photos for this variant
+  videoUrl?: string; // YouTube video link or direct MP4 video link for this variant
+  videoType?: 'youtube' | 'direct' | 'none';
   inStock?: boolean;
 }
 
@@ -83,6 +85,8 @@ export interface HerbalProduct {
   displayOrder?: number; // Sorting order in catalog (1 = top, 2 = second...)
   image: string;
   images?: string[]; // Multiple product images support
+  videoUrl?: string; // YouTube video link or direct MP4 video link
+  videoType?: 'youtube' | 'direct' | 'none';
   variants?: ProductVariant[]; // Different sizes / packaging variants
   customFields?: ProductCustomField[]; // Custom attributes with name, value and position
   keyIndications: string[];
