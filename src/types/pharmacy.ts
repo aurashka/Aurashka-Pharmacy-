@@ -224,7 +224,8 @@ export interface BannerSlideItem {
 export interface BannerSliderConfig {
   enabled: boolean;
   autoScrollSeconds?: number; // e.g. 4 seconds
-  aspectRatio?: 'auto' | 'compact' | 'standard' | 'wide';
+  aspectRatio?: 'auto' | 'compact' | 'standard' | 'wide' | 'tall' | 'extra_tall' | 'custom';
+  customHeightPx?: number; // e.g. 180, 240, 320, 400, 500, etc. (manually typed in pixels)
   items: BannerSlideItem[];
 }
 

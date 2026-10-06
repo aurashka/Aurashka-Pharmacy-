@@ -286,6 +286,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         enabled: s.bannerSlider?.enabled !== undefined ? Boolean(s.bannerSlider.enabled) : (DEFAULT_BANNER_SLIDER?.enabled ?? true),
         autoScrollSeconds: s.bannerSlider?.autoScrollSeconds || DEFAULT_BANNER_SLIDER?.autoScrollSeconds || 4,
         aspectRatio: (s.bannerSlider?.aspectRatio as BannerSliderConfig['aspectRatio']) || DEFAULT_BANNER_SLIDER?.aspectRatio || 'auto',
+        customHeightPx: s.bannerSlider?.customHeightPx ? Number(s.bannerSlider.customHeightPx) : undefined,
         items: (Array.isArray(s.bannerSlider?.items)
           ? s.bannerSlider.items
           : (s.bannerSlider?.items && typeof s.bannerSlider.items === 'object'
@@ -373,6 +374,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     enabled: siteForm.bannerSlider?.enabled ?? true,
     autoScrollSeconds: siteForm.bannerSlider?.autoScrollSeconds || 4,
     aspectRatio: siteForm.bannerSlider?.aspectRatio || 'auto',
+    customHeightPx: siteForm.bannerSlider?.customHeightPx ? Number(siteForm.bannerSlider.customHeightPx) : undefined,
     items: Array.isArray(siteForm.bannerSlider?.items)
       ? siteForm.bannerSlider.items
       : (siteForm.bannerSlider?.items && typeof siteForm.bannerSlider.items === 'object'
@@ -1433,48 +1435,49 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-6xl max-h-[94vh] bg-[#FBF9F5] border border-[#DCD5C5] rounded-2xl shadow-2xl text-[#1E2922] flex flex-col overflow-hidden"
+        className="relative w-full h-[100dvh] sm:h-auto sm:max-w-6xl sm:max-h-[94vh] bg-[#FBF9F5] border-0 sm:border sm:border-[#DCD5C5] rounded-none sm:rounded-2xl shadow-2xl text-[#1E2922] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-[#14291D] text-white border-b border-[#21432E] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#B4741E] text-white flex items-center justify-center font-bold">
-              <ShieldAlert className="w-5 h-5" />
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 bg-[#14291D] text-white border-b border-[#21432E] shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#B4741E] text-white flex items-center justify-center font-bold shrink-0">
+              <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-serif text-lg font-bold text-white">
-                  Aurashka · Complete Admin App
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="font-serif text-base sm:text-lg font-bold text-white truncate">
+                  Aurashka Admin
                 </h3>
-                <span className="text-[11px] font-semibold bg-[#27533B] text-[#A5D6B6] px-2 py-0.5 rounded-full">
-                  Admin: {currentUser?.email}
+                <span className="text-[10px] sm:text-[11px] font-semibold bg-[#27533B] text-[#A5D6B6] px-1.5 sm:px-2 py-0.5 rounded-full truncate max-w-[120px] sm:max-w-[200px]">
+                  {currentUser?.email || 'Admin'}
                 </span>
               </div>
-              <p className="text-xs text-[#BED4C7]">
+              <p className="text-[11px] text-[#BED4C7] hidden sm:block truncate">
                 Manage Products, Reseller Rates, Rating Stars, Custom Fields, Categories & Forms, and Contacts.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={handleBackupAll}
               disabled={isBackingUp}
-              className="px-3 py-1.5 text-xs font-semibold text-[#183624] bg-[#E7EFEA] hover:bg-[#d8e8de] rounded-lg border border-[#A5D6B6] transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-60 cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#183624] bg-[#E7EFEA] hover:bg-[#d8e8de] rounded-lg border border-[#A5D6B6] transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-60 cursor-pointer"
               title="Save all image links, texts & contacts to Firebase"
             >
-              <CloudUpload className="w-4 h-4 text-[#2C5E43]" />
-              <span>{isBackingUp ? 'Saving...' : 'Save All on Firebase'}</span>
+              <CloudUpload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2C5E43]" />
+              <span className="hidden sm:inline">{isBackingUp ? 'Saving...' : 'Save All on Firebase'}</span>
+              <span className="sm:hidden">{isBackingUp ? 'Saving...' : 'Sync'}</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-1.5 text-white/70 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
               title="Close Admin Panel"
             >
               <X className="w-5 h-5" />
@@ -1483,10 +1486,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         </div>
 
         {/* Mobile / Compact Quick Switcher Dropdown (Never Hidden) */}
-        <div className="md:hidden px-4 py-2.5 bg-[#F2EDE1] border-b border-[#DCD5C5] flex items-center justify-between gap-2 shrink-0">
+        <div className="md:hidden px-3 py-2 bg-[#F2EDE1] border-b border-[#DCD5C5] flex items-center justify-between gap-2 shrink-0">
           <label className="text-xs font-bold text-[#14291D] shrink-0 flex items-center gap-1.5">
             <Sliders className="w-3.5 h-3.5 text-[#2C5E43]" />
-            <span>Admin Section:</span>
+            <span>Section:</span>
           </label>
           <select
             value={activeTab}
@@ -1495,22 +1498,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               setIsCreatingNew(false);
               setEditingProduct(null);
             }}
-            className="flex-1 py-1.5 px-3 bg-white border border-[#C8BEAB] rounded-lg text-xs font-semibold text-[#183624] shadow-2xs focus:outline-hidden focus:border-[#2C5E43] cursor-pointer"
+            className="flex-1 py-1.5 px-2.5 bg-white border border-[#C8BEAB] rounded-lg text-xs font-semibold text-[#183624] shadow-2xs focus:outline-hidden focus:border-[#2C5E43] cursor-pointer"
           >
             <option value="products">🛍️ Products & Reseller Rates ({products.length})</option>
             <option value="deal_of_week">🔥 Deal of the Week & Banner Scroller ({currentWeeklyDeals.items.length} deals)</option>
             <option value="horizontal_lists">📦 Product Horizontal Lists ({currentHorizontalLists.length} shelves)</option>
             <option value="categories_forms">🗂️ Categories & Forms Manager</option>
             <option value="contacts">📞 Multiple Contacts (Phones, WhatsApp, Emails)</option>
+            <option value="people">👥 Doctors & Key People</option>
             <option value="site_titles">🏷️ Website Titles & Banner Texts</option>
             <option value="assurance_badges">🛡️ Ayush & Quality Assurance Badges (Product View)</option>
             <option value="messages">💬 WhatsApp & Email Custom Messages</option>
           </select>
         </div>
 
-        {/* Tab Switcher - Responsive Wrapped Pills (Never Hidden on any screen) */}
-        <div className="border-b border-[#E7DFD1] bg-[#FAF8F5] px-3 sm:px-6 py-2 shrink-0">
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        {/* Tab Switcher - Responsive Wrapped Pills / Horizontal scroll on mobile (Never Hidden on any screen) */}
+        <div className="border-b border-[#E7DFD1] bg-[#FAF8F5] px-2 sm:px-6 py-1.5 sm:py-2 shrink-0 overflow-x-auto no-scrollbar">
+          <div className="flex md:flex-wrap items-center gap-1.5 sm:gap-2 min-w-max md:min-w-0">
             <button
               type="button"
               onClick={() => {
@@ -1698,8 +1702,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           <>
             {/* Products Sub-Bar */}
             {!isCreatingNew && !editingProduct && (
-              <div className="p-4 sm:px-6 bg-[#FAF8F5] border-b border-[#E7DFD1] flex flex-wrap items-center justify-between gap-3 shrink-0">
-                <div className="relative flex-1 max-w-md">
+              <div className="p-3 sm:p-4 sm:px-6 bg-[#FAF8F5] border-b border-[#E7DFD1] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+                <div className="relative w-full sm:flex-1 sm:max-w-md">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#887E6D]" />
                   <input
                     type="text"
@@ -1710,27 +1714,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                   <button
                     onClick={onResetProductsToDefault}
-                    className="px-3 py-1.5 text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer"
+                    className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer text-center"
                   >
-                    Reset Default Catalog
+                    Reset Defaults
                   </button>
 
                   <button
                     onClick={startCreate}
-                    className="px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    className="flex-1 sm:flex-none px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 text-amber-300" />
-                    <span>+ Add New Product</span>
+                    <span>+ Add Product</span>
                   </button>
                 </div>
               </div>
             )}
 
             {/* Products Content Body */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
               {(isCreatingNew || editingProduct) ? (
                 /* Full Comprehensive Product Form */
                 <div className="bg-white p-6 rounded-xl border border-[#D5CCBC] shadow-xs space-y-6">
@@ -3422,20 +3426,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
 
                     {/* Form Submit & Cancel Buttons */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#EAE3D4]">
+                    <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs py-3.5 px-4 -mx-6 -mb-6 border-t border-[#EAE3D4] flex items-center justify-end gap-3 z-10 shadow-xs rounded-b-xl">
                       <button
                         type="button"
                         onClick={() => {
                           setIsCreatingNew(false);
                           setEditingProduct(null);
                         }}
-                        className="px-4 py-2 border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded-lg font-medium cursor-pointer"
+                        className="px-4 py-2 border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded-lg font-medium cursor-pointer text-xs"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-6 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
+                        className="px-5 sm:px-6 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-md cursor-pointer text-xs"
                       >
                         <Save className="w-4 h-4 text-amber-300" />
                         <span>{isCreatingNew ? 'Save & Sync to Firebase' : 'Update & Save to Firebase'}</span>
@@ -3444,159 +3448,301 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </form>
                 </div>
               ) : (
-                /* Products Table with Reseller Price, Ratings & Sort Badges */
-                <div className="bg-white rounded-xl border border-[#D5CCBC] shadow-xs overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[#FAF8F5] border-b border-[#E7DFD1] text-[#695F4F]">
-                        <tr>
-                          <th className="py-2.5 px-3">Product</th>
-                          <th className="py-2.5 px-3">Category & Form</th>
-                          <th className="py-2.5 px-3">Retail Price</th>
-                          <th className="py-2.5 px-3">Reseller Rate</th>
-                          <th className="py-2.5 px-3">Rating Star</th>
-                          <th className="py-2.5 px-3">Sort Focus</th>
-                          <th className="py-2.5 px-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#EAE3D4]">
-                        {filteredProducts.map((prod) => (
-                          <tr key={prod.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                            {/* Product Info */}
-                            <td className="py-2 px-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-[#DDD5C5] overflow-hidden shrink-0">
-                                  <img
-                                    src={prod.image || (prod.images && prod.images[0])}
-                                    alt={prod.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                                  />
+                /* Products View (Desktop Table + Mobile Cards) */
+                <div className="space-y-4">
+                  {/* Empty state if search has no results */}
+                  {filteredProducts.length === 0 && (
+                    <div className="p-8 text-center bg-white rounded-xl border border-[#DDD5C5] text-[#716858] space-y-2">
+                      <p className="font-semibold text-sm">No formulations match your search.</p>
+                      <p className="text-xs">Try clearing the search input or adding a new formulation.</p>
+                    </div>
+                  )}
+
+                  {/* Mobile View: Clean, sorted touch cards (Zero horizontal scroll cutoffs) */}
+                  <div className="md:hidden space-y-3">
+                    {filteredProducts.map((prod) => (
+                      <div key={prod.id} className="bg-white p-3.5 rounded-xl border border-[#D5CCBC] shadow-2xs space-y-2.5">
+                        <div className="flex items-start gap-3">
+                          <div className="w-16 h-16 rounded-lg bg-[#FAF8F5] border border-[#DDD5C5] overflow-hidden shrink-0">
+                            <img
+                              src={prod.image || (prod.images && prod.images[0])}
+                              alt={prod.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-1">
+                              <h4 className="font-bold text-[#14291D] text-sm leading-snug line-clamp-1">{prod.name}</h4>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                prod.inStock !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {prod.inStock !== false ? 'In Stock' : 'Out of Stock'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-[#7A705E] italic line-clamp-1">{prod.sanskritName}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10.5px] font-semibold text-[#2C5E43] bg-[#EBF5EF] px-1.5 py-0.5 rounded">
+                                {prod.categoryLabel}
+                              </span>
+                              <span className="text-[10.5px] text-[#786D5C] font-mono">
+                                {prod.form}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#F0EAE0] text-xs">
+                          <div>
+                            <span className="text-[10px] text-[#786D5C] block">Retail Price</span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-mono font-bold text-[#14291D]">{formatPrice(prod.price)}</span>
+                              <span className="text-[10px] text-[#887E6D] line-through">{formatPrice(prod.mrp)}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-[#786D5C] block">Reseller Rate</span>
+                            {prod.resellerPrice !== undefined && prod.resellerPrice > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#EBF5EF] text-[#183624] font-mono font-bold border border-[#BBDDC7] text-[11px]">
+                                {formatPrice(prod.resellerPrice)}
+                              </span>
+                            ) : (
+                              <span className="text-[#998F80] italic text-[11px]">— Not Set —</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Rating & Badge */}
+                        <div className="flex items-center justify-between pt-1 text-xs">
+                          <div className="flex items-center gap-1 text-amber-600 font-bold">
+                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            <span>{prod.rating}</span>
+                            <span className="text-[10px] text-[#786D5C]">({formatCompactNumber(prod.reviewsCount)})</span>
+                          </div>
+
+                          {prod.sortBadge && prod.sortBadge !== 'none' ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded text-white flex items-center gap-1 bg-[#B4741E]">
+                              {prod.sortBadge === 'trending' ? 'Trending' :
+                               prod.sortBadge === 'top_seller' ? 'Top Seller' :
+                               prod.sortBadge === 'best_deal' ? 'Best Deal' :
+                               prod.sortBadge === 'new_launch' ? 'New Launch' :
+                               prod.sortBadge === 'featured' ? 'Featured' :
+                               prod.sortBadge}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[#887E6D]">Order: #{prod.displayOrder || 1}</span>
+                          )}
+                        </div>
+
+                        {/* Action Buttons on mobile */}
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#F0EAE0]">
+                          <button
+                            type="button"
+                            onClick={() => onPreviewProduct(prod)}
+                            className="py-1.5 px-2 bg-[#E7EFEA] hover:bg-[#d8e8de] text-[#183624] rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-[#BBDDC7] cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => startEdit(prod)}
+                            className="py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-blue-200 cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+
+                          {deleteConfirmId === prod.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onDeleteProduct(prod.id);
+                                  setDeleteConfirmId(null);
+                                }}
+                                className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-[11px] font-bold cursor-pointer"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="p-1.5 text-stone-600 rounded-lg bg-stone-100 text-xs cursor-pointer"
+                              >
+                                X
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(prod.id)}
+                              className="py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-rose-200 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block bg-white rounded-xl border border-[#D5CCBC] shadow-xs overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#FAF8F5] border-b border-[#E7DFD1] text-[#695F4F]">
+                          <tr>
+                            <th className="py-2.5 px-3">Product</th>
+                            <th className="py-2.5 px-3">Category & Form</th>
+                            <th className="py-2.5 px-3">Retail Price</th>
+                            <th className="py-2.5 px-3">Reseller Rate</th>
+                            <th className="py-2.5 px-3">Rating Star</th>
+                            <th className="py-2.5 px-3">Sort Focus</th>
+                            <th className="py-2.5 px-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EAE3D4]">
+                          {filteredProducts.map((prod) => (
+                            <tr key={prod.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                              {/* Product Info */}
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-[#DDD5C5] overflow-hidden shrink-0">
+                                    <img
+                                      src={prod.image || (prod.images && prod.images[0])}
+                                      alt={prod.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-[#14291D] line-clamp-1">{prod.name}</div>
+                                    <div className="text-[11px] text-[#7A705E] italic line-clamp-1">{prod.sanskritName}</div>
+                                    {prod.customFields && prod.customFields.length > 0 && (
+                                      <div className="text-[10px] text-[#2C5E43] font-medium">
+                                        {prod.customFields.length} custom field(s)
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                <div>
-                                  <div className="font-bold text-[#14291D] line-clamp-1">{prod.name}</div>
-                                  <div className="text-[11px] text-[#7A705E] italic line-clamp-1">{prod.sanskritName}</div>
-                                  {prod.customFields && prod.customFields.length > 0 && (
-                                    <div className="text-[10px] text-[#2C5E43] font-medium">
-                                      {prod.customFields.length} custom field(s)
+                              </td>
+
+                              {/* Category & Form */}
+                              <td className="py-2 px-3">
+                                <div className="font-medium text-[#2C5E43]">{prod.categoryLabel}</div>
+                                <div className="text-[11px] text-[#786D5C]">{prod.form}</div>
+                              </td>
+
+                              {/* Retail Price */}
+                              <td className="py-2 px-3">
+                                <div className="font-mono font-bold text-[#14291D]">{formatPrice(prod.price)}</div>
+                                <div className="text-[10px] text-[#887E6D] line-through">{formatPrice(prod.mrp)}</div>
+                              </td>
+
+                              {/* Reseller Rate */}
+                              <td className="py-2 px-3">
+                                {prod.resellerPrice !== undefined && prod.resellerPrice > 0 ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#EBF5EF] text-[#183624] font-mono font-bold border border-[#BBDDC7] text-[11px]">
+                                    {formatPrice(prod.resellerPrice)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[#998F80] italic text-[11px]">— Not Set —</span>
+                                )}
+                              </td>
+
+                              {/* Rating Star */}
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1 text-amber-600 font-bold">
+                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                  <span>{prod.rating}</span>
+                                  <span className="text-[10px] text-[#786D5C]">({formatCompactNumber(prod.reviewsCount)})</span>
+                                </div>
+                              </td>
+
+                              {/* Sort Focus Badge (Branded Icons, No Emojis) */}
+                              <td className="py-2 px-3">
+                                {prod.sortBadge && prod.sortBadge !== 'none' ? (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white flex items-center gap-1 w-fit ${
+                                    prod.sortBadge === 'trending' ? 'bg-red-600' :
+                                    prod.sortBadge === 'top_seller' ? 'bg-amber-600' :
+                                    prod.sortBadge === 'best_deal' ? 'bg-emerald-700' :
+                                    prod.sortBadge === 'new_launch' ? 'bg-blue-600' :
+                                    prod.sortBadge === 'featured' ? 'bg-indigo-700' :
+                                    'bg-[#B4741E]'
+                                  }`}>
+                                    {prod.sortBadge === 'trending' && <Flame className="w-3 h-3 text-amber-200" />}
+                                    {prod.sortBadge === 'top_seller' && <Trophy className="w-3 h-3 text-amber-100" />}
+                                    {prod.sortBadge === 'best_deal' && <Tag className="w-3 h-3 text-emerald-200" />}
+                                    {prod.sortBadge === 'new_launch' && <Rocket className="w-3 h-3 text-blue-100" />}
+                                    {prod.sortBadge === 'featured' && <Sparkles className="w-3 h-3 text-indigo-200" />}
+                                    <span>
+                                      {prod.sortBadge === 'trending' ? 'Trending' :
+                                       prod.sortBadge === 'top_seller' ? 'Top Seller' :
+                                       prod.sortBadge === 'best_deal' ? 'Best Deal' :
+                                       prod.sortBadge === 'new_launch' ? 'New Launch' :
+                                       prod.sortBadge === 'featured' ? 'Featured' :
+                                       prod.sortBadge}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-[#887E6D]">Standard</span>
+                                )}
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-2 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => onPreviewProduct(prod)}
+                                    className="p-1.5 text-[#2C5E43] hover:bg-[#E7EFEA] rounded cursor-pointer"
+                                    title="Preview product view"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => startEdit(prod)}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+                                    title="Edit product, images, custom fields & reseller price"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  {deleteConfirmId === prod.id ? (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => {
+                                          onDeleteProduct(prod.id);
+                                          setDeleteConfirmId(null);
+                                        }}
+                                        className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold cursor-pointer"
+                                      >
+                                        Confirm
+                                      </button>
+                                      <button
+                                        onClick={() => setDeleteConfirmId(null)}
+                                        className="px-1 py-0.5 text-[10px] cursor-pointer"
+                                      >
+                                        X
+                                      </button>
                                     </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => setDeleteConfirmId(prod.id)}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                                      title="Delete product"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   )}
                                 </div>
-                              </div>
-                            </td>
-
-                            {/* Category & Form */}
-                            <td className="py-2 px-3">
-                              <div className="font-medium text-[#2C5E43]">{prod.categoryLabel}</div>
-                              <div className="text-[11px] text-[#786D5C]">{prod.form}</div>
-                            </td>
-
-                            {/* Retail Price */}
-                            <td className="py-2 px-3">
-                              <div className="font-mono font-bold text-[#14291D]">{formatPrice(prod.price)}</div>
-                              <div className="text-[10px] text-[#887E6D] line-through">{formatPrice(prod.mrp)}</div>
-                            </td>
-
-                            {/* Reseller Rate */}
-                            <td className="py-2 px-3">
-                              {prod.resellerPrice !== undefined && prod.resellerPrice > 0 ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#EBF5EF] text-[#183624] font-mono font-bold border border-[#BBDDC7] text-[11px]">
-                                  {formatPrice(prod.resellerPrice)}
-                                </span>
-                              ) : (
-                                <span className="text-[#998F80] italic text-[11px]">— Not Set —</span>
-                              )}
-                            </td>
-
-                            {/* Rating Star */}
-                            <td className="py-2 px-3">
-                              <div className="flex items-center gap-1 text-amber-600 font-bold">
-                                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                                <span>{prod.rating}</span>
-                                <span className="text-[10px] text-[#786D5C]">({formatCompactNumber(prod.reviewsCount)})</span>
-                              </div>
-                            </td>
-
-                            {/* Sort Focus Badge (Branded Icons, No Emojis) */}
-                            <td className="py-2 px-3">
-                              {prod.sortBadge && prod.sortBadge !== 'none' ? (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white flex items-center gap-1 w-fit ${
-                                  prod.sortBadge === 'trending' ? 'bg-red-600' :
-                                  prod.sortBadge === 'top_seller' ? 'bg-amber-600' :
-                                  prod.sortBadge === 'best_deal' ? 'bg-emerald-700' :
-                                  prod.sortBadge === 'new_launch' ? 'bg-blue-600' :
-                                  prod.sortBadge === 'featured' ? 'bg-indigo-700' :
-                                  'bg-[#B4741E]'
-                                }`}>
-                                  {prod.sortBadge === 'trending' && <Flame className="w-3 h-3 text-amber-200" />}
-                                  {prod.sortBadge === 'top_seller' && <Trophy className="w-3 h-3 text-amber-100" />}
-                                  {prod.sortBadge === 'best_deal' && <Tag className="w-3 h-3 text-emerald-200" />}
-                                  {prod.sortBadge === 'new_launch' && <Rocket className="w-3 h-3 text-blue-100" />}
-                                  {prod.sortBadge === 'featured' && <Sparkles className="w-3 h-3 text-indigo-200" />}
-                                  <span>
-                                    {prod.sortBadge === 'trending' ? 'Trending' :
-                                     prod.sortBadge === 'top_seller' ? 'Top Seller' :
-                                     prod.sortBadge === 'best_deal' ? 'Best Deal' :
-                                     prod.sortBadge === 'new_launch' ? 'New Launch' :
-                                     prod.sortBadge === 'featured' ? 'Featured' :
-                                     prod.sortBadge}
-                                  </span>
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-[#887E6D]">Standard</span>
-                              )}
-                            </td>
-
-                            {/* Actions */}
-                            <td className="py-2 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => onPreviewProduct(prod)}
-                                  className="p-1.5 text-[#2C5E43] hover:bg-[#E7EFEA] rounded cursor-pointer"
-                                  title="Preview product view"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => startEdit(prod)}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
-                                  title="Edit product, images, custom fields & reseller price"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                                {deleteConfirmId === prod.id ? (
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => {
-                                        onDeleteProduct(prod.id);
-                                        setDeleteConfirmId(null);
-                                      }}
-                                      className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold cursor-pointer"
-                                    >
-                                      Confirm
-                                    </button>
-                                    <button
-                                      onClick={() => setDeleteConfirmId(null)}
-                                      className="px-1 py-0.5 text-[10px] cursor-pointer"
-                                    >
-                                      X
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() => setDeleteConfirmId(prod.id)}
-                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                                    title="Delete product"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -3606,7 +3752,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab: Deal of the Week (Add, Edit, Reorder, Delete Section & Multiple Products in Horizontal Scroll) */}
         {activeTab === 'deal_of_week' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             {/* 0. Image Banner Auto-Scroller / Swipe Slider (Positioned Above Weekly Deal) */}
             <div className={`p-5 rounded-xl border shadow-xs transition-colors ${
               currentBannerSlider.enabled 
@@ -3677,44 +3823,213 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               </div>
 
-              {/* Slider Size & Auto-Scroll Options */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-white p-3.5 rounded-lg border border-[#EAE3D4] mb-4">
-                <div>
-                  <label className="block font-semibold text-[#2F2920] mb-1">
-                    Scroller Size & Position (Screen Height Adjustment)
-                  </label>
-                  <select
-                    value={currentBannerSlider.aspectRatio || 'auto'}
-                    onChange={(e) => handleUpdateBannerSlider({ aspectRatio: e.target.value as any })}
-                    className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
-                  >
-                    <option value="auto">Auto Responsive (Adaptive Mobile / Tablet / Desktop)</option>
-                    <option value="compact">Compact (Sleek Banner: h-32 to h-40)</option>
-                    <option value="standard">Standard (Medium Height: h-40 to h-52)</option>
-                    <option value="wide">Prominent / Wide (High Impact: h-48 to h-64)</option>
-                  </select>
-                  <p className="text-[10px] text-[#716858] mt-1">
-                    Adjusts height dynamically to match your device screens and banner aspect ratio.
-                  </p>
+              {/* Slider Size & Auto-Scroll Options (Expandable & Manually Typed) */}
+              <div className="bg-white p-4 rounded-xl border border-[#EAE3D4] mb-4 space-y-4 text-xs shadow-2xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Preset Selector */}
+                  <div>
+                    <label className="block font-bold text-[#14291D] mb-1 flex items-center justify-between">
+                      <span>Scroller Size & Position (Screen Height Presets)</span>
+                      {currentBannerSlider.customHeightPx ? (
+                        <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          Custom: {currentBannerSlider.customHeightPx}px Active
+                        </span>
+                      ) : null}
+                    </label>
+                    <select
+                      value={currentBannerSlider.aspectRatio || 'auto'}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        if (val === 'compact') {
+                          handleUpdateBannerSlider({ aspectRatio: 'compact', customHeightPx: 130 });
+                        } else if (val === 'standard') {
+                          handleUpdateBannerSlider({ aspectRatio: 'standard', customHeightPx: 180 });
+                        } else if (val === 'wide') {
+                          handleUpdateBannerSlider({ aspectRatio: 'wide', customHeightPx: 240 });
+                        } else if (val === 'tall') {
+                          handleUpdateBannerSlider({ aspectRatio: 'tall', customHeightPx: 320 });
+                        } else if (val === 'extra_tall') {
+                          handleUpdateBannerSlider({ aspectRatio: 'extra_tall', customHeightPx: 420 });
+                        } else if (val === 'auto') {
+                          handleUpdateBannerSlider({ aspectRatio: 'auto', customHeightPx: undefined });
+                        } else {
+                          handleUpdateBannerSlider({ aspectRatio: val });
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D] focus:outline-hidden focus:border-[#2C5E43]"
+                    >
+                      <option value="auto">Auto Responsive (Adaptive Mobile / Tablet / Desktop)</option>
+                      <option value="compact">Compact (Sleek Banner ~ 130px)</option>
+                      <option value="standard">Standard (Medium Height ~ 180px)</option>
+                      <option value="wide">Prominent / Wide (High Impact ~ 240px)</option>
+                      <option value="tall">Tall / Large Banner (High Visibility ~ 320px)</option>
+                      <option value="extra_tall">Extra Large / Full Hero Banner (~ 420px)</option>
+                      <option value="custom">Custom Height (Manually Typed Below)</option>
+                    </select>
+                    <p className="text-[10.5px] text-[#716858] mt-1">
+                      Height badhane ke liye niche manually type karein ya presets me se bada size chunein.
+                    </p>
+                  </div>
+
+                  {/* Auto-Scroll Speed Selector */}
+                  <div>
+                    <label className="block font-bold text-[#14291D] mb-1">
+                      Auto-Scroll Speed (Interval)
+                    </label>
+                    <select
+                      value={currentBannerSlider.autoScrollSeconds || 4}
+                      onChange={(e) => handleUpdateBannerSlider({ autoScrollSeconds: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D] focus:outline-hidden focus:border-[#2C5E43]"
+                    >
+                      <option value={2}>Fast (2 Seconds per slide)</option>
+                      <option value={3}>Normal (3 Seconds per slide)</option>
+                      <option value={4}>Balanced (4 Seconds per slide)</option>
+                      <option value={6}>Relaxed (6 Seconds per slide)</option>
+                      <option value={8}>Slow (8 Seconds per slide)</option>
+                    </select>
+                    <p className="text-[10.5px] text-[#716858] mt-1">
+                      Slide badalne ka time interval. Touch swipe aur mouse drag hamesha enable rehta hai.
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-[#2F2920] mb-1">
-                    Auto-Scroll Speed (Interval)
-                  </label>
-                  <select
-                    value={currentBannerSlider.autoScrollSeconds || 4}
-                    onChange={(e) => handleUpdateBannerSlider({ autoScrollSeconds: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs text-[#2F2920]"
-                  >
-                    <option value={2}>Fast (2 Seconds per slide)</option>
-                    <option value={3}>Normal (3 Seconds per slide)</option>
-                    <option value={4}>Balanced (4 Seconds per slide)</option>
-                    <option value={6}>Relaxed (6 Seconds per slide)</option>
-                  </select>
-                  <p className="text-[10px] text-[#716858] mt-1">
-                    Visitors can hover or swipe horizontally to navigate slides manually.
-                  </p>
+                {/* Manual Height Input & Fine-Tuning Controls */}
+                <div className="pt-3 border-t border-[#F0EAE1] space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="block font-bold text-[#14291D] text-xs flex items-center gap-1.5">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-[#2C5E43]" />
+                        <span>Manually Type Exact Screen Height (in Pixels)</span>
+                      </label>
+                      <span className="text-[10.5px] text-[#716858]">
+                        Directly number type karein ya [+] [-] click karke height badhayein / ghataiye.
+                      </span>
+                    </div>
+
+                    {/* Numeric Input with Stepper */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = currentBannerSlider.customHeightPx || 180;
+                          const next = Math.max(90, cur - 20);
+                          handleUpdateBannerSlider({ customHeightPx: next, aspectRatio: 'custom' });
+                        }}
+                        className="px-2.5 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEAE0] border border-[#DDD5C5] rounded-lg font-bold text-xs text-[#14291D] cursor-pointer"
+                        title="Decrease 20px"
+                      >
+                        -20px
+                      </button>
+
+                      <div className="relative flex items-center">
+                        <input
+                          type="number"
+                          min={90}
+                          max={900}
+                          step={10}
+                          value={currentBannerSlider.customHeightPx || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.trim();
+                            if (val === '') {
+                              handleUpdateBannerSlider({ customHeightPx: undefined, aspectRatio: 'auto' });
+                            } else {
+                              const num = Math.min(900, Math.max(80, parseInt(val) || 0));
+                              handleUpdateBannerSlider({ customHeightPx: num, aspectRatio: 'custom' });
+                            }
+                          }}
+                          placeholder="Auto"
+                          className="w-24 px-2.5 py-1.5 bg-[#FAF8F5] border border-[#2C5E43] rounded-lg font-mono font-bold text-center text-xs text-[#14291D] focus:outline-hidden"
+                        />
+                        <span className="absolute right-2 text-[10px] text-[#716858] font-bold pointer-events-none">
+                          px
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = currentBannerSlider.customHeightPx || 180;
+                          const next = Math.min(900, cur + 20);
+                          handleUpdateBannerSlider({ customHeightPx: next, aspectRatio: 'custom' });
+                        }}
+                        className="px-2.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-xs cursor-pointer shadow-2xs"
+                        title="Increase 20px"
+                      >
+                        +20px
+                      </button>
+
+                      {currentBannerSlider.customHeightPx ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateBannerSlider({ customHeightPx: undefined, aspectRatio: 'auto' })}
+                          className="px-2 py-1.5 text-[11px] text-[#716858] hover:text-red-700 hover:bg-rose-50 border border-[#DDD5C5] rounded-lg cursor-pointer transition-colors"
+                          title="Reset to Auto Responsive Height"
+                        >
+                          Reset Auto
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Interactive Height Range Slider */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10.5px] text-[#716858]">
+                      <span>Compact (100px)</span>
+                      <span className="font-bold text-[#14291D]">
+                        Current Slider Height: {currentBannerSlider.customHeightPx ? `${currentBannerSlider.customHeightPx}px (Custom)` : 'Responsive Auto (Adaptive)'}
+                      </span>
+                      <span>Extra Tall (600px)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={100}
+                      max={600}
+                      step={10}
+                      value={currentBannerSlider.customHeightPx || 180}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 180;
+                        handleUpdateBannerSlider({ customHeightPx: val, aspectRatio: 'custom' });
+                      }}
+                      className="w-full accent-[#2C5E43] cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Quick Height Preset Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] font-bold text-[#716858] mr-1">Quick Sizes:</span>
+                    {[
+                      { label: '140px (Small)', px: 140 },
+                      { label: '180px (Standard)', px: 180 },
+                      { label: '240px (Medium)', px: 240 },
+                      { label: '300px (Large)', px: 300 },
+                      { label: '380px (Extra Large)', px: 380 },
+                      { label: '460px (Hero)', px: 460 },
+                    ].map((btn) => (
+                      <button
+                        key={btn.px}
+                        type="button"
+                        onClick={() => handleUpdateBannerSlider({ customHeightPx: btn.px, aspectRatio: 'custom' })}
+                        className={`px-2 py-1 rounded-md text-[10.5px] font-semibold transition-all cursor-pointer ${
+                          currentBannerSlider.customHeightPx === btn.px
+                            ? 'bg-[#183624] text-white shadow-2xs'
+                            : 'bg-[#FAF8F5] text-[#4F4638] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateBannerSlider({ customHeightPx: undefined, aspectRatio: 'auto' })}
+                      className={`px-2 py-1 rounded-md text-[10.5px] font-semibold transition-all cursor-pointer ${
+                        !currentBannerSlider.customHeightPx
+                          ? 'bg-[#183624] text-white shadow-2xs'
+                          : 'bg-[#FAF8F5] text-[#4F4638] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+                      }`}
+                    >
+                      Auto Responsive
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -4463,7 +4778,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab: Horizontal Product Shelves (Create Multiple, Edit, Delete, Position, Category/Manual Source & Card Detail Customizer) */}
         {activeTab === 'horizontal_lists' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             {isCreatingNewHorizontalList || editingHorizontalList ? (
               /* CREATE / EDIT SHELF FORM */
               <form onSubmit={handleSaveHorizontalListForm} className="space-y-6">
@@ -5248,7 +5563,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab 2: Categories & Forms Manager (Preset & Custom Edit / Add / Delete) */}
         {activeTab === 'categories_forms' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             {/* CATEGORIES SECTION */}
             <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
@@ -5509,7 +5824,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab 3: Multiple Contacts (Add, Edit, Delete Phones, WhatsApp, Emails) */}
         {activeTab === 'contacts' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
               {/* 1. Multiple Phone Numbers */}
               <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-3">
@@ -5725,7 +6040,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab: Doctors & Key People (Round Images & Text) */}
         {activeTab === 'people' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             {/* Header info */}
             <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
@@ -6169,7 +6484,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab 4: Site Titles & Headings */}
         {activeTab === 'site_titles' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
               <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
@@ -6732,7 +7047,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab: Quality & Ayush Assurance Badges (Product View) */}
         {activeTab === 'assurance_badges' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
               {/* Header Box */}
               <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
@@ -7202,7 +7517,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Tab 5: WhatsApp & Email Custom Messages */}
         {activeTab === 'messages' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
             <form onSubmit={handleSaveSiteSettings} className="space-y-6 text-xs">
               {/* Overview Card */}
               <div className="bg-[#FAF8F5] p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-3">

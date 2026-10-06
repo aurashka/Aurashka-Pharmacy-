@@ -153,16 +153,23 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
 
   // Aspect ratio helper
   const getAspectRatioClasses = () => {
+    if (config?.customHeightPx && config.customHeightPx > 0) {
+      return ''; // Height explicitly controlled by customHeightPx in style
+    }
     switch (config?.aspectRatio) {
       case 'compact':
-        return 'h-24 sm:h-28 md:h-32';
-      case 'wide':
-        return 'h-36 sm:h-42 md:h-48';
+        return 'h-28 sm:h-32 md:h-36';
       case 'standard':
-        return 'h-32 sm:h-36 md:h-40';
+        return 'h-36 sm:h-44 md:h-52';
+      case 'wide':
+        return 'h-48 sm:h-56 md:h-64';
+      case 'tall':
+        return 'h-60 sm:h-72 md:h-84';
+      case 'extra_tall':
+        return 'h-72 sm:h-96 md:h-[420px]';
       case 'auto':
       default:
-        return 'h-28 sm:h-32 md:h-36';
+        return 'h-32 sm:h-40 md:h-48';
     }
   };
 
@@ -171,6 +178,11 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
       {/* Outer Slider Shell */}
       <div
         className={`w-full ${getAspectRatioClasses()} rounded-xl overflow-hidden relative border border-white/20 shadow-lg select-none cursor-grab active:cursor-grabbing bg-[#14291D]`}
+        style={
+          config?.customHeightPx && config.customHeightPx > 0
+            ? { height: `${config.customHeightPx}px` }
+            : undefined
+        }
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => {
           setIsPaused(false);
@@ -237,32 +249,6 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
                         {slide.subtitle}
                       </p>
                     )}
-                  </div>
-                )}
-
-                {/* Clickable Badge Tag */}
-                {hasLink && (
-                  <div className="absolute top-2.5 right-2.5 z-10">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-xs text-[9.5px] sm:text-[10.5px] font-semibold text-white/90 border border-white/20 shadow-xs">
-                      {slide.linkType === 'product' && (
-                        <>
-                          <Tag className="w-2.5 h-2.5 text-emerald-300" />
-                          <span>View Formulation</span>
-                        </>
-                      )}
-                      {slide.linkType === 'category' && (
-                        <>
-                          <Tag className="w-2.5 h-2.5 text-amber-300" />
-                          <span>Explore Category</span>
-                        </>
-                      )}
-                      {slide.linkType === 'custom' && (
-                        <>
-                          <ExternalLink className="w-2.5 h-2.5 text-blue-300" />
-                          <span>View Special</span>
-                        </>
-                      )}
-                    </span>
                   </div>
                 )}
               </div>

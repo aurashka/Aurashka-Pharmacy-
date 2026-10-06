@@ -105,6 +105,7 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
       enabled: s.bannerSlider?.enabled !== undefined ? Boolean(s.bannerSlider.enabled) : (DEFAULT_SITE_SETTINGS.bannerSlider?.enabled ?? true),
       autoScrollSeconds: s.bannerSlider?.autoScrollSeconds || DEFAULT_SITE_SETTINGS.bannerSlider?.autoScrollSeconds || 4,
       aspectRatio: (s.bannerSlider?.aspectRatio as BannerSliderConfig['aspectRatio']) || DEFAULT_SITE_SETTINGS.bannerSlider?.aspectRatio || 'auto',
+      customHeightPx: s.bannerSlider?.customHeightPx ? Number(s.bannerSlider.customHeightPx) : undefined,
       items: (Array.isArray(s.bannerSlider?.items)
         ? s.bannerSlider.items
         : (s.bannerSlider?.items && typeof s.bannerSlider.items === 'object'
