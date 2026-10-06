@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, ExternalLink, Tag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { BannerSliderConfig, HerbalProduct } from '../types/pharmacy';
+import { getScrollerOverlayConfig } from '../utils/gradientHelper';
 
 interface ImageBannerScrollerProps {
   config?: BannerSliderConfig;
@@ -26,6 +27,7 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
   const hasDragged = useRef<boolean>(false);
 
   const isEnabled = config?.enabled !== false;
+  const overlayConfig = getScrollerOverlayConfig(config?.overlayStyle);
   const rawItems = config?.items;
   const items = Array.isArray(rawItems)
     ? rawItems.filter((item) => item && item.imageUrl && item.imageUrl.trim().length > 0)
@@ -230,25 +232,29 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
                   }}
                 />
 
-                {/* Subtle Gradient Overlay for Text Legibility & Contrast */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/35 to-black/10" />
+                {/* Optional Configurable Gradient or Frosted Glass Overlay */}
+                {overlayConfig.hasOverlay && (
+                  <div className={overlayConfig.overlayClass} />
+                )}
 
                 {/* Optional Title & Subtitle Badge */}
                 {(slide.title || slide.subtitle) && (
-                  <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 text-white z-10 space-y-0.5">
-                    {slide.title && (
-                      <div className="flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
-                        <h4 className="font-serif text-xs sm:text-sm font-bold text-white tracking-wide drop-shadow-xs line-clamp-1">
-                          {slide.title}
-                        </h4>
-                      </div>
-                    )}
-                    {slide.subtitle && (
-                      <p className="text-[10px] sm:text-[11px] text-[#E1EADF] line-clamp-1 max-w-xl drop-shadow-2xs">
-                        {slide.subtitle}
-                      </p>
-                    )}
+                  <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 z-10 pointer-events-none">
+                    <div className={`space-y-0.5 ${overlayConfig.titleBoxClass}`}>
+                      {slide.title && (
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className={`w-3 h-3 shrink-0 ${overlayConfig.isLightText ? 'text-amber-300' : 'text-amber-600'}`} />
+                          <h4 className={`font-serif text-xs sm:text-sm font-bold tracking-wide line-clamp-1 ${overlayConfig.isLightText ? 'text-white' : 'text-[#14291D]'}`}>
+                            {slide.title}
+                          </h4>
+                        </div>
+                      )}
+                      {slide.subtitle && (
+                        <p className={`text-[10px] sm:text-[11px] line-clamp-1 max-w-xl ${overlayConfig.isLightText ? 'text-[#E1EADF]' : 'text-[#483F30]'}`}>
+                          {slide.subtitle}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

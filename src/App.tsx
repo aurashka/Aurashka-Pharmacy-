@@ -106,12 +106,14 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
       autoScrollSeconds: s.bannerSlider?.autoScrollSeconds || DEFAULT_SITE_SETTINGS.bannerSlider?.autoScrollSeconds || 4,
       aspectRatio: (s.bannerSlider?.aspectRatio as BannerSliderConfig['aspectRatio']) || DEFAULT_SITE_SETTINGS.bannerSlider?.aspectRatio || 'auto',
       customHeightPx: s.bannerSlider?.customHeightPx ? Number(s.bannerSlider.customHeightPx) : undefined,
+      overlayStyle: (s.bannerSlider?.overlayStyle as BannerSliderConfig['overlayStyle']) || 'none',
       items: (Array.isArray(s.bannerSlider?.items)
         ? s.bannerSlider.items
         : (s.bannerSlider?.items && typeof s.bannerSlider.items === 'object'
           ? Object.values(s.bannerSlider.items)
           : (DEFAULT_SITE_SETTINGS.bannerSlider?.items || []))) as BannerSlideItem[],
     },
+    productImageGradient: s.productImageGradient || 'none',
     productHorizontalLists: (Array.isArray(s.productHorizontalLists) && s.productHorizontalLists.length > 0
       ? s.productHorizontalLists
       : (s.productHorizontalLists && typeof s.productHorizontalLists === 'object' && Object.values(s.productHorizontalLists).length > 0

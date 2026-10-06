@@ -845,6 +845,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     enabled: true,
     autoScrollSeconds: 4,
     aspectRatio: 'auto',
+    overlayStyle: 'none', // No bottom dark gradient by default
     items: [
       {
         id: 'banner-slide-1',
@@ -922,7 +923,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
         showQuickView: true,
       }
     }
-  ]
+  ],
+  productImageGradient: 'none',
 };
 
 export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;

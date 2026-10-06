@@ -99,6 +99,7 @@ export interface HerbalProduct {
   batchInfo: string;
   customLink?: string;
   assuranceBadges?: ProductAssuranceBadges;
+  primaryImageGradient?: 'default' | 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
 }
 
 export interface ProductAssuranceBadges {
@@ -207,6 +208,7 @@ export interface SiteSettings {
   productAssuranceBadges?: ProductAssuranceBadges;
   bannerSlider?: BannerSliderConfig;
   productHorizontalLists?: ProductHorizontalList[];
+  productImageGradient?: 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
 }
 
 export interface BannerSlideItem {
@@ -226,6 +228,7 @@ export interface BannerSliderConfig {
   autoScrollSeconds?: number; // e.g. 4 seconds
   aspectRatio?: 'auto' | 'compact' | 'standard' | 'wide' | 'tall' | 'extra_tall' | 'custom';
   customHeightPx?: number; // e.g. 180, 240, 320, 400, 500, etc. (manually typed in pixels)
+  overlayStyle?: 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
   items: BannerSlideItem[];
 }
 

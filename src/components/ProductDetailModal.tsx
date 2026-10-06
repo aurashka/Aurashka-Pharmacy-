@@ -33,6 +33,7 @@ import {
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
 import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
+import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
 
 interface ProductDetailModalProps {
   product: HerbalProduct | null;
