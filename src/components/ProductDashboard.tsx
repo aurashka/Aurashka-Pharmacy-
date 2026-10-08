@@ -20,6 +20,8 @@ interface ProductDashboardProps {
   categories?: CategoryItem[];
   forms?: string[];
   siteSettings?: SiteSettings;
+  selectedForm?: string;
+  onSelectForm?: (form: string) => void;
 }
 
 export const ProductDashboard: React.FC<ProductDashboardProps> = ({
@@ -37,8 +39,19 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   categories = DEFAULT_CATEGORIES,
   forms = DEFAULT_FORMS,
   siteSettings,
+  selectedForm: externalSelectedForm,
+  onSelectForm: externalOnSelectForm,
 }) => {
-  const [selectedForm, setSelectedForm] = useState<string>('all');
+  const [internalSelectedForm, setInternalSelectedForm] = useState<string>('all');
+  const selectedForm = externalSelectedForm !== undefined ? externalSelectedForm : internalSelectedForm;
+  const setSelectedForm = (newForm: string) => {
+    if (externalOnSelectForm) {
+      externalOnSelectForm(newForm);
+    } else {
+      setInternalSelectedForm(newForm);
+    }
+  };
+
   const [sortBy, setSortBy] = useState<'featured' | 'deals' | 'trending' | 'top_seller' | 'rating' | 'reseller' | 'new_launch' | 'price-asc' | 'price-desc'>('featured');
   const [showInStockOnly, setShowInStockOnly] = useState(false);
 

@@ -40,7 +40,7 @@ export const PeopleSection: React.FC<PeopleSectionProps> = ({
   };
 
   return (
-    <section className="bg-linear-to-b from-[#F5EFE6] to-[#FAF8F5] py-8 sm:py-10 px-4 sm:px-6 border-t border-[#DDD5C5] relative overflow-hidden">
+    <section id="people-section" className="bg-linear-to-b from-[#F5EFE6] to-[#FAF8F5] py-8 sm:py-10 px-4 sm:px-6 border-t border-[#DDD5C5] relative overflow-hidden scroll-mt-20">
       <div className="max-w-7xl mx-auto space-y-6 relative">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-3">

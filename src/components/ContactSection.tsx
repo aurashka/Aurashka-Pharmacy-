@@ -104,11 +104,19 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   };
 
   const handleOpenGoogleMaps = () => {
+    if (siteSettings.storeMap?.googleMapsUrl?.trim()) {
+      window.open(siteSettings.storeMap.googleMapsUrl.trim(), '_blank');
+      return;
+    }
+    const queryLocation = siteSettings.storeMap?.mapQuery || siteSettings.storeAddress || siteSettings.brandName;
     const query = encodeURIComponent(
-      `${siteSettings.brandName}, ${siteSettings.storeAddress}`
+      `${siteSettings.brandName}, ${queryLocation}`
     );
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
+
+  const isMinimapVisible = siteSettings.showStoreMap !== false && siteSettings.storeMap?.enabled !== false;
+  const mapLocationQuery = siteSettings.storeMap?.mapQuery || siteSettings.storeAddress || 'New Delhi, India';
 
   return (
     <section id="contact-us" className="py-12 px-4 sm:px-6 bg-white border-b border-[#E7DFD1] scroll-mt-20">
@@ -281,42 +289,127 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
           </div>
         </div>
 
-        {/* Physical Store Address & Timings Card */}
-        <div className="bg-[#FAF8F5] p-5 rounded-xl border border-[#E7DFD1] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#E7EFEA] text-[#183624] flex items-center justify-center shrink-0">
-              <MapPin className="w-4 h-4" />
+        {/* Physical Store Address, Timings & Interactive Minimap Card */}
+        {isMinimapVisible ? (
+          <div className="bg-[#FAF8F5] p-5 sm:p-6 rounded-2xl border border-[#E7DFD1] shadow-xs space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#EAE3D4] pb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#E7EFEA] text-[#183624] flex items-center justify-center shrink-0 border border-[#CDE1D4]">
+                  <MapPin className="w-5 h-5 text-[#2C5E43]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-serif text-base sm:text-lg font-bold text-[#14291D]">
+                      {siteSettings.storeMap?.locationTitle || 'Dispensary Store & Botanical Garden Location'}
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-[#14291D] border border-emerald-300">
+                      Live Minimap
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#554C3E] mt-1 max-w-2xl leading-relaxed">
+                    {siteSettings.storeAddress}
+                  </p>
+                  <div className="text-[11px] text-[#2C5E43] font-medium mt-1">
+                    Timing: {siteSettings.storeTimings} · Registration: {siteSettings.regNumber}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleOpenGoogleMaps}
+                  className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-[#14291D] text-white font-semibold text-xs hover:bg-[#234A32] transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                  title="Open exact location in Google Maps directions"
+                >
+                  <ExternalLink className="w-4 h-4 text-amber-300" />
+                  <span>Open in Google Maps</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(siteSettings.storeAddress, 'address')}
+                  className="py-2.5 px-3 rounded-xl border border-[#DDD5C5] text-[#362E22] hover:bg-[#EFEAE0] text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  {copiedItem === 'address' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>Copy</span>
+                </button>
+              </div>
             </div>
-            <div>
-              <h4 className="font-serif text-base font-bold text-[#14291D]">
-                Dispensary Store & Botanical Garden Address
-              </h4>
-              <p className="text-xs text-[#554C3E] mt-0.5 max-w-xl leading-relaxed">
-                {siteSettings.storeAddress}
-              </p>
-              <div className="text-[11px] text-[#2C5E43] font-medium mt-1">
-                Timing: {siteSettings.storeTimings} · Registration: {siteSettings.regNumber}
+
+            {/* Interactive Embedded Minimap Viewport */}
+            <div 
+              onClick={handleOpenGoogleMaps}
+              className="rounded-2xl overflow-hidden border border-[#DDD5C5] bg-white h-60 sm:h-72 relative group cursor-pointer shadow-inner"
+              title="Click anywhere on the map to open in Google Maps"
+            >
+              <iframe
+                title="Dispensary Location Minimap"
+                src={
+                  siteSettings.storeMap?.embedUrl?.trim() ||
+                  `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationQuery)}&t=&z=${siteSettings.storeMap?.zoom || 15}&ie=UTF8&iwloc=&output=embed`
+                }
+                className="w-full h-full border-0 pointer-events-none"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-transparent group-hover:bg-[#14291D]/5 transition-colors" />
+
+              {/* Floating Bottom Action Overlay */}
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+                <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#DDD5C5] shadow-md text-xs font-semibold text-[#14291D] flex items-center gap-1.5 pointer-events-auto">
+                  <MapPin className="w-3.5 h-3.5 text-red-600 animate-bounce shrink-0" />
+                  <span className="truncate max-w-[170px] sm:max-w-xs">{mapLocationQuery}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenGoogleMaps();
+                  }}
+                  className="px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 pointer-events-auto transition-transform group-hover:scale-105 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
+                  <span>View on Google Maps</span>
+                </button>
               </div>
             </div>
           </div>
+        ) : (
+          <div className="bg-[#FAF8F5] p-5 rounded-xl border border-[#E7DFD1] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[#E7EFEA] text-[#183624] flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-serif text-base font-bold text-[#14291D]">
+                  Dispensary Store & Botanical Garden Address
+                </h4>
+                <p className="text-xs text-[#554C3E] mt-0.5 max-w-xl leading-relaxed">
+                  {siteSettings.storeAddress}
+                </p>
+                <div className="text-[11px] text-[#2C5E43] font-medium mt-1">
+                  Timing: {siteSettings.storeTimings} · Registration: {siteSettings.regNumber}
+                </div>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleOpenGoogleMaps}
-              className="py-2 px-4 rounded-lg bg-[#14291D] text-white font-medium text-xs hover:bg-[#234A32] transition-colors flex items-center gap-1.5"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Google Maps</span>
-            </button>
-            <button
-              onClick={() => handleCopy(siteSettings.storeAddress, 'address')}
-              className="py-2 px-3 rounded-lg border border-[#DDD5C5] text-[#362E22] hover:bg-[#EFEAE0] text-xs transition-colors flex items-center gap-1"
-            >
-              {copiedItem === 'address' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>Copy</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleOpenGoogleMaps}
+                className="py-2 px-4 rounded-lg bg-[#14291D] text-white font-medium text-xs hover:bg-[#234A32] transition-colors flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Google Maps</span>
+              </button>
+              <button
+                onClick={() => handleCopy(siteSettings.storeAddress, 'address')}
+                className="py-2 px-3 rounded-lg border border-[#DDD5C5] text-[#362E22] hover:bg-[#EFEAE0] text-xs transition-colors flex items-center gap-1"
+              >
+                {copiedItem === 'address' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>Copy</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Direct Inquiry Form */}
         <div className="bg-[#FAF8F5] p-6 rounded-xl border border-[#E4DDD0] shadow-xs max-w-3xl">

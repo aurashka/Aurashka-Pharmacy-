@@ -76,6 +76,21 @@ export const ContactPage: React.FC<ContactPageProps> = ({
   const primaryWhatsApp = getPrimaryWhatsApp(siteSettings);
   const primaryEmail = getPrimaryEmail(siteSettings);
 
+  const handleOpenGoogleMaps = () => {
+    if (siteSettings.storeMap?.googleMapsUrl?.trim()) {
+      window.open(siteSettings.storeMap.googleMapsUrl.trim(), '_blank');
+      return;
+    }
+    const queryLocation = siteSettings.storeMap?.mapQuery || siteSettings.storeAddress || siteSettings.brandName;
+    const query = encodeURIComponent(
+      `${siteSettings.brandName}, ${queryLocation}`
+    );
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+  };
+
+  const isMinimapVisible = siteSettings.showStoreMap !== false && siteSettings.storeMap?.enabled !== false;
+  const mapLocationQuery = siteSettings.storeMap?.mapQuery || siteSettings.storeAddress || 'New Delhi, India';
+
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopiedItem(label);
@@ -340,12 +355,41 @@ export const ContactPage: React.FC<ContactPageProps> = ({
 
         {/* Location & Timings Card + Clinical Consultation CTA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
-            <div className="flex items-center gap-3 border-b border-[#E8E2D5] pb-3">
-              <MapPin className="w-5 h-5 text-[#2C5E43]" />
-              <h3 className="font-serif font-bold text-base text-[#14291D]">
-                Apothecary Dispensary & Pharmacopoeia Address
-              </h3>
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#D5CCBC] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E8E2D5] pb-3 gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#E7EFEA] text-[#183624] flex items-center justify-center shrink-0 border border-[#CDE1D4]">
+                  <MapPin className="w-5 h-5 text-[#2C5E43]" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-[#14291D]">
+                    {siteSettings.storeMap?.locationTitle || 'Apothecary Dispensary & Pharmacopoeia Address'}
+                  </h3>
+                  <p className="text-[11px] text-[#695F4F]">
+                    {siteSettings.storeMap?.locationSubtitle || 'Physical Pharmacy Counter, Visiting Hours & Medicine Dispatch'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenGoogleMaps}
+                  className="px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Open exact location in Google Maps directions"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Google Maps</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(siteSettings.storeAddress, 'page_address')}
+                  className="px-3 py-1.5 border border-[#DDD5C5] text-[#362E22] hover:bg-[#FAF8F5] rounded-xl text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedItem === 'page_address' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>Copy</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs leading-relaxed">
@@ -356,8 +400,8 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                 <p className="text-[#3A3225] font-medium">
                   {siteSettings.storeAddress}
                 </p>
-                <div className="pt-2 flex items-center gap-2 text-[11px] text-[#695F4F]">
-                  <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
+                <div className="pt-1 flex items-center gap-2 text-[11px] text-[#695F4F]">
+                  <ShieldCheck className="w-4 h-4 text-[#2C5E43] shrink-0" />
                   <span>Licensed under AYUSH Ministry Drug Control</span>
                 </div>
               </div>
@@ -374,6 +418,44 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* Interactive Embedded Minimap (when enabled) */}
+            {isMinimapVisible && (
+              <div 
+                onClick={handleOpenGoogleMaps}
+                className="mt-3 rounded-2xl overflow-hidden border border-[#DDD5C5] bg-white h-56 sm:h-64 relative group cursor-pointer shadow-inner"
+                title="Click anywhere on the map to open in Google Maps"
+              >
+                <iframe
+                  title="Dispensary Location Minimap"
+                  src={
+                    siteSettings.storeMap?.embedUrl?.trim() ||
+                    `https://maps.google.com/maps?q=${encodeURIComponent(mapLocationQuery)}&t=&z=${siteSettings.storeMap?.zoom || 15}&ie=UTF8&iwloc=&output=embed`
+                  }
+                  className="w-full h-full border-0 pointer-events-none"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-transparent group-hover:bg-[#14291D]/5 transition-colors" />
+
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+                  <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#DDD5C5] shadow-md text-xs font-semibold text-[#14291D] flex items-center gap-1.5 pointer-events-auto">
+                    <MapPin className="w-3.5 h-3.5 text-red-600 animate-bounce shrink-0" />
+                    <span className="truncate max-w-[170px] sm:max-w-xs">{mapLocationQuery}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenGoogleMaps();
+                    }}
+                    className="px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 pointer-events-auto transition-transform group-hover:scale-105 cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
+                    <span>View on Google Maps</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Consultation CTA */}

@@ -24,7 +24,7 @@ import {
   DEFAULT_MESSAGE_TEMPLATES, 
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
-import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
+import { getProductOverlayConfig } from '../utils/gradientHelper';
 
 interface ProductCardProps {
   product: HerbalProduct;
@@ -147,9 +147,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? [...product.customFields].sort((a, b) => a.position - b.position)
     : [];
 
-  const bottomOverlayClass = getProductBottomOverlayClasses(
+  const overlayConfig = getProductOverlayConfig(
     product.primaryImageGradient,
-    siteSettings?.productImageGradient
+    siteSettings?.productImageGradient,
+    product.primaryImageOverlayOpacity,
+    siteSettings?.productImageOverlayOpacity,
+    product.primaryImageOverlayCoveragePercent,
+    siteSettings?.productImageOverlayCoveragePercent,
+    product.primaryImageOverlayFadeSoftness,
+    siteSettings?.productImageOverlayFadeSoftness
   );
 
   return (
@@ -169,9 +175,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           }}
         />
 
-        {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
-        {bottomOverlayClass && (
-          <div className={bottomOverlayClass} />
+        {/* Optional Configurable Bottom Gradient / Blur Glass Overlay with Smooth Top Fade */}
+        {overlayConfig.hasOverlay && (
+          <div 
+            className={overlayConfig.overlayClass}
+            style={overlayConfig.overlayStyleObj}
+          />
         )}
         
         {/* Sort & Deal Badges (Branded Icons without emojis) */}

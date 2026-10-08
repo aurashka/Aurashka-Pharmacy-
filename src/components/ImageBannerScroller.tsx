@@ -27,7 +27,12 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
   const hasDragged = useRef<boolean>(false);
 
   const isEnabled = config?.enabled !== false;
-  const overlayConfig = getScrollerOverlayConfig(config?.overlayStyle);
+  const overlayConfig = getScrollerOverlayConfig(
+    config?.overlayStyle,
+    config?.overlayOpacity,
+    config?.overlayCoveragePercent,
+    config?.overlayFadeSoftness
+  );
   const rawItems = config?.items;
   const items = Array.isArray(rawItems)
     ? rawItems.filter((item) => item && item.imageUrl && item.imageUrl.trim().length > 0)
@@ -211,15 +216,6 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
                 className={`w-full h-full shrink-0 relative overflow-hidden ${
                   hasLink ? 'cursor-pointer' : ''
                 }`}
-                title={
-                  slide.linkType === 'product'
-                    ? 'Click to open product monograph'
-                    : slide.linkType === 'category'
-                    ? `Click to view ${slide.category} formulations`
-                    : slide.linkType === 'custom'
-                    ? 'Click to view link'
-                    : undefined
-                }
               >
                 {/* Background Image */}
                 <img
@@ -232,9 +228,12 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
                   }}
                 />
 
-                {/* Optional Configurable Gradient or Frosted Glass Overlay */}
+                {/* Optional Configurable Gradient or Frosted Glass Overlay with Smooth Top Fade */}
                 {overlayConfig.hasOverlay && (
-                  <div className={overlayConfig.overlayClass} />
+                  <div 
+                    className={overlayConfig.overlayClass}
+                    style={overlayConfig.overlayStyleObj}
+                  />
                 )}
 
                 {/* Optional Title & Subtitle Badge */}

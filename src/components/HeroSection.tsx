@@ -233,7 +233,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   };
 
   return (
-    <section className="relative bg-[#14291D] text-white pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-6 border-b border-[#234D34] overflow-hidden">
+    <section id="deal-spotlight" className="relative bg-[#14291D] text-white pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-6 border-b border-[#234D34] overflow-hidden scroll-mt-20">
       {/* Decorative Atmosphere Watermarks */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2C5E43]/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-[#B4741E]/15 rounded-full blur-3xl pointer-events-none" />

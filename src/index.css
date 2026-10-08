@@ -28,3 +28,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #9d927c;
 }
+
+/* High-visibility horizontal scrollbar for product tabs & data tables */
+.visible-tabs-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: #2C5E43 #E8E1D3 !important;
+  overflow-x: auto !important;
+}
+
+.visible-tabs-scrollbar::-webkit-scrollbar {
+  height: 6px !important;
+  width: 6px !important;
+  display: block !important;
+}
+
+.visible-tabs-scrollbar::-webkit-scrollbar-track {
+  background: #E8E1D3 !important;
+  border-radius: 9999px !important;
+}
+
+.visible-tabs-scrollbar::-webkit-scrollbar-thumb {
+  background: #2C5E43 !important;
+  border-radius: 9999px !important;
+  border: 1px solid #FAF8F5 !important;
+}
+
+.visible-tabs-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #14291D !important;
+}
+

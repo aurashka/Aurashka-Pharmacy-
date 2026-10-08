@@ -174,6 +174,16 @@ export interface MessageTemplates {
   includeUserInfo: boolean;
 }
 
+export interface StoreMapConfig {
+  enabled?: boolean; // Show or hide minimap on Contact section & Contact page
+  mapQuery?: string; // Location name, address or GPS query for the map
+  googleMapsUrl?: string; // Custom direct URL to open in Google Maps (or auto-generated)
+  embedUrl?: string; // Custom Google Maps iframe embed URL (optional)
+  locationTitle?: string; // Custom location header title
+  locationSubtitle?: string; // Custom location subtitle / landmark
+  zoom?: number; // Map zoom level (default 15)
+}
+
 export interface SiteSettings {
   brandName: string;
   hindiName: string;
@@ -209,6 +219,8 @@ export interface SiteSettings {
   bannerSlider?: BannerSliderConfig;
   productHorizontalLists?: ProductHorizontalList[];
   productImageGradient?: 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
+  storeMap?: StoreMapConfig;
+  showStoreMap?: boolean;
 }
 
 export interface BannerSlideItem {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem, ProductVariant } from '../types/pharmacy';
 import { ImageLightboxModal } from './ImageLightboxModal';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
@@ -38,6 +38,7 @@ import {
 } from '../utils/messageFormatter';
 import { backupProductToFirebase, backupSiteSettingsToFirebase } from '../utils/firebaseSync';
 import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
+import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
 
 interface ProductDetailPageProps {
   product: HerbalProduct;
@@ -73,6 +74,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'indications' | 'ingredients' | 'dosage' | 'action' | 'precautions'>('indications');
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -220 : 220;
+      tabsContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Secret Quality Assurance Badges quick-edit state
   const [isSecretEditOpen, setIsSecretEditOpen] = useState(false);
@@ -471,6 +480,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   onClick={() => setIsLightboxOpen(true)}
                 />
 
+                {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
+                {getProductBottomOverlayClasses(product.primaryImageGradient, siteSettings?.productImageGradient) && (
+                  <div className={getProductBottomOverlayClasses(product.primaryImageGradient, siteSettings?.productImageGradient)!} />
+                )}
+
                 {/* Lightbox / View Large button */}
                 <button
                   type="button"
@@ -854,58 +868,107 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
         {/* Detailed Monograph & Pharmacopoeia Information Tabs */}
         <div className="mt-12 bg-white rounded-2xl border border-[#D5CCBC] shadow-xs overflow-hidden">
-          {/* Tabs header */}
-          <div className="flex border-b border-[#E7DFD1] bg-[#FAF8F5] overflow-x-auto scrollbar-none">
-            <button
-              onClick={() => setActiveTab('indications')}
-              className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'indications'
-                  ? 'border-[#14291D] text-[#14291D] bg-white'
-                  : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-              }`}
+          {/* Tabs header wrapper with navigation arrows and high-visibility scrollbar */}
+          <div className="border-b border-[#E7DFD1] bg-[#FAF8F5]">
+            {/* Visual Scroll Helper Bar */}
+            <div className="px-3 sm:px-5 py-2 bg-[#F3EDE2]/85 border-b border-[#E7DFD1] flex items-center justify-between text-[11px] text-[#716858]">
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2C5E43] animate-pulse" />
+                <span>Monograph Tabs: Scroll bar below shows Carrier, Doshas & Precautions</span>
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => scrollTabs('left')}
+                  className="p-1 rounded-md bg-white border border-[#DDD5C5] hover:bg-[#EFEAE0] text-[#14291D] transition-colors cursor-pointer shadow-2xs"
+                  title="Scroll tabs left"
+                  aria-label="Scroll tabs left"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollTabs('right')}
+                  className="p-1 rounded-md bg-white border border-[#DDD5C5] hover:bg-[#EFEAE0] text-[#14291D] transition-colors cursor-pointer shadow-2xs"
+                  title="Scroll tabs right"
+                  aria-label="Scroll tabs right"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Visible Scrollable Tabs Row with visible-tabs-scrollbar */}
+            <div 
+              ref={tabsContainerRef}
+              className="flex overflow-x-auto visible-tabs-scrollbar scroll-smooth"
             >
-              Therapeutic Uses & Benefits
-            </button>
-            <button
-              onClick={() => setActiveTab('ingredients')}
-              className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'ingredients'
-                  ? 'border-[#14291D] text-[#14291D] bg-white'
-                  : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-              }`}
-            >
-              Ingredients & Potency ({ingredientsList.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('dosage')}
-              className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'dosage'
-                  ? 'border-[#14291D] text-[#14291D] bg-white'
-                  : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-              }`}
-            >
-              Dosage & Anupana Carrier
-            </button>
-            <button
-              onClick={() => setActiveTab('action')}
-              className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'action'
-                  ? 'border-[#14291D] text-[#14291D] bg-white'
-                  : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-              }`}
-            >
-              Action Mechanism & Doshas
-            </button>
-            <button
-              onClick={() => setActiveTab('precautions')}
-              className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'precautions'
-                  ? 'border-[#14291D] text-[#14291D] bg-white'
-                  : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
-              }`}
-            >
-              Precautions & License
-            </button>
+              <button
+                onClick={(e) => {
+                  setActiveTab('indications');
+                  e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  activeTab === 'indications'
+                    ? 'border-[#14291D] text-[#14291D] bg-white'
+                    : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
+                }`}
+              >
+                Therapeutic Uses & Benefits
+              </button>
+              <button
+                onClick={(e) => {
+                  setActiveTab('ingredients');
+                  e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  activeTab === 'ingredients'
+                    ? 'border-[#14291D] text-[#14291D] bg-white'
+                    : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
+                }`}
+              >
+                Ingredients & Potency ({ingredientsList.length})
+              </button>
+              <button
+                onClick={(e) => {
+                  setActiveTab('dosage');
+                  e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  activeTab === 'dosage'
+                    ? 'border-[#14291D] text-[#14291D] bg-white'
+                    : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
+                }`}
+              >
+                Dosage & Anupana Carrier
+              </button>
+              <button
+                onClick={(e) => {
+                  setActiveTab('action');
+                  e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  activeTab === 'action'
+                    ? 'border-[#14291D] text-[#14291D] bg-white'
+                    : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
+                }`}
+              >
+                Action Mechanism & Doshas
+              </button>
+              <button
+                onClick={(e) => {
+                  setActiveTab('precautions');
+                  e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className={`py-3 px-5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  activeTab === 'precautions'
+                    ? 'border-[#14291D] text-[#14291D] bg-white'
+                    : 'border-transparent text-[#6D6353] hover:text-[#14291D]'
+                }`}
+              >
+                Precautions & License
+              </button>
+            </div>
           </div>
 
           {/* Tab contents */}
@@ -976,7 +1039,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   Botanical Composition & Potency
                 </h4>
                 {ingredientsList.length > 0 ? (
-                  <div className="border border-[#DDD5C5] rounded-xl overflow-hidden">
+                  <div className="border border-[#DDD5C5] rounded-xl overflow-x-auto visible-tabs-scrollbar">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-[#FAF8F5] border-b border-[#E7DFD1] text-[#695F4F] font-bold">
@@ -1180,7 +1243,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <div className="relative group/carousel">
               <div
                 id="suggested-products-carousel"
-                className="flex items-stretch gap-3.5 overflow-x-auto pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory no-scrollbar touch-pan-x"
+                className="flex items-stretch gap-3.5 overflow-x-auto pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory visible-tabs-scrollbar touch-pan-x"
               >
                 {suggestedProducts.map((rel) => {
                   const isSameCat = rel.category === product.category;

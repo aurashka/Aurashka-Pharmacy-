@@ -114,6 +114,16 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
           : (DEFAULT_SITE_SETTINGS.bannerSlider?.items || []))) as BannerSlideItem[],
     },
     productImageGradient: s.productImageGradient || 'none',
+    showStoreMap: s.showStoreMap !== undefined ? Boolean(s.showStoreMap) : (DEFAULT_SITE_SETTINGS.showStoreMap ?? true),
+    storeMap: {
+      enabled: s.storeMap?.enabled !== undefined ? Boolean(s.storeMap.enabled) : (s.showStoreMap !== undefined ? Boolean(s.showStoreMap) : (DEFAULT_SITE_SETTINGS.storeMap?.enabled ?? true)),
+      mapQuery: s.storeMap?.mapQuery || s.storeAddress || DEFAULT_SITE_SETTINGS.storeMap?.mapQuery || 'New Delhi, India',
+      googleMapsUrl: s.storeMap?.googleMapsUrl || DEFAULT_SITE_SETTINGS.storeMap?.googleMapsUrl,
+      embedUrl: s.storeMap?.embedUrl || '',
+      locationTitle: s.storeMap?.locationTitle || DEFAULT_SITE_SETTINGS.storeMap?.locationTitle || 'Apothecary Dispensary & Botanical Garden',
+      locationSubtitle: s.storeMap?.locationSubtitle || DEFAULT_SITE_SETTINGS.storeMap?.locationSubtitle || 'Physical Pharmacy Counter, Visiting Hours & Medicine Dispatch',
+      zoom: s.storeMap?.zoom || DEFAULT_SITE_SETTINGS.storeMap?.zoom || 15,
+    },
     productHorizontalLists: (Array.isArray(s.productHorizontalLists) && s.productHorizontalLists.length > 0
       ? s.productHorizontalLists
       : (s.productHorizontalLists && typeof s.productHorizontalLists === 'object' && Object.values(s.productHorizontalLists).length > 0
@@ -182,6 +192,7 @@ function PharmacyApp() {
   });
 
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('all');
+  const [selectedForm, setSelectedForm] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentView, setCurrentView] = useState<'home' | 'contact' | 'product'>('home');
   
@@ -460,7 +471,7 @@ function PharmacyApp() {
 
   return (
     <div className="min-h-screen bg-[#FBF9F5] text-[#1E2922] flex flex-col font-sans">
-      {/* 3-Zone Navigation Header */}
+      {/* 3-Zone Navigation Header with Professional Dropdown Menus */}
       <Header
         cartCount={totalCartCount}
         onOpenCart={() => setIsCartOpen(true)}
@@ -472,6 +483,16 @@ function PharmacyApp() {
           setIsAdminPanelOpen(true);
         }}
         siteSettings={siteSettings}
+        categories={categories}
+        forms={forms}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          handleNavigateSection('deals-catalog');
+        }}
+        onSelectForm={(form) => {
+          setSelectedForm(form);
+          handleNavigateSection('deals-catalog');
+        }}
       />
 
       {/* FOR USER ROLE 'ADMIN': PROMINENT ADMIN ACCESS BAR ON MAIN PAGE (TOP) */}
@@ -572,6 +593,7 @@ function PharmacyApp() {
               <ProductHorizontalListsSection
                 lists={siteSettings.productHorizontalLists}
                 products={products}
+                siteSettings={siteSettings}
                 onSelectProduct={handleSelectProduct}
                 onAddToCart={handleAddToCart}
                 cartProductIds={cartProductIds}
@@ -588,6 +610,8 @@ function PharmacyApp() {
               products={products}
               selectedCategory={selectedCategory}
               onSelectCategory={(cat) => setSelectedCategory(cat)}
+              selectedForm={selectedForm}
+              onSelectForm={(form) => setSelectedForm(form)}
               searchQuery={searchQuery}
               onSearchChange={(q) => setSearchQuery(q)}
               onOpenProductDetail={handleSelectProduct}

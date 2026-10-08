@@ -39,6 +39,8 @@ import {
   Mail, 
   Building2, 
   FileText,
+  MapPin,
+  ExternalLink,
   Leaf,
   Sparkles,
   Layers,
@@ -77,6 +79,7 @@ import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS } from '../data/herbalProducts';
 import { detectVideoType, getYouTubeEmbedUrl, getYouTubeThumbnail, isValidVideoUrl } from '../utils/videoHelper';
+import { GRADIENT_OVERLAY_OPTIONS, GradientOverlayStyle, getProductBottomOverlayClasses } from '../utils/gradientHelper';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -218,6 +221,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     batchInfo: 'Batch #VK-2026-01 | Exp: 2028',
     videoUrl: '',
     videoType: 'none' as 'youtube' | 'direct' | 'none',
+    primaryImageGradient: 'default' as 'default' | GradientOverlayStyle,
   });
 
   // Helper to normalize siteSettings data
@@ -287,17 +291,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         autoScrollSeconds: s.bannerSlider?.autoScrollSeconds || DEFAULT_BANNER_SLIDER?.autoScrollSeconds || 4,
         aspectRatio: (s.bannerSlider?.aspectRatio as BannerSliderConfig['aspectRatio']) || DEFAULT_BANNER_SLIDER?.aspectRatio || 'auto',
         customHeightPx: s.bannerSlider?.customHeightPx ? Number(s.bannerSlider.customHeightPx) : undefined,
+        overlayStyle: (s.bannerSlider?.overlayStyle as BannerSliderConfig['overlayStyle']) || 'none',
         items: (Array.isArray(s.bannerSlider?.items)
           ? s.bannerSlider.items
           : (s.bannerSlider?.items && typeof s.bannerSlider.items === 'object'
             ? Object.values(s.bannerSlider.items)
             : (DEFAULT_BANNER_SLIDER?.items || []))) as BannerSlideItem[],
       },
+      productImageGradient: s.productImageGradient || 'none',
       productHorizontalLists: (Array.isArray(s.productHorizontalLists) && s.productHorizontalLists.length > 0
         ? s.productHorizontalLists
         : (s.productHorizontalLists && typeof s.productHorizontalLists === 'object' && Object.values(s.productHorizontalLists).length > 0
           ? Object.values(s.productHorizontalLists)
           : (DEFAULT_PRODUCT_HORIZONTAL_LISTS || []))) as ProductHorizontalList[],
+      showStoreMap: s.showStoreMap !== undefined ? Boolean(s.showStoreMap) : (DEFAULT_SITE_SETTINGS.showStoreMap ?? true),
+      storeMap: {
+        enabled: s.storeMap?.enabled !== undefined ? Boolean(s.storeMap.enabled) : (s.showStoreMap !== undefined ? Boolean(s.showStoreMap) : (DEFAULT_SITE_SETTINGS.storeMap?.enabled ?? true)),
+        mapQuery: s.storeMap?.mapQuery || s.storeAddress || DEFAULT_SITE_SETTINGS.storeMap?.mapQuery || 'New Delhi, India',
+        googleMapsUrl: s.storeMap?.googleMapsUrl || DEFAULT_SITE_SETTINGS.storeMap?.googleMapsUrl || '',
+        embedUrl: s.storeMap?.embedUrl || '',
+        locationTitle: s.storeMap?.locationTitle || DEFAULT_SITE_SETTINGS.storeMap?.locationTitle || 'Apothecary Dispensary & Botanical Garden',
+        locationSubtitle: s.storeMap?.locationSubtitle || DEFAULT_SITE_SETTINGS.storeMap?.locationSubtitle || 'Physical Pharmacy Counter, Visiting Hours & Medicine Dispatch',
+        zoom: s.storeMap?.zoom || DEFAULT_SITE_SETTINGS.storeMap?.zoom || 15,
+      },
     };
   };
 
@@ -375,6 +391,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     autoScrollSeconds: siteForm.bannerSlider?.autoScrollSeconds || 4,
     aspectRatio: siteForm.bannerSlider?.aspectRatio || 'auto',
     customHeightPx: siteForm.bannerSlider?.customHeightPx ? Number(siteForm.bannerSlider.customHeightPx) : undefined,
+    overlayStyle: siteForm.bannerSlider?.overlayStyle || 'none',
     items: Array.isArray(siteForm.bannerSlider?.items)
       ? siteForm.bannerSlider.items
       : (siteForm.bannerSlider?.items && typeof siteForm.bannerSlider.items === 'object'
@@ -387,10 +404,24 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       ...currentBannerSlider,
       ...updates,
     };
-    setSiteForm({
+    const updatedSiteSettings = {
       ...siteForm,
       bannerSlider: updated,
-    });
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+  };
+
+  const handleUpdateStoreProductGradient = async (style: GradientOverlayStyle) => {
+    const updatedSiteSettings: SiteSettings = {
+      ...siteForm,
+      productImageGradient: style,
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+    await backupSiteSettingsToFirebase(updatedSiteSettings);
+    setSaveSuccessMsg(`Store-wide Product Image Gradient set to "${style}"!`);
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
   };
 
   const handleAddBannerSlide = () => {
@@ -724,6 +755,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       batchInfo: `Batch #AUR-2026-${Math.floor(10 + Math.random() * 90)} | Exp: 2028`,
       videoUrl: '',
       videoType: 'none',
+      primaryImageGradient: 'default',
     });
   };
 
@@ -806,6 +838,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       batchInfo: p.batchInfo || '',
       videoUrl: p.videoUrl || '',
       videoType: p.videoType || (p.videoUrl ? detectVideoType(p.videoUrl) : 'none'),
+      primaryImageGradient: (p.primaryImageGradient as any) || 'default',
     });
   };
 
@@ -1278,6 +1311,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         batchInfo: productForm.batchInfo,
         videoUrl: productForm.videoUrl?.trim() || undefined,
         videoType: productForm.videoUrl?.trim() ? detectVideoType(productForm.videoUrl.trim()) : undefined,
+        primaryImageGradient: productForm.primaryImageGradient !== 'default' ? productForm.primaryImageGradient : undefined,
       };
 
       onAddProduct(newProd);
@@ -1328,6 +1362,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         storageGuideline: productForm.storageGuideline,
         ayushLicenseNo: productForm.ayushLicenseNo,
         batchInfo: productForm.batchInfo,
+        primaryImageGradient: productForm.primaryImageGradient !== 'default' ? productForm.primaryImageGradient : undefined,
       };
 
       onUpdateProduct(updatedProd);
@@ -2793,6 +2828,78 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
+                    {/* PRODUCT PRIMARY IMAGE BOTTOM GRADIENT SETTING */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-600" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            Product Primary Image Bottom Gradient (Card & Monograph)
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#183624] text-white capitalize">
+                          Current: {productForm.primaryImageGradient === 'default' ? `Store Default (${siteForm.productImageGradient || 'none'})` : productForm.primaryImageGradient}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-[#695E4F] leading-relaxed">
+                        Is formulation ke main primary photo par bottom gradient (Black, White, Emerald, Blur Glassy) lagana hai ya clean photo (None) rakhna hai:
+                      </p>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                        {/* Store Default Option */}
+                        <button
+                          type="button"
+                          onClick={() => setProductForm({ ...productForm, primaryImageGradient: 'default' })}
+                          className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                            productForm.primaryImageGradient === 'default'
+                              ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
+                              : 'border-[#DDD5C5] bg-white hover:bg-[#F5EFE6]'
+                          }`}
+                        >
+                          <div className="w-full h-7 rounded bg-[#EFEAE0] border border-[#DDD5C5] flex items-center justify-center text-[9.5px] font-bold text-[#716858]">
+                            Store Default
+                          </div>
+                          <span className="text-[10.5px] font-bold text-[#14291D] mt-1.5 line-clamp-1">
+                            Follow Store
+                          </span>
+                          <span className="text-[9px] text-[#716858]">
+                            {siteForm.productImageGradient || 'none'}
+                          </span>
+                        </button>
+
+                        {/* All 6 gradient styles */}
+                        {GRADIENT_OVERLAY_OPTIONS.map((opt) => {
+                          const isSelected = productForm.primaryImageGradient === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setProductForm({ ...productForm, primaryImageGradient: opt.value })}
+                              className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
+                                  : 'border-[#DDD5C5] bg-white hover:bg-[#F5EFE6]'
+                              }`}
+                            >
+                              <div className="w-full h-7 rounded overflow-hidden border border-[#DDD5C5] relative bg-stone-100 flex items-end">
+                                <div className={`w-full h-full ${opt.previewBg}`} />
+                                <span className="absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white">
+                                  {opt.badge}
+                                </span>
+                              </div>
+                              <span className="text-[10.5px] font-bold text-[#14291D] mt-1.5 line-clamp-1">
+                                {opt.badge}
+                              </span>
+                              <span className="text-[9px] text-[#716858] line-clamp-1">
+                                {opt.value === 'none' ? 'Clean' : 'Gradient'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     {/* PRODUCT MAIN VIDEO SECTION (YOUTUBE / DIRECT PLAYABLE VIDEO) */}
                     <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
                       <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
@@ -3450,6 +3557,65 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               ) : (
                 /* Products View (Desktop Table + Mobile Cards) */
                 <div className="space-y-4">
+                  {/* Store-Wide Product Primary Image Bottom Gradient Control */}
+                  <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#EAE3D4] space-y-2.5 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <h4 className="font-bold text-xs text-[#14291D]">
+                            Product Primary Image Bottom Gradient (Store-Wide Setting)
+                          </h4>
+                        </div>
+                        <p className="text-[10.5px] text-[#716858]">
+                          Catalog cards aur monographs ke main images par bottom gradient lagayein (Black, White, Emerald, Blur Glassy) ya clean photo (None) rakhein.
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#183624] text-white shrink-0 self-start sm:self-auto capitalize">
+                        Active: {siteForm.productImageGradient || 'none'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-0.5">
+                      {GRADIENT_OVERLAY_OPTIONS.map((opt) => {
+                        const isSelected = (siteForm.productImageGradient || 'none') === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => handleUpdateStoreProductGradient(opt.value)}
+                            className={`p-2 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                              isSelected
+                                ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
+                                : 'border-[#DDD5C5] bg-[#FAF8F5] hover:bg-white hover:border-[#B5A894]'
+                            }`}
+                          >
+                            <div className="space-y-1 w-full">
+                              <div className="w-full h-7 rounded-lg overflow-hidden border border-[#D5CCBC] relative bg-stone-100 flex items-end">
+                                <div className={`w-full h-full ${opt.previewBg}`} />
+                                <span className="absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white leading-tight">
+                                  {opt.badge}
+                                </span>
+                              </div>
+                              <div className="font-bold text-[10.5px] text-[#14291D] leading-tight line-clamp-1">
+                                {opt.label.split('(')[0].trim()}
+                              </div>
+                              <p className="text-[9px] text-[#716858] leading-tight line-clamp-2">
+                                {opt.description}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <span className="mt-1 inline-flex items-center gap-0.5 text-[9px] font-bold text-[#183624]">
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span>Store Active</span>
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Empty state if search has no results */}
                   {filteredProducts.length === 0 && (
                     <div className="p-8 text-center bg-white rounded-xl border border-[#DDD5C5] text-[#716858] space-y-2">
@@ -3863,11 +4029,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <option value="standard">Standard (Medium Height ~ 180px)</option>
                       <option value="wide">Prominent / Wide (High Impact ~ 240px)</option>
                       <option value="tall">Tall / Large Banner (High Visibility ~ 320px)</option>
-                      <option value="extra_tall">Extra Large / Full Hero Banner (~ 420px)</option>
+                      <option value="extra_tall">Extra Large / Hero Banner (~ 420px)</option>
+                      <option value="hero">Mega Hero Screen (~ 540px)</option>
+                      <option value="super_hero">Full Cinematic Screen (~ 680px)</option>
                       <option value="custom">Custom Height (Manually Typed Below)</option>
                     </select>
                     <p className="text-[10.5px] text-[#716858] mt-1">
-                      Height badhane ke liye niche manually type karein ya presets me se bada size chunein.
+                      Scroller screen height badhane ke liye presets chunein ya niche exact number type karein.
                     </p>
                   </div>
 
@@ -3902,20 +4070,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <span>Manually Type Exact Screen Height (in Pixels)</span>
                       </label>
                       <span className="text-[10.5px] text-[#716858]">
-                        Directly number type karein ya [+] [-] click karke height badhayein / ghataiye.
+                        Directly number type karein ya [+] [-] click karke height jitni chahe badhayein (up to 1200px).
                       </span>
                     </div>
 
                     {/* Numeric Input with Stepper */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                       <button
                         type="button"
                         onClick={() => {
                           const cur = currentBannerSlider.customHeightPx || 180;
-                          const next = Math.max(90, cur - 20);
+                          const next = Math.max(80, cur - 50);
                           handleUpdateBannerSlider({ customHeightPx: next, aspectRatio: 'custom' });
                         }}
-                        className="px-2.5 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEAE0] border border-[#DDD5C5] rounded-lg font-bold text-xs text-[#14291D] cursor-pointer"
+                        className="px-2 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEAE0] border border-[#DDD5C5] rounded-lg font-bold text-[11px] text-[#14291D] cursor-pointer"
+                        title="Decrease 50px"
+                      >
+                        -50px
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = currentBannerSlider.customHeightPx || 180;
+                          const next = Math.max(80, cur - 20);
+                          handleUpdateBannerSlider({ customHeightPx: next, aspectRatio: 'custom' });
+                        }}
+                        className="px-2 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEAE0] border border-[#DDD5C5] rounded-lg font-bold text-[11px] text-[#14291D] cursor-pointer"
                         title="Decrease 20px"
                       >
                         -20px
@@ -3924,8 +4105,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <div className="relative flex items-center">
                         <input
                           type="number"
-                          min={90}
-                          max={900}
+                          min={80}
+                          max={1200}
                           step={10}
                           value={currentBannerSlider.customHeightPx || ''}
                           onChange={(e) => {
@@ -3933,7 +4114,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             if (val === '') {
                               handleUpdateBannerSlider({ customHeightPx: undefined, aspectRatio: 'auto' });
                             } else {
-                              const num = Math.min(900, Math.max(80, parseInt(val) || 0));
+                              const num = Math.min(1200, Math.max(70, parseInt(val) || 0));
                               handleUpdateBannerSlider({ customHeightPx: num, aspectRatio: 'custom' });
                             }
                           }}
@@ -3949,13 +4130,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         type="button"
                         onClick={() => {
                           const cur = currentBannerSlider.customHeightPx || 180;
-                          const next = Math.min(900, cur + 20);
+                          const next = Math.min(1200, cur + 20);
                           handleUpdateBannerSlider({ customHeightPx: next, aspectRatio: 'custom' });
                         }}
-                        className="px-2.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-xs cursor-pointer shadow-2xs"
+                        className="px-2 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-[11px] cursor-pointer shadow-2xs"
                         title="Increase 20px"
                       >
                         +20px
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = currentBannerSlider.customHeightPx || 180;
+                          const next = Math.min(1200, cur + 50);
+                          handleUpdateBannerSlider({ customHeightPx: next, aspectRatio: 'custom' });
+                        }}
+                        className="px-2 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-[11px] cursor-pointer shadow-2xs"
+                        title="Increase 50px"
+                      >
+                        +50px
                       </button>
 
                       {currentBannerSlider.customHeightPx ? (
@@ -3976,14 +4170,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     <div className="flex items-center justify-between text-[10.5px] text-[#716858]">
                       <span>Compact (100px)</span>
                       <span className="font-bold text-[#14291D]">
-                        Current Slider Height: {currentBannerSlider.customHeightPx ? `${currentBannerSlider.customHeightPx}px (Custom)` : 'Responsive Auto (Adaptive)'}
+                        Current Slider Height: {currentBannerSlider.customHeightPx ? `${currentBannerSlider.customHeightPx}px (Custom Height Active)` : 'Responsive Auto (Adaptive)'}
                       </span>
-                      <span>Extra Tall (600px)</span>
+                      <span>Cinematic (1000px)</span>
                     </div>
                     <input
                       type="range"
                       min={100}
-                      max={600}
+                      max={1000}
                       step={10}
                       value={currentBannerSlider.customHeightPx || 180}
                       onChange={(e) => {
@@ -4001,9 +4195,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       { label: '140px (Small)', px: 140 },
                       { label: '180px (Standard)', px: 180 },
                       { label: '240px (Medium)', px: 240 },
-                      { label: '300px (Large)', px: 300 },
-                      { label: '380px (Extra Large)', px: 380 },
-                      { label: '460px (Hero)', px: 460 },
+                      { label: '320px (Large)', px: 320 },
+                      { label: '420px (Extra Large)', px: 420 },
+                      { label: '540px (Hero)', px: 540 },
+                      { label: '680px (Max Hero)', px: 680 },
+                      { label: '850px (Cinematic)', px: 850 },
                     ].map((btn) => (
                       <button
                         key={btn.px}
@@ -4031,6 +4227,65 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Scroller Bottom Gradient & Frosted Glass Overlay Selector */}
+                <div className="pt-3.5 border-t border-[#F0EAE1] space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <label className="block font-bold text-[#14291D] text-xs flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Scroller Bottom Gradient & Glass Overlay Style</span>
+                      </label>
+                      <p className="text-[10.5px] text-[#716858]">
+                        Scroller me bottom dark gradient lagana ho ya hatana ho: None chunein for 100% clean photo, ya black/white gradient ya frosted blur glass set karein.
+                      </p>
+                    </div>
+                    <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-[#183624] text-white shrink-0 capitalize">
+                      Active: {currentBannerSlider.overlayStyle || 'none'}
+                    </span>
+                  </div>
+
+                  {/* 6 Visual Overlay Option Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-1">
+                    {GRADIENT_OVERLAY_OPTIONS.map((opt) => {
+                      const isSelected = (currentBannerSlider.overlayStyle || 'none') === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleUpdateBannerSlider({ overlayStyle: opt.value })}
+                          className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                            isSelected
+                              ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
+                              : 'border-[#DDD5C5] bg-[#FAF8F5] hover:bg-white hover:border-[#B5A894]'
+                          }`}
+                        >
+                          <div className="space-y-1.5 w-full">
+                            {/* Color Preview Swatch */}
+                            <div className="w-full h-8 rounded-lg overflow-hidden border border-[#D5CCBC] relative bg-stone-100 flex items-end">
+                              <div className={`w-full h-full ${opt.previewBg}`} />
+                              <span className="absolute bottom-1 right-1 text-[8.5px] font-bold px-1 py-0.2 rounded bg-black/60 text-white leading-tight">
+                                {opt.badge}
+                              </span>
+                            </div>
+                            <div className="font-bold text-[11px] text-[#14291D] leading-tight line-clamp-1">
+                              {opt.label.split('(')[0].trim()}
+                            </div>
+                            <p className="text-[9.5px] text-[#716858] leading-tight line-clamp-2">
+                              {opt.description}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <span className="mt-1.5 inline-flex items-center gap-0.5 text-[9.5px] font-bold text-[#183624]">
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span>Active</span>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Multiple Image Slides List */}
@@ -4040,7 +4295,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     Banner Slides ({currentBannerSlider.items.length})
                   </h4>
                   <span className="text-[11px] text-[#716858]">
-                    Clickable action: Product, Category, or Custom Link
+                    Slide Images & Links
                   </span>
                 </div>
 
@@ -6021,6 +6276,271 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Dispensary Google Maps Location & Minimap Controls */}
+              <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EAE3D4] pb-3 gap-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-[#2C5E43]" />
+                    <div>
+                      <h4 className="font-serif text-base font-bold text-[#14291D]">
+                        Dispensary Google Maps Location & Minimap Controls
+                      </h4>
+                      <p className="text-[11px] text-[#716858]">
+                        Show or hide the interactive Minimap, set exact map pin query & click-to-open map directions link.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Show / Hide Minimap Toggle Switch */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={siteForm.storeMap?.enabled !== false && siteForm.showStoreMap !== false}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setSiteForm({
+                            ...siteForm,
+                            showStoreMap: val,
+                            storeMap: {
+                              ...(siteForm.storeMap || {}),
+                              enabled: val,
+                            },
+                          });
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-stone-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2C5E43]"></div>
+                    </label>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${
+                      siteForm.storeMap?.enabled !== false && siteForm.showStoreMap !== false
+                        ? 'bg-emerald-100 text-[#14291D]'
+                        : 'bg-stone-200 text-stone-700'
+                    }`}>
+                      {siteForm.storeMap?.enabled !== false && siteForm.showStoreMap !== false
+                        ? 'Minimap: Visible (ON)'
+                        : 'Minimap: Hidden (OFF)'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Map Settings Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Location Address / Map Search Query */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-[#2B251D]">
+                        Location Address / Landmark for Map Pin *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (siteForm.storeAddress) {
+                            setSiteForm({
+                              ...siteForm,
+                              storeMap: {
+                                ...(siteForm.storeMap || {}),
+                                mapQuery: siteForm.storeAddress,
+                              },
+                            });
+                          }
+                        }}
+                        className="text-[10px] text-[#2C5E43] font-bold hover:underline cursor-pointer"
+                      >
+                        Copy from Store Address
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={siteForm.storeMap?.mapQuery ?? ''}
+                      onChange={(e) =>
+                        setSiteForm({
+                          ...siteForm,
+                          storeMap: {
+                            ...(siteForm.storeMap || {}),
+                            mapQuery: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="e.g. Shop #14-16, Ayur Mandir Road, New Delhi or landmark name"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                    <span className="text-[10px] text-[#716858] block">
+                      Used to render the pin and focus area on the embedded interactive minimap.
+                    </span>
+                  </div>
+
+                  {/* Google Maps Click URL */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-[#2B251D]">
+                        Google Maps Link (Click to Open Directions)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const query = encodeURIComponent(
+                            siteForm.storeMap?.mapQuery || siteForm.storeAddress || siteForm.brandName
+                          );
+                          const url =
+                            siteForm.storeMap?.googleMapsUrl?.trim() ||
+                            `https://www.google.com/maps/search/?api=1&query=${query}`;
+                          window.open(url, '_blank');
+                        }}
+                        className="text-[10px] text-[#2C5E43] font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+                      >
+                        <span>Test Map Link</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <input
+                      type="url"
+                      value={siteForm.storeMap?.googleMapsUrl ?? ''}
+                      onChange={(e) =>
+                        setSiteForm({
+                          ...siteForm,
+                          storeMap: {
+                            ...(siteForm.storeMap || {}),
+                            googleMapsUrl: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://maps.app.goo.gl/... (Optional: Leave empty for auto-search)"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                    />
+                    <span className="text-[10px] text-[#716858] block">
+                      When visitors click 'Open in Google Maps' on the minimap, this direct link opens.
+                    </span>
+                  </div>
+
+                  {/* Location Title */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-[#2B251D]">
+                      Location Badge / Title
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.storeMap?.locationTitle ?? ''}
+                      onChange={(e) =>
+                        setSiteForm({
+                          ...siteForm,
+                          storeMap: {
+                            ...(siteForm.storeMap || {}),
+                            locationTitle: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="e.g. Apothecary Dispensary & Botanical Garden"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+
+                  {/* Location Subtitle */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-[#2B251D]">
+                      Location Subtitle / Timings
+                    </label>
+                    <input
+                      type="text"
+                      value={siteForm.storeMap?.locationSubtitle ?? ''}
+                      onChange={(e) =>
+                        setSiteForm({
+                          ...siteForm,
+                          storeMap: {
+                            ...(siteForm.storeMap || {}),
+                            locationSubtitle: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="e.g. Physical Pharmacy Counter & Medicine Dispatch"
+                      className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Optional Custom Embed Link */}
+                <div className="space-y-1">
+                  <label className="font-bold text-[#2B251D]">
+                    Custom Google Maps Embed URL (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={siteForm.storeMap?.embedUrl ?? ''}
+                    onChange={(e) =>
+                      setSiteForm({
+                        ...siteForm,
+                        storeMap: {
+                          ...(siteForm.storeMap || {}),
+                          embedUrl: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="https://www.google.com/maps/embed?pb=... (Leave blank for automatic responsive map)"
+                    className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                  />
+                  <span className="text-[10px] text-[#716858] block">
+                    Leave blank to automatically embed Google Maps using the location query above.
+                  </span>
+                </div>
+
+                {/* Live Minimap Preview in Admin Panel */}
+                <div className="mt-3 p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E7DFD1] space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-[#14291D]">
+                      <MapPin className="w-3.5 h-3.5 text-[#2C5E43]" />
+                      <span>Live Minimap Preview (Admin Live Check)</span>
+                    </div>
+                    <span className={`text-[10.5px] font-bold ${
+                      siteForm.storeMap?.enabled !== false && siteForm.showStoreMap !== false
+                        ? 'text-emerald-700'
+                        : 'text-stone-500'
+                    }`}>
+                      {siteForm.storeMap?.enabled !== false && siteForm.showStoreMap !== false
+                        ? 'Status: Active on Website'
+                        : 'Status: Hidden on Website'}
+                    </span>
+                  </div>
+
+                  {siteForm.storeMap?.enabled !== false && siteForm.showStoreMap !== false ? (
+                    <div className="rounded-xl overflow-hidden border border-[#DDD5C5] bg-white h-52 relative group">
+                      <iframe
+                        title="Admin Map Preview"
+                        src={
+                          siteForm.storeMap?.embedUrl?.trim() ||
+                          `https://maps.google.com/maps?q=${encodeURIComponent(
+                            siteForm.storeMap?.mapQuery || siteForm.storeAddress || 'New Delhi, India'
+                          )}&t=&z=${siteForm.storeMap?.zoom || 15}&ie=UTF8&iwloc=&output=embed`
+                        }
+                        className="w-full h-full border-0 pointer-events-none"
+                        loading="lazy"
+                      />
+                      <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const query = encodeURIComponent(
+                              siteForm.storeMap?.mapQuery || siteForm.storeAddress || siteForm.brandName
+                            );
+                            const url =
+                              siteForm.storeMap?.googleMapsUrl?.trim() ||
+                              `https://www.google.com/maps/search/?api=1&query=${query}`;
+                            window.open(url, '_blank');
+                          }}
+                          className="px-3 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Click to Open in Google Maps</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-stone-100/90 rounded-xl text-center text-stone-600 text-xs">
+                      Minimap is currently toggled <strong>OFF (Hidden)</strong>. Visitors on the website will only see the text address card without the embedded map.
+                    </div>
+                  )}
                 </div>
               </div>
 

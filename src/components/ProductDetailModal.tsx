@@ -302,6 +302,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       }}
                     />
 
+                    {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
+                    {getProductBottomOverlayClasses(product.primaryImageGradient, siteSettings?.productImageGradient) && (
+                      <div className={getProductBottomOverlayClasses(product.primaryImageGradient, siteSettings?.productImageGradient)!} />
+                    )}
+
                     {/* Primary Badge or Image Position Tag */}
                     <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
                       {discountPercent > 0 && (
@@ -768,7 +773,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <Sparkles className="w-4 h-4 text-[#2C5E43]" />
                 <span>Active Herbal Composition ({product.keyIngredients.length} Ingredients)</span>
               </h3>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto visible-tabs-scrollbar">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-[#EAE3D4] text-[#736856]">
@@ -802,7 +807,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </h4>
                 </div>
 
-                <div className="flex items-stretch gap-3 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory no-scrollbar touch-pan-x">
+                <div className="flex items-stretch gap-3 overflow-x-auto pb-2.5 scroll-smooth snap-x snap-mandatory visible-tabs-scrollbar touch-pan-x">
                   {suggestedProducts.map((rel) => {
                     const isSameCat = rel.category === product.category;
                     return (

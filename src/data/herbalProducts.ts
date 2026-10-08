@@ -925,6 +925,15 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     }
   ],
   productImageGradient: 'none',
+  showStoreMap: true,
+  storeMap: {
+    enabled: true,
+    mapQuery: 'Shop #14-16, Ayur Mandir Road, Near Central Botanical Garden, New Delhi - 110001, India',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Central+Botanical+Garden+New+Delhi',
+    locationTitle: 'Apothecary Dispensary & Botanical Garden',
+    locationSubtitle: 'Physical Pharmacy Counter, Visiting Hours & Medicine Dispatch',
+    zoom: 15,
+  },
 };
 
 export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;

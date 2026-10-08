@@ -10,12 +10,14 @@ import {
   Tag, 
   Layers
 } from 'lucide-react';
-import { HerbalProduct, ProductHorizontalList } from '../types/pharmacy';
+import { HerbalProduct, ProductHorizontalList, SiteSettings } from '../types/pharmacy';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
+import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
 
 interface ProductHorizontalListsSectionProps {
   lists?: ProductHorizontalList[];
   products: HerbalProduct[];
+  siteSettings?: SiteSettings;
   onSelectProduct: (product: HerbalProduct) => void;
   onAddToCart: (product: HerbalProduct) => void;
   cartProductIds?: Set<string>;
@@ -26,6 +28,7 @@ interface ProductHorizontalListsSectionProps {
 export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSectionProps> = ({
   lists = [],
   products = [],
+  siteSettings,
   onSelectProduct,
   onAddToCart,
   cartProductIds = new Set(),
@@ -43,12 +46,13 @@ export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSecti
   if (activeLists.length === 0) return null;
 
   return (
-    <div className="space-y-6 sm:space-y-8 pt-4 pb-2 sm:pt-5 sm:pb-3">
+    <div id="curated-shelves" className="space-y-6 sm:space-y-8 pt-4 pb-2 sm:pt-5 sm:pb-3 scroll-mt-20">
       {activeLists.map((list) => (
         <SingleHorizontalShelf
           key={list.id}
           list={list}
           allProducts={products}
+          siteSettings={siteSettings}
           onSelectProduct={onSelectProduct}
           onAddToCart={onAddToCart}
           cartProductIds={cartProductIds}
@@ -63,6 +67,7 @@ export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSecti
 interface SingleHorizontalShelfProps {
   list: ProductHorizontalList;
   allProducts: HerbalProduct[];
+  siteSettings?: SiteSettings;
   onSelectProduct: (product: HerbalProduct) => void;
   onAddToCart: (product: HerbalProduct) => void;
   cartProductIds: Set<string>;
@@ -73,6 +78,7 @@ interface SingleHorizontalShelfProps {
 const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
   list,
   allProducts,
+  siteSettings,
   onSelectProduct,
   onAddToCart,
   cartProductIds,
@@ -199,6 +205,11 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}
                       />
+
+                      {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
+                      {getProductBottomOverlayClasses(prod.primaryImageGradient, siteSettings?.productImageGradient) && (
+                        <div className={getProductBottomOverlayClasses(prod.primaryImageGradient, siteSettings?.productImageGradient)!} />
+                      )}
 
                       {/* Tag / Badge */}
                       {showTag && prod.sortBadge && prod.sortBadge !== 'none' && (
