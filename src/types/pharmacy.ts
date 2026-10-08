@@ -100,6 +100,9 @@ export interface HerbalProduct {
   customLink?: string;
   assuranceBadges?: ProductAssuranceBadges;
   primaryImageGradient?: 'default' | 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
+  primaryImageOverlayOpacity?: number;
+  primaryImageOverlayCoveragePercent?: number;
+  primaryImageOverlayFadeSoftness?: number;
 }
 
 export interface ProductAssuranceBadges {
@@ -219,8 +222,30 @@ export interface SiteSettings {
   bannerSlider?: BannerSliderConfig;
   productHorizontalLists?: ProductHorizontalList[];
   productImageGradient?: 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
+  productImageOverlayOpacity?: number;
+  productImageOverlayCoveragePercent?: number;
+  productImageOverlayFadeSoftness?: number;
   storeMap?: StoreMapConfig;
   showStoreMap?: boolean;
+  headerBanner?: HeaderBannerConfig;
+  topNav?: TopNavConfig;
+}
+
+export interface HeaderBannerConfig {
+  backgroundType: 'color' | 'image';
+  backgroundColor: string; // e.g. '#14291D'
+  backgroundImageUrl: string;
+  imageFit: 'cover' | 'contain' | 'stretch' | 'auto'; // cover = zoom fit, contain = auto fit, stretch = full width/height, auto = centered original
+  imagePosition?: string; // e.g. 'center center', 'top center', 'bottom center'
+  showAtmosphereBlur: boolean; // if false, disable ambient background blur/fade completely
+  overlayColor: 'none' | 'black' | 'white' | 'emerald';
+  overlayOpacity: number; // 0 to 100
+  textColorTheme?: 'auto' | 'light' | 'dark';
+  topNavBackground?: 'default' | 'match_header' | 'solid_white' | 'glass';
+}
+
+export interface TopNavConfig {
+  backgroundStyle: 'default' | 'match_header' | 'solid_white' | 'glass';
 }
 
 export interface BannerSlideItem {
@@ -241,6 +266,9 @@ export interface BannerSliderConfig {
   aspectRatio?: 'auto' | 'compact' | 'standard' | 'wide' | 'tall' | 'extra_tall' | 'custom';
   customHeightPx?: number; // e.g. 180, 240, 320, 400, 500, etc. (manually typed in pixels)
   overlayStyle?: 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
+  overlayOpacity?: number;
+  overlayCoveragePercent?: number;
+  overlayFadeSoftness?: number;
   items: BannerSlideItem[];
 }
 

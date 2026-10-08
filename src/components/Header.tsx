@@ -97,10 +97,19 @@ export const Header: React.FC<HeaderProps> = ({
     setIsMobileMenuOpen(false);
   };
 
+  const headerBanner = siteSettings.headerBanner;
+  const disableBlur = headerBanner?.showAtmosphereBlur === false;
+  const topNavStyle = headerBanner?.topNavBackground || 'default';
+
   return (
     <header 
       ref={headerRef} 
-      className="sticky top-0 z-40 bg-[#FAF8F5]/98 backdrop-blur-xl border-b border-[#E7DFD1]/85 shadow-2xs transition-all relative"
+      className={`sticky top-0 z-40 ${
+        topNavStyle === 'match_header' && headerBanner?.backgroundColor
+          ? 'border-b border-black/10 shadow-2xs'
+          : 'bg-[#FAF8F5]/98 border-b border-[#E7DFD1]/85 shadow-2xs'
+      } ${disableBlur ? 'backdrop-blur-none' : 'backdrop-blur-xl'} transition-all relative`}
+      style={topNavStyle === 'match_header' && headerBanner?.backgroundColor ? { backgroundColor: headerBanner.backgroundColor } : undefined}
     >
       {/* Top Header Row */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-4">

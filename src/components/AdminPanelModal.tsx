@@ -17,7 +17,8 @@ import {
   BannerSlideItem,
   BannerSliderConfig,
   ProductHorizontalList,
-  HorizontalListCardFields
+  HorizontalListCardFields,
+  HeaderBannerConfig
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
@@ -73,7 +74,8 @@ import {
   Square,
   Play,
   Video,
-  Film
+  Film,
+  Palette
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
@@ -314,6 +316,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         locationSubtitle: s.storeMap?.locationSubtitle || DEFAULT_SITE_SETTINGS.storeMap?.locationSubtitle || 'Physical Pharmacy Counter, Visiting Hours & Medicine Dispatch',
         zoom: s.storeMap?.zoom || DEFAULT_SITE_SETTINGS.storeMap?.zoom || 15,
       },
+      headerBanner: {
+        backgroundType: s.headerBanner?.backgroundType || DEFAULT_SITE_SETTINGS.headerBanner?.backgroundType || 'color',
+        backgroundColor: s.headerBanner?.backgroundColor || DEFAULT_SITE_SETTINGS.headerBanner?.backgroundColor || '#14291D',
+        backgroundImageUrl: s.headerBanner?.backgroundImageUrl !== undefined ? s.headerBanner.backgroundImageUrl : (DEFAULT_SITE_SETTINGS.headerBanner?.backgroundImageUrl || ''),
+        imageFit: s.headerBanner?.imageFit || DEFAULT_SITE_SETTINGS.headerBanner?.imageFit || 'cover',
+        imagePosition: s.headerBanner?.imagePosition || DEFAULT_SITE_SETTINGS.headerBanner?.imagePosition || 'center center',
+        showAtmosphereBlur: s.headerBanner?.showAtmosphereBlur !== undefined ? Boolean(s.headerBanner.showAtmosphereBlur) : (DEFAULT_SITE_SETTINGS.headerBanner?.showAtmosphereBlur ?? true),
+        overlayColor: s.headerBanner?.overlayColor || DEFAULT_SITE_SETTINGS.headerBanner?.overlayColor || 'black',
+        overlayOpacity: s.headerBanner?.overlayOpacity !== undefined ? Number(s.headerBanner.overlayOpacity) : (DEFAULT_SITE_SETTINGS.headerBanner?.overlayOpacity ?? 35),
+        textColorTheme: s.headerBanner?.textColorTheme || DEFAULT_SITE_SETTINGS.headerBanner?.textColorTheme || 'auto',
+        topNavBackground: s.headerBanner?.topNavBackground || DEFAULT_SITE_SETTINGS.headerBanner?.topNavBackground || 'default',
+      },
+      topNav: {
+        backgroundStyle: s.topNav?.backgroundStyle || DEFAULT_SITE_SETTINGS.topNav?.backgroundStyle || 'default',
+      },
     };
   };
 
@@ -325,6 +342,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       setSiteForm(normalizeSettings(siteSettings));
     }
   }, [siteSettings]);
+
+  const updateHeaderBanner = (updates: Partial<HeaderBannerConfig>) => {
+    setSiteForm(prev => ({
+      ...prev,
+      headerBanner: {
+        ...(prev.headerBanner || DEFAULT_SITE_SETTINGS.headerBanner!),
+        ...updates,
+      },
+    }));
+  };
 
   const handleUpdateMessageTemplate = (key: keyof MessageTemplates, val: any) => {
     const currentTemplates = siteForm.messageTemplates || DEFAULT_MESSAGE_TEMPLATES;
@@ -1377,8 +1404,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleSaveSiteSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSiteSettings(siteForm);
-    await backupSiteSettingsToFirebase(siteForm);
-    setSaveSuccessMsg('Website titles, multiple contacts & info updated and saved to Firebase!');
+    setSaveSuccessMsg('Website settings, header appearance & contacts updated and saved!');
     setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
@@ -7158,6 +7184,501 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     <p className="text-[11px] text-[#6E6352] mt-2 bg-white p-2 rounded-lg border border-[#E5DEC\-D]">
                       🌐 <strong>Web Browser Sync:</strong> When visitors open the website, the browser tab title shows <strong>{siteForm.brandName || 'Aurashka'}</strong>, the browser favicon & OpenGraph social share card automatically preview this official image.
                     </p>
+                  </div>
+                </div>
+
+                {/* Main Page Header & Hero Banner Appearance (Color, Image, Screen Fit, No Fade/Blur, White/Black Opacity) */}
+                <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-4 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E8E2D5] pb-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Palette className="w-4 h-4 text-[#2C5E43]" />
+                        <h5 className="font-serif text-xs font-bold text-[#14291D] uppercase tracking-wider">
+                          Header &amp; Hero Appearance (रंग, इमेज, स्क्रीन फिट &amp; ओपेसिटी)
+                        </h5>
+                      </div>
+                      <span className="text-[10.5px] text-[#716858] block mt-0.5">
+                        Customize header green color or background image, zoom/auto fit for Android &amp; PC screens, sharp no-blur toggle, and black/white overlay opacity.
+                      </span>
+                    </div>
+
+                    {/* Reset to Default Button */}
+                    <button
+                      type="button"
+                      onClick={() => updateHeaderBanner({
+                        backgroundType: 'color',
+                        backgroundColor: '#14291D',
+                        backgroundImageUrl: '',
+                        imageFit: 'cover',
+                        imagePosition: 'center center',
+                        showAtmosphereBlur: true,
+                        overlayColor: 'black',
+                        overlayOpacity: 35,
+                        textColorTheme: 'auto',
+                        topNavBackground: 'default'
+                      })}
+                      className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 transition-colors cursor-pointer self-start sm:self-auto flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset Header Default</span>
+                    </button>
+                  </div>
+
+                  {/* Mode Selector: Solid Color vs Image */}
+                  <div>
+                    <label className="block font-medium text-[#2B251D] text-xs mb-1.5">
+                      Background Type (बैकग्राउंड का प्रकार):
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateHeaderBanner({ backgroundType: 'color' })}
+                        className={`p-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          (siteForm.headerBanner?.backgroundType ?? 'color') === 'color'
+                            ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
+                            : 'bg-white text-[#4A4031] border-[#DDD5C5] hover:bg-stone-50'
+                        }`}
+                      >
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-white/40"
+                          style={{ backgroundColor: siteForm.headerBanner?.backgroundColor || '#14291D' }}
+                        />
+                        <span>Solid Color (रंग)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateHeaderBanner({ backgroundType: 'image' })}
+                        className={`p-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          siteForm.headerBanner?.backgroundType === 'image'
+                            ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
+                            : 'bg-white text-[#4A4031] border-[#DDD5C5] hover:bg-stone-50'
+                        }`}
+                      >
+                        <span>🖼️ Background Image (इमेज)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* COLOR SETTINGS (Active when backgroundType is 'color' or as image fallback) */}
+                  <div className={`p-3 bg-white rounded-lg border border-[#E5DECD] space-y-2.5 ${siteForm.headerBanner?.backgroundType === 'image' ? 'opacity-80' : ''}`}>
+                    <div className="flex items-center justify-between">
+                      <label className="block font-medium text-[#2B251D] text-xs">
+                        {siteForm.headerBanner?.backgroundType === 'image' ? 'Fallback / Under-Image Color:' : 'Header Background Color (हेडर का मुख्य रंग):'}
+                      </label>
+                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200">
+                        {siteForm.headerBanner?.backgroundColor || '#14291D'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="color"
+                        value={siteForm.headerBanner?.backgroundColor || '#14291D'}
+                        onChange={(e) => updateHeaderBanner({ backgroundColor: e.target.value })}
+                        className="w-10 h-9 rounded cursor-pointer border border-[#DDD5C5] p-0.5 bg-white shrink-0"
+                        title="Pick custom color"
+                      />
+                      <input
+                        type="text"
+                        value={siteForm.headerBanner?.backgroundColor || '#14291D'}
+                        onChange={(e) => updateHeaderBanner({ backgroundColor: e.target.value })}
+                        placeholder="#14291D"
+                        className="w-28 px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-md text-xs font-mono font-semibold"
+                      />
+                      <span className="text-[11px] text-[#716858]">
+                        Default is Classical Green (<span className="font-mono font-bold">#14291D</span>).
+                      </span>
+                    </div>
+
+                    {/* Color Presets */}
+                    <div>
+                      <span className="text-[10.5px] font-semibold text-[#716858] block mb-1">
+                        Quick Color Presets:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: '🌲 Forest Green (Default)', hex: '#14291D' },
+                          { label: '🌿 Deep Emerald', hex: '#064E3B' },
+                          { label: '🍃 Sage Herbal Teal', hex: '#0F766E' },
+                          { label: '👑 Apothecary Gold', hex: '#78350F' },
+                          { label: '🌌 Obsidian Dark', hex: '#0F172A' },
+                          { label: '🪵 Classical Bark', hex: '#3E2723' },
+                          { label: '📄 Pure White', hex: '#FFFFFF' },
+                          { label: '🌾 Sand Warm Cream', hex: '#FAF8F5' },
+                        ].map((c) => (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            onClick={() => updateHeaderBanner({ backgroundColor: c.hex })}
+                            className={`px-2 py-1 rounded text-[10.5px] font-semibold border cursor-pointer flex items-center gap-1.5 transition-all ${
+                              (siteForm.headerBanner?.backgroundColor || '#14291D').toLowerCase() === c.hex.toLowerCase()
+                                ? 'bg-stone-900 text-white border-stone-900 shadow-2xs ring-1 ring-stone-900'
+                                : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-stone-400"
+                              style={{ backgroundColor: c.hex }}
+                            />
+                            <span>{c.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* IMAGE SETTINGS (Visible when Image mode is selected) */}
+                  {siteForm.headerBanner?.backgroundType === 'image' && (
+                    <div className="p-3 bg-white rounded-lg border border-[#E5DECD] space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-medium text-[#2B251D] text-xs">
+                            Header Background Image URL (इमेज का लिंक):
+                          </label>
+                          {siteForm.headerBanner?.backgroundImageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => updateHeaderBanner({ backgroundImageUrl: '' })}
+                              className="text-[10.5px] text-red-600 hover:underline font-semibold"
+                            >
+                              Clear URL
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={siteForm.headerBanner?.backgroundImageUrl ?? ''}
+                          onChange={(e) => updateHeaderBanner({ backgroundImageUrl: e.target.value })}
+                          placeholder="https://images.unsplash.com/... or paste any direct image link"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-md text-xs font-mono"
+                        />
+                      </div>
+
+                      {/* Image Presets */}
+                      <div>
+                        <span className="text-[10.5px] font-semibold text-[#716858] block mb-1">
+                          Curated Botanical &amp; Apothecary Presets:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            {
+                              label: '🌿 Medicinal Herbal Leaf',
+                              url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1920&q=80',
+                            },
+                            {
+                              label: '🪵 Mortar & Classical Herbs',
+                              url: 'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=1920&q=80',
+                            },
+                            {
+                              label: '🍃 Fresh Dispensary Plant',
+                              url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1920&q=80',
+                            },
+                            {
+                              label: '🏛️ Ancient Apothecary Jars',
+                              url: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=1920&q=80',
+                            },
+                          ].map((item, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => updateHeaderBanner({ backgroundImageUrl: item.url })}
+                              className={`px-2 py-1 rounded text-[10.5px] font-semibold border cursor-pointer flex items-center gap-1 transition-all ${
+                                siteForm.headerBanner?.backgroundImageUrl === item.url
+                                  ? 'bg-[#14291D] text-white border-[#14291D]'
+                                  : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                              }`}
+                            >
+                              <span>{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Screen Fit Mode for Android, PC & Other Screens */}
+                      <div className="pt-1 border-t border-stone-200">
+                        <label className="block font-medium text-[#2B251D] text-xs mb-1.5">
+                          Screen Fit Mode (Android, PC &amp; Screens के लिए फिट):
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {[
+                            {
+                              id: 'cover',
+                              title: '🔍 Zoom Fit (Cover)',
+                              desc: 'Fills entire header smoothly with no blank spaces (Best for Android & PC)',
+                            },
+                            {
+                              id: 'contain',
+                              title: '📐 Auto Fit (Contain)',
+                              desc: 'Shows full uncropped picture with background color fill',
+                            },
+                            {
+                              id: 'stretch',
+                              title: '↔️ Stretch Fit (100%)',
+                              desc: 'Stretches exact 100% width and 100% height',
+                            },
+                            {
+                              id: 'auto',
+                              title: '🎯 Original Centered',
+                              desc: 'Maintains actual picture resolution centered',
+                            },
+                          ].map((fit) => (
+                            <button
+                              key={fit.id}
+                              type="button"
+                              onClick={() => updateHeaderBanner({ imageFit: fit.id as HeaderBannerConfig['imageFit'] })}
+                              className={`p-2 rounded-lg border text-left cursor-pointer transition-all ${
+                                (siteForm.headerBanner?.imageFit || 'cover') === fit.id
+                                  ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs ring-1 ring-[#14291D]'
+                                  : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                              }`}
+                            >
+                              <div className="text-xs font-bold">{fit.title}</div>
+                              <div className={`text-[10px] mt-0.5 leading-snug ${
+                                (siteForm.headerBanner?.imageFit || 'cover') === fit.id ? 'text-[#C2D6C9]' : 'text-stone-500'
+                              }`}>
+                                {fit.desc}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Image Position */}
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-medium text-[#2B251D] shrink-0">
+                          Image Position (इमेज की स्थिति):
+                        </label>
+                        <select
+                          value={siteForm.headerBanner?.imagePosition || 'center center'}
+                          onChange={(e) => updateHeaderBanner({ imagePosition: e.target.value })}
+                          className="px-2.5 py-1 bg-white border border-[#DDD5C5] rounded-md text-xs font-semibold text-[#14291D]"
+                        >
+                          <option value="center center">Center (बीच में)</option>
+                          <option value="top center">Top Center (ऊपर की तरफ)</option>
+                          <option value="bottom center">Bottom Center (नीचे की तरफ)</option>
+                          <option value="left center">Left (बाईं तरफ)</option>
+                          <option value="right center">Right (दाईं तरफ)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* NO FADE / BLUR TOGGLE */}
+                  <div className="p-3 bg-white rounded-lg border border-[#E5DECD] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div>
+                      <label className="block font-medium text-[#2B251D] text-xs">
+                        Fade / Blur Atmosphere Effects (फेड और ब्लर प्रभाव):
+                      </label>
+                      <span className="text-[10.5px] text-[#716858] block mt-0.5">
+                        {siteForm.headerBanner?.showAtmosphereBlur === false
+                          ? '✅ Blur Disabled: Image/Header completely crisp and sharp with zero haze or fades.'
+                          : 'ℹ️ Blur Enabled: Soft radial glow orbs rendered in header.'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => updateHeaderBanner({
+                        showAtmosphereBlur: siteForm.headerBanner?.showAtmosphereBlur === false ? true : false,
+                      })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                        siteForm.headerBanner?.showAtmosphereBlur === false
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+                      }`}
+                    >
+                      <span>
+                        {siteForm.headerBanner?.showAtmosphereBlur === false
+                          ? '✓ No Fade / Blur (एकदम साफ़)'
+                          : 'Atmosphere Blur On'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* OVERLAY COLOR & OPACITY (White / Black / Emerald & Opacity Slider) */}
+                  <div className="p-3 bg-white rounded-lg border border-[#E5DECD] space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <label className="block font-medium text-[#2B251D] text-xs">
+                        Color Overlay &amp; Opacity (व्हाइट या ब्लैक ओवरले और ओपेसिटी):
+                      </label>
+                      <span className="text-[10.5px] text-[#716858]">
+                        Gives dark/light tint so white or black text is easily readable on any image.
+                      </span>
+                    </div>
+
+                    {/* Overlay Color Select */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'black', label: '⬛ Black (काला)', desc: 'Darkens background, crisp white text' },
+                        { id: 'white', label: '⬜ White (सफ़ेद)', desc: 'Brightens background, crisp dark text' },
+                        { id: 'emerald', label: '🟩 Emerald (हरा)', desc: 'Ayurvedic botanical green tint' },
+                        { id: 'none', label: '🚫 None (कोई नहीं)', desc: 'Zero overlay tint' },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => updateHeaderBanner({ overlayColor: item.id as HeaderBannerConfig['overlayColor'] })}
+                          className={`p-2 rounded-lg border text-left cursor-pointer transition-all ${
+                            (siteForm.headerBanner?.overlayColor || 'black') === item.id
+                              ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs ring-1 ring-[#14291D]'
+                              : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                          }`}
+                        >
+                          <div className="text-xs font-bold">{item.label}</div>
+                          <div className={`text-[10px] mt-0.5 ${
+                            (siteForm.headerBanner?.overlayColor || 'black') === item.id ? 'text-[#C2D6C9]' : 'text-stone-500'
+                          }`}>
+                            {item.desc}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Opacity Slider */}
+                    {siteForm.headerBanner?.overlayColor !== 'none' && (
+                      <div className="pt-2 border-t border-stone-200 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-[#2B251D]">
+                            Overlay Opacity (ओपेसिटी स्लाइडर):
+                          </label>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-mono font-bold text-xs">
+                            {siteForm.headerBanner?.overlayOpacity ?? 35}% Opacity
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10.5px] text-stone-500 font-semibold">0% (Transparent)</span>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={siteForm.headerBanner?.overlayOpacity ?? 35}
+                            onChange={(e) => updateHeaderBanner({ overlayOpacity: Number(e.target.value) })}
+                            className="flex-1 h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-[#14291D]"
+                          />
+                          <span className="text-[10.5px] text-stone-500 font-semibold">100% (Solid)</span>
+                        </div>
+
+                        {/* Quick Opacity Presets */}
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <span className="text-[10.5px] text-stone-500">Quick Opacity:</span>
+                          {[0, 15, 30, 45, 60, 75, 90].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => updateHeaderBanner({ overlayOpacity: val })}
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold border cursor-pointer ${
+                                (siteForm.headerBanner?.overlayOpacity ?? 35) === val
+                                  ? 'bg-[#14291D] text-white border-[#14291D]'
+                                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
+                              }`}
+                            >
+                              {val}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* TEXT READABILITY THEME & TOP NAV SYNC */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Text Contrast Theme */}
+                    <div className="p-3 bg-white rounded-lg border border-[#E5DECD] space-y-1.5">
+                      <label className="block font-medium text-[#2B251D] text-xs">
+                        Header Text Readability Theme:
+                      </label>
+                      <select
+                        value={siteForm.headerBanner?.textColorTheme || 'auto'}
+                        onChange={(e) => updateHeaderBanner({ textColorTheme: e.target.value as HeaderBannerConfig['textColorTheme'] })}
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-md text-xs font-semibold text-[#14291D]"
+                      >
+                        <option value="auto">🔄 Auto (Smart Contrast based on background &amp; overlay)</option>
+                        <option value="light">⚪ Crisp White Text (Best for dark green / black)</option>
+                        <option value="dark">⚫ Crisp Dark Forest Green Text (Best for white / light cream)</option>
+                      </select>
+                    </div>
+
+                    {/* Top Navigation Bar Style */}
+                    <div className="p-3 bg-white rounded-lg border border-[#E5DECD] space-y-1.5">
+                      <label className="block font-medium text-[#2B251D] text-xs">
+                        Top Nav Bar Background (शीर्ष पट्टी):
+                      </label>
+                      <select
+                        value={siteForm.headerBanner?.topNavBackground || 'default'}
+                        onChange={(e) => updateHeaderBanner({ topNavBackground: e.target.value as HeaderBannerConfig['topNavBackground'] })}
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-md text-xs font-semibold text-[#14291D]"
+                      >
+                        <option value="default">🌿 Classical Cream Glass (Default #FAF8F5)</option>
+                        <option value="match_header">🎨 Match Main Header Color</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* LIVE INTERACTIVE PREVIEW */}
+                  <div className="p-3 bg-[#EDE8DE] rounded-lg border border-[#D5CDBE] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#14291D] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-[#B4741E]" />
+                        <span>Live Header Preview (लाइव हेडर प्रीव्यू):</span>
+                      </span>
+                      <span className="text-[10px] text-stone-600 font-mono">
+                        {siteForm.headerBanner?.backgroundType === 'image'
+                          ? `Image: ${siteForm.headerBanner?.imageFit || 'cover'}`
+                          : `Color: ${siteForm.headerBanner?.backgroundColor || '#14291D'}`}
+                      </span>
+                    </div>
+
+                    {/* Preview Mockup Card */}
+                    <div
+                      className="relative rounded-lg overflow-hidden p-4 border border-black/10 min-h-[110px] flex flex-col justify-center transition-all"
+                      style={{
+                        backgroundColor: siteForm.headerBanner?.backgroundColor || '#14291D',
+                        backgroundImage: siteForm.headerBanner?.backgroundType === 'image' && siteForm.headerBanner?.backgroundImageUrl
+                          ? `url("${siteForm.headerBanner.backgroundImageUrl}")`
+                          : undefined,
+                        backgroundSize: siteForm.headerBanner?.imageFit === 'contain'
+                          ? 'contain'
+                          : siteForm.headerBanner?.imageFit === 'stretch'
+                          ? '100% 100%'
+                          : siteForm.headerBanner?.imageFit === 'auto'
+                          ? 'auto'
+                          : 'cover',
+                        backgroundPosition: siteForm.headerBanner?.imagePosition || 'center center',
+                        backgroundRepeat: 'no-repeat',
+                      }}
+                    >
+                      {/* Overlay */}
+                      {siteForm.headerBanner?.overlayColor !== 'none' && (siteForm.headerBanner?.overlayOpacity ?? 0) > 0 && (
+                        <div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            backgroundColor:
+                              siteForm.headerBanner?.overlayColor === 'white'
+                                ? '#FFFFFF'
+                                : siteForm.headerBanner?.overlayColor === 'emerald'
+                                ? '#064E3B'
+                                : '#000000',
+                            opacity: (siteForm.headerBanner?.overlayOpacity ?? 35) / 100,
+                          }}
+                        />
+                      )}
+
+                      {/* Content */}
+                      <div className="relative z-10 space-y-1">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-white/20 text-white backdrop-blur-xs">
+                          <span>🌿 {siteForm.heroBadgeText || 'Registered Ayurvedic Formulations'}</span>
+                        </div>
+                        <h4 className="font-serif text-sm sm:text-base font-bold text-white tracking-tight drop-shadow-xs">
+                          {siteForm.heroTitle || 'Classical Ayurvedic Formulations & Natural Herbs'}
+                        </h4>
+                        <p className="text-[10px] text-white/85 line-clamp-1 max-w-md drop-shadow-xs">
+                          {siteForm.heroSubtitle || 'Direct apothecary medicines, certified herbal remedies & classical preparations.'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

@@ -232,13 +232,82 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     window.open(buildWhatsAppUrl(primaryWhatsApp.number, msg), '_blank');
   };
 
-  return (
-    <section id="deal-spotlight" className="relative bg-[#14291D] text-white pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-6 border-b border-[#234D34] overflow-hidden scroll-mt-20">
-      {/* Decorative Atmosphere Watermarks */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2C5E43]/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-[#B4741E]/15 rounded-full blur-3xl pointer-events-none" />
+  const headerBanner = siteSettings.headerBanner || {
+    backgroundType: 'color',
+    backgroundColor: '#14291D',
+    backgroundImageUrl: '',
+    imageFit: 'cover',
+    imagePosition: 'center center',
+    showAtmosphereBlur: true,
+    overlayColor: 'black',
+    overlayOpacity: 35,
+    textColorTheme: 'auto',
+  };
 
-      <div className="max-w-7xl mx-auto relative">
+  const isImageBg = headerBanner.backgroundType === 'image' && Boolean(headerBanner.backgroundImageUrl);
+  const showBlur = headerBanner.showAtmosphereBlur !== false;
+
+  // Background style computation
+  const bgStyle: React.CSSProperties = {};
+  if (isImageBg) {
+    bgStyle.backgroundImage = `url("${headerBanner.backgroundImageUrl}")`;
+    bgStyle.backgroundPosition = headerBanner.imagePosition || 'center center';
+    if (headerBanner.imageFit === 'contain') {
+      bgStyle.backgroundSize = 'contain';
+      bgStyle.backgroundRepeat = 'no-repeat';
+      bgStyle.backgroundColor = headerBanner.backgroundColor || '#14291D';
+    } else if (headerBanner.imageFit === 'stretch') {
+      bgStyle.backgroundSize = '100% 100%';
+      bgStyle.backgroundRepeat = 'no-repeat';
+    } else if (headerBanner.imageFit === 'auto') {
+      bgStyle.backgroundSize = 'auto';
+      bgStyle.backgroundRepeat = 'no-repeat';
+      bgStyle.backgroundColor = headerBanner.backgroundColor || '#14291D';
+    } else {
+      // 'cover' / Zoom Fit (responsive fit for mobile, PC & other screens)
+      bgStyle.backgroundSize = 'cover';
+      bgStyle.backgroundRepeat = 'no-repeat';
+    }
+  } else {
+    bgStyle.backgroundColor = headerBanner.backgroundColor || '#14291D';
+  }
+
+  // Determine text contrast
+  const isLightOverlay = headerBanner.overlayColor === 'white' && (headerBanner.overlayOpacity ?? 35) > 40;
+  const isLightBgColor = !isImageBg && ['#ffffff', '#faf8f5', '#f8fafc', '#f5f5f4', '#fef08a', '#fde68a'].includes((headerBanner.backgroundColor || '').toLowerCase());
+  const isDarkText = headerBanner.textColorTheme === 'dark' || (headerBanner.textColorTheme === 'auto' && (isLightOverlay || isLightBgColor));
+
+  return (
+    <section
+      id="deal-spotlight"
+      style={bgStyle}
+      className={`relative ${isDarkText ? 'text-[#14291D]' : 'text-white'} pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-6 border-b border-[#234D34]/40 overflow-hidden scroll-mt-20 transition-colors duration-300`}
+    >
+      {/* Decorative Atmosphere Watermarks (Disabled if user chooses No Fade / Blur) */}
+      {showBlur && (
+        <>
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2C5E43]/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-[#B4741E]/15 rounded-full blur-3xl pointer-events-none" />
+        </>
+      )}
+
+      {/* Background Image / Color Overlay with admin-controlled opacity */}
+      {headerBanner.overlayColor !== 'none' && (headerBanner.overlayOpacity ?? 0) > 0 && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+          style={{
+            backgroundColor:
+              headerBanner.overlayColor === 'white'
+                ? '#FFFFFF'
+                : headerBanner.overlayColor === 'emerald'
+                ? '#064E3B'
+                : '#000000',
+            opacity: (headerBanner.overlayOpacity ?? 35) / 100,
+          }}
+        />
+      )}
+
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
           {/* Left Column: Brand & Hero Copy */}
           <div className={`${
@@ -247,26 +316,36 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               : 'lg:col-span-12 max-w-3xl'
           } space-y-3.5`}>
             {siteSettings.showHeroBadge !== false && (siteSettings.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas').trim() !== '' && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1C3A27] border border-[#2D5A3D] text-[11px] font-medium tracking-wide text-[#A5D6B6]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#A5D6B6] animate-pulse" />
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-medium tracking-wide shadow-2xs ${
+                isDarkText
+                  ? 'bg-white/80 border-[#14291D]/20 text-[#14291D]'
+                  : 'bg-[#1C3A27] border-[#2D5A3D] text-[#A5D6B6]'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isDarkText ? 'bg-[#14291D]' : 'bg-[#A5D6B6]'}`} />
                 <span>{siteSettings.heroBadgeText || 'Registered Ayurvedic Formulations & Classical Rasayanas'}</span>
               </div>
             )}
 
-            <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
+            <h1 className={`font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight ${
+              isDarkText ? 'text-[#14291D]' : 'text-white'
+            }`}>
               {siteSettings.heroTitle}
             </h1>
 
-            <p className="text-xs sm:text-sm text-[#C2D6C9] max-w-2xl leading-relaxed">
+            <p className={`text-xs sm:text-sm max-w-2xl leading-relaxed ${
+              isDarkText ? 'text-[#284132] font-medium' : 'text-[#C2D6C9]'
+            }`}>
               {siteSettings.heroSubtitle}
             </p>
 
             {/* Admin Launch app banner */}
             {isAdmin && onOpenAdminPanel && (
-              <div className="p-2.5 bg-amber-500/15 border border-amber-400/40 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-200">
+              <div className="p-2.5 bg-amber-500/15 border border-amber-400/40 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-900 sm:text-amber-200">
                 <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-amber-300 shrink-0" />
-                  <span>Admin Access Active: Manage Catalog, Deal of the Week & Site Texts</span>
+                  <Settings className="w-4 h-4 text-amber-500 sm:text-amber-300 shrink-0" />
+                  <span className={isDarkText ? 'text-amber-950 font-semibold' : 'text-amber-200'}>
+                    Admin Access Active: Manage Catalog, Deals & Header Appearance
+                  </span>
                 </div>
                 <button
                   onClick={onOpenAdminPanel}
@@ -282,7 +361,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="pt-1 flex flex-wrap items-center gap-2.5">
               <button
                 onClick={onExploreProducts}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-[#E7EFEA] text-[#14291D] hover:bg-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
+                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-xs cursor-pointer ${
+                  isDarkText
+                    ? 'bg-[#14291D] text-white hover:bg-[#234D34]'
+                    : 'bg-[#E7EFEA] text-[#14291D] hover:bg-white'
+                }`}
               >
                 <span>Browse Products & Deals</span>
                 <ArrowRight className="w-4 h-4" />
@@ -299,10 +382,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               <a
                 href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
-                className="px-3 py-2 text-xs sm:text-sm text-white/80 hover:text-white transition-colors flex items-center gap-1.5"
+                className={`px-3 py-2 text-xs sm:text-sm transition-colors flex items-center gap-1.5 ${
+                  isDarkText
+                    ? 'text-[#234D34] hover:text-[#14291D] font-semibold'
+                    : 'text-white/80 hover:text-white'
+                }`}
                 title="Call Helpline"
               >
-                <Phone className="w-3.5 h-3.5 text-[#A5D6B6]" />
+                <Phone className={`w-3.5 h-3.5 ${isDarkText ? 'text-[#234D34]' : 'text-[#A5D6B6]'}`} />
                 <span>Call Helpline</span>
               </a>
             </div>

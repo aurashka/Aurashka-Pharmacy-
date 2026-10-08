@@ -2,20 +2,45 @@ import { HerbalProduct, SiteSettings } from '../types/pharmacy';
 import { firebaseConfig } from '../firebase';
 
 /**
+ * Safe fetch helper with AbortController timeout & non-throwing offline fallback.
+ * Prevents "TypeError: Failed to fetch" from crashing the app or triggering console errors
+ * in restricted environments, preview iframes, or offline networks.
+ */
+const safeFetch = async (url: string, options: RequestInit = {}, timeoutMs = 3500): Promise<Response | null> => {
+  if (!firebaseConfig?.databaseURL) return null;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err: any) {
+    // Graceful notice without triggering fatal console.error
+    console.warn(`[Firebase RTDB] Network sync unavailable for ${url} (${err?.message || 'offline'}). Local changes remain safely preserved.`);
+    return null;
+  }
+};
+
+/**
  * Backup an individual product to Firebase Realtime Database
  */
 export const backupProductToFirebase = async (product: HerbalProduct): Promise<boolean> => {
   const safeId = product.id.replace(/[.#$[\]/]/g, '_');
 
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/products/${safeId}.json`, {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/products/${safeId}.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(product),
     });
-    return res.ok;
-  } catch (error) {
-    console.error(`Failed to backup product ${product.id} to Firebase:`, error);
+    return Boolean(res?.ok);
+  } catch (err) {
+    console.warn(`[Firebase RTDB] Notice: Could not sync product ${product.id}:`, err);
     return false;
   }
 };
@@ -37,7 +62,7 @@ export const backupAllCatalogToFirebase = async (products: HerbalProduct[]): Pro
     });
 
     // 1. Bulk write to Firebase RTDB /products.json
-    const res = await fetch(`${firebaseConfig.databaseURL}/products.json`, {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/products.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dictionary),
@@ -45,7 +70,7 @@ export const backupAllCatalogToFirebase = async (products: HerbalProduct[]): Pro
 
     // Also write a snapshot backup with timestamp
     try {
-      await fetch(`${firebaseConfig.databaseURL}/backup_catalog_latest.json`, {
+      await safeFetch(`${firebaseConfig.databaseURL}/backup_catalog_latest.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -56,14 +81,14 @@ export const backupAllCatalogToFirebase = async (products: HerbalProduct[]): Pro
       });
     } catch {}
 
-    if (res.ok) {
+    if (res?.ok) {
       return { success: true, count: products.length };
     } else {
-      return { success: false, count: 0, error: 'Firebase RTDB returned non-OK status' };
+      return { success: false, count: 0, error: 'Firebase RTDB offline or unreachable' };
     }
   } catch (e: any) {
-    console.error('Failed to backup all products to Firebase:', e);
-    return { success: false, count: 0, error: e.message || 'Network error' };
+    console.warn('[Firebase RTDB] Notice: Could not backup all products:', e);
+    return { success: false, count: 0, error: e?.message || 'Network unreachable' };
   }
 };
 
@@ -74,12 +99,12 @@ export const deleteProductFromFirebase = async (productId: string): Promise<bool
   const safeId = productId.replace(/[.#$[\]/]/g, '_');
 
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/products/${safeId}.json`, {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/products/${safeId}.json`, {
       method: 'DELETE',
     });
-    return res.ok;
+    return Boolean(res?.ok);
   } catch (e) {
-    console.error('Failed to delete product from Firebase:', e);
+    console.warn('[Firebase RTDB] Notice: Could not delete product from remote database:', e);
     return false;
   }
 };
@@ -89,14 +114,14 @@ export const deleteProductFromFirebase = async (productId: string): Promise<bool
  */
 export const backupSiteSettingsToFirebase = async (settings: SiteSettings): Promise<boolean> => {
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/site_settings.json`, {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/site_settings.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
     });
-    return res.ok;
+    return Boolean(res?.ok);
   } catch (e) {
-    console.error('Failed to backup site settings to Firebase:', e);
+    console.warn('[Firebase RTDB] Notice: Could not backup site settings to remote database:', e);
     return false;
   }
 };
@@ -106,8 +131,8 @@ export const backupSiteSettingsToFirebase = async (settings: SiteSettings): Prom
  */
 export const fetchSiteSettingsFromFirebase = async (): Promise<SiteSettings | null> => {
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/site_settings.json`);
-    if (res.ok) {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/site_settings.json`);
+    if (res?.ok) {
       const data = await res.json();
       if (data && typeof data === 'object' && (data.brandName || data.heroTitle || data.contacts)) {
         // Normalize any object-shaped arrays from Firebase RTDB
@@ -161,14 +186,14 @@ export const backupCatalogMetaToFirebase = async (meta: {
   forms: string[];
 }): Promise<boolean> => {
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/catalog_meta.json`, {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/catalog_meta.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(meta),
     });
-    return res.ok;
+    return Boolean(res?.ok);
   } catch (e) {
-    console.error('Failed to backup catalog meta to Firebase:', e);
+    console.warn('Firebase RTDB catalog meta backup notice:', e);
     return false;
   }
 };
@@ -181,8 +206,8 @@ export const fetchCatalogMetaFromFirebase = async (): Promise<{
   forms: string[];
 } | null> => {
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/catalog_meta.json`);
-    if (res.ok) {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/catalog_meta.json`);
+    if (res?.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
         const rawCats = data.categories;
@@ -210,8 +235,8 @@ export const fetchCatalogMetaFromFirebase = async (): Promise<{
  */
 export const fetchProductsFromFirebase = async (): Promise<HerbalProduct[] | null> => {
   try {
-    const res = await fetch(`${firebaseConfig.databaseURL}/products.json`);
-    if (res.ok) {
+    const res = await safeFetch(`${firebaseConfig.databaseURL}/products.json`);
+    if (res?.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
         const list: HerbalProduct[] = Object.values(data);

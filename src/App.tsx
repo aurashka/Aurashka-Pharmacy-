@@ -129,6 +129,21 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
       : (s.productHorizontalLists && typeof s.productHorizontalLists === 'object' && Object.values(s.productHorizontalLists).length > 0
         ? Object.values(s.productHorizontalLists)
         : (DEFAULT_SITE_SETTINGS.productHorizontalLists || []))) as ProductHorizontalList[],
+    headerBanner: {
+      backgroundType: s.headerBanner?.backgroundType || DEFAULT_SITE_SETTINGS.headerBanner?.backgroundType || 'color',
+      backgroundColor: s.headerBanner?.backgroundColor || DEFAULT_SITE_SETTINGS.headerBanner?.backgroundColor || '#14291D',
+      backgroundImageUrl: s.headerBanner?.backgroundImageUrl !== undefined ? s.headerBanner.backgroundImageUrl : (DEFAULT_SITE_SETTINGS.headerBanner?.backgroundImageUrl || ''),
+      imageFit: s.headerBanner?.imageFit || DEFAULT_SITE_SETTINGS.headerBanner?.imageFit || 'cover',
+      imagePosition: s.headerBanner?.imagePosition || DEFAULT_SITE_SETTINGS.headerBanner?.imagePosition || 'center center',
+      showAtmosphereBlur: s.headerBanner?.showAtmosphereBlur !== undefined ? Boolean(s.headerBanner.showAtmosphereBlur) : (DEFAULT_SITE_SETTINGS.headerBanner?.showAtmosphereBlur ?? true),
+      overlayColor: s.headerBanner?.overlayColor || DEFAULT_SITE_SETTINGS.headerBanner?.overlayColor || 'black',
+      overlayOpacity: s.headerBanner?.overlayOpacity !== undefined ? Number(s.headerBanner.overlayOpacity) : (DEFAULT_SITE_SETTINGS.headerBanner?.overlayOpacity ?? 35),
+      textColorTheme: s.headerBanner?.textColorTheme || DEFAULT_SITE_SETTINGS.headerBanner?.textColorTheme || 'auto',
+      topNavBackground: s.headerBanner?.topNavBackground || DEFAULT_SITE_SETTINGS.headerBanner?.topNavBackground || 'default',
+    },
+    topNav: {
+      backgroundStyle: s.topNav?.backgroundStyle || DEFAULT_SITE_SETTINGS.topNav?.backgroundStyle || 'default',
+    },
   };
 }
 
@@ -144,7 +159,7 @@ function PharmacyApp() {
         if (parsed && typeof parsed === 'object') return normalizeSiteSettings(parsed);
       }
     } catch (e) {
-      console.error(e);
+      console.warn('Local site settings parse note:', e);
     }
     return DEFAULT_SITE_SETTINGS;
   });
@@ -158,7 +173,7 @@ function PharmacyApp() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
-      console.error(e);
+      console.warn('Local categories parse note:', e);
     }
     return DEFAULT_CATEGORIES;
   });
@@ -172,7 +187,7 @@ function PharmacyApp() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
-      console.error(e);
+      console.warn('Local forms parse note:', e);
     }
     return DEFAULT_FORMS;
   });
@@ -186,7 +201,7 @@ function PharmacyApp() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
-      console.error(e);
+      console.warn('Local products parse note:', e);
     }
     return HERBAL_PRODUCTS;
   });
@@ -318,7 +333,7 @@ function PharmacyApp() {
     try {
       localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(updated));
     } catch (e) {
-      console.error(e);
+      console.warn('Local save products notice:', e);
     }
   };
 
@@ -329,7 +344,7 @@ function PharmacyApp() {
       localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
       await backupSiteSettingsToFirebase(normalized);
     } catch (e) {
-      console.error(e);
+      console.warn('Site settings update notice:', e);
     }
   };
 
@@ -339,7 +354,7 @@ function PharmacyApp() {
       localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(newCategories));
       await backupCatalogMetaToFirebase({ categories: newCategories, forms });
     } catch (e) {
-      console.error(e);
+      console.warn('Categories update notice:', e);
     }
   };
 
@@ -349,7 +364,7 @@ function PharmacyApp() {
       localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(newForms));
       await backupCatalogMetaToFirebase({ categories, forms: newForms });
     } catch (e) {
-      console.error(e);
+      console.warn('Forms update notice:', e);
     }
   };
 

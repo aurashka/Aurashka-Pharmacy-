@@ -934,6 +934,21 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     locationSubtitle: 'Physical Pharmacy Counter, Visiting Hours & Medicine Dispatch',
     zoom: 15,
   },
+  headerBanner: {
+    backgroundType: 'color',
+    backgroundColor: '#14291D',
+    backgroundImageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1920&q=80',
+    imageFit: 'cover',
+    imagePosition: 'center center',
+    showAtmosphereBlur: true,
+    overlayColor: 'black',
+    overlayOpacity: 35,
+    textColorTheme: 'auto',
+    topNavBackground: 'default',
+  },
+  topNav: {
+    backgroundStyle: 'default',
+  },
 };
 
 export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;
