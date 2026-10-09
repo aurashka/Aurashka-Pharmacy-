@@ -4,6 +4,30 @@ export type ProductForm = string;
 export interface CategoryItem {
   id: string;
   label: string;
+  imageUrl?: string;
+  showImage?: boolean;
+}
+
+export type CategoryImagePosition = 'left' | 'top' | 'right' | 'bottom';
+export type CategoryImageSize = 'small' | 'medium' | 'large' | 'extra_large' | 'custom';
+export type CategoryImageShape = 'circle' | 'rounded' | 'square';
+
+export interface FormImageConfig {
+  imageUrl?: string;
+  showImage?: boolean;
+}
+
+export interface CategoryAppearanceConfig {
+  showImages: boolean;
+  imagePosition: CategoryImagePosition;
+  imageSize: CategoryImageSize;
+  customImageSizePx?: number;
+  imageShape: CategoryImageShape;
+  allProductsImageUrl?: string;
+  showAllProductsImage?: boolean;
+  allFormsImageUrl?: string;
+  showAllFormsImage?: boolean;
+  formImages?: Record<string, FormImageConfig>;
 }
 
 export interface FormItem {
@@ -229,6 +253,7 @@ export interface SiteSettings {
   showStoreMap?: boolean;
   headerBanner?: HeaderBannerConfig;
   topNav?: TopNavConfig;
+  categoryAppearance?: CategoryAppearanceConfig;
 }
 
 export interface HeaderBannerConfig {

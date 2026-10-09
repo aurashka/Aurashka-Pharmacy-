@@ -949,6 +949,55 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   topNav: {
     backgroundStyle: 'default',
   },
+  categoryAppearance: {
+    showImages: true,
+    imagePosition: 'left',
+    imageSize: 'medium',
+    customImageSizePx: 26,
+    imageShape: 'circle',
+    allProductsImageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=120&q=80',
+    showAllProductsImage: true,
+    allFormsImageUrl: 'https://images.unsplash.com/photo-1512069772995-ec65ed45afd6?auto=format&fit=crop&w=120&q=80',
+    showAllFormsImage: true,
+    formImages: {
+      'Churna (Powder)': {
+        imageUrl: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Vati / Tablet': {
+        imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Taila (Oil)': {
+        imageUrl: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Swaras & Asava (Liquid)': {
+        imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Resin & Lehyam': {
+        imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Veg Capsule': {
+        imageUrl: 'https://images.unsplash.com/photo-1577401239170-897942555fb3?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Kashayam (Decoction)': {
+        imageUrl: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Avaleha (Paste)': {
+        imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+      'Ghrita (Herbal Ghee)': {
+        imageUrl: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=120&q=80',
+        showImage: true,
+      },
+    },
+  },
 };
 
 export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;
@@ -965,13 +1014,48 @@ export const COMMON_AILMENT_TAGS = [
 ];
 
 export const DEFAULT_CATEGORIES = [
-  { id: 'all', label: 'All Products' },
-  { id: 'immunity', label: 'Immunity & Respiratory' },
-  { id: 'digestion', label: 'Digestive & Gut Health' },
-  { id: 'joint_pain', label: 'Joint & Pain Relief' },
-  { id: 'mind_sleep', label: 'Mind, Stress & Sleep' },
-  { id: 'skin_hair', label: 'Skin & Hair Wellness' },
-  { id: 'vitality', label: 'Vitality & Stamina' },
+  {
+    id: 'all',
+    label: 'All Products',
+    imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
+  {
+    id: 'immunity',
+    label: 'Immunity & Respiratory',
+    imageUrl: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
+  {
+    id: 'digestion',
+    label: 'Digestive & Gut Health',
+    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
+  {
+    id: 'joint_pain',
+    label: 'Joint & Pain Relief',
+    imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
+  {
+    id: 'mind_sleep',
+    label: 'Mind, Stress & Sleep',
+    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
+  {
+    id: 'skin_hair',
+    label: 'Skin & Hair Wellness',
+    imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
+  {
+    id: 'vitality',
+    label: 'Vitality & Stamina',
+    imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=120&q=80',
+    showImage: true,
+  },
 ];
 
 export const DEFAULT_FORMS = [

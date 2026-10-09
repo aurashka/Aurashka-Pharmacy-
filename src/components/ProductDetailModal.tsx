@@ -288,7 +288,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
                 ) : (
                   <div 
-                    className="relative rounded-xl overflow-hidden bg-[#EFEAE0] border border-[#DDD5C5] aspect-4/3 group shadow-xs cursor-zoom-in"
+                    className="relative rounded-none overflow-hidden bg-transparent border-0 aspect-4/3 group shadow-none cursor-zoom-in"
                     onClick={() => setIsZoomed(true)}
                     title="Click to view full photo in popup"
                   >
@@ -296,7 +296,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       src={activeMedia.url}
                       alt={`${product.name} - view ${currentMediaIndex + 1}`}
                       referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103 bg-transparent"
                       onError={(e) => {
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}

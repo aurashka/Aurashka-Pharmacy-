@@ -1,28 +1,34 @@
 import { HerbalProduct, SiteSettings } from '../types/pharmacy';
-import { firebaseConfig } from '../firebase';
+import { rtdb } from '../firebase';
+import { ref, set, get, remove } from 'firebase/database';
 
 /**
- * Safe fetch helper with AbortController timeout & non-throwing offline fallback.
- * Prevents "TypeError: Failed to fetch" from crashing the app or triggering console errors
- * in restricted environments, preview iframes, or offline networks.
+ * Strips undefined properties to guarantee strict compatibility with Firebase RTDB SDK
  */
-const safeFetch = async (url: string, options: RequestInit = {}, timeoutMs = 3500): Promise<Response | null> => {
-  if (!firebaseConfig?.databaseURL) return null;
+const sanitizeForFirebase = <T>(obj: T): T => {
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch {
+    return obj;
+  }
+};
+
+/**
+ * Timeout wrapper for Firebase operations to prevent hanging when offline or sandboxed
+ */
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs = 4500): Promise<T | null> => {
+  let timer: any;
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    const res = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return res;
-  } catch (err: any) {
-    // Graceful notice without triggering fatal console.error
-    console.warn(`[Firebase RTDB] Network sync unavailable for ${url} (${err?.message || 'offline'}). Local changes remain safely preserved.`);
-    return null;
+    const res = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timer);
+    return res as T | null;
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
   }
 };
 
@@ -33,12 +39,10 @@ export const backupProductToFirebase = async (product: HerbalProduct): Promise<b
   const safeId = product.id.replace(/[.#$[\]/]/g, '_');
 
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/products/${safeId}.json`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product),
-    });
-    return Boolean(res?.ok);
+    const cleanData = sanitizeForFirebase(product);
+    const pRef = ref(rtdb, `products/${safeId}`);
+    await withTimeout(set(pRef, cleanData), 4500);
+    return true;
   } catch (err) {
     console.warn(`[Firebase RTDB] Notice: Could not sync product ${product.id}:`, err);
     return false;
@@ -61,31 +65,21 @@ export const backupAllCatalogToFirebase = async (products: HerbalProduct[]): Pro
       dictionary[safeId] = p;
     });
 
-    // 1. Bulk write to Firebase RTDB /products.json
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/products.json`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dictionary),
-    });
+    const cleanData = sanitizeForFirebase(dictionary);
+    const pRef = ref(rtdb, 'products');
+    await withTimeout(set(pRef, cleanData), 7500);
 
     // Also write a snapshot backup with timestamp
     try {
-      await safeFetch(`${firebaseConfig.databaseURL}/backup_catalog_latest.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          updatedAt: new Date().toISOString(),
-          totalProducts: products.length,
-          products: dictionary,
-        }),
-      });
+      const backupRef = ref(rtdb, 'backup_catalog_latest');
+      await withTimeout(set(backupRef, sanitizeForFirebase({
+        updatedAt: new Date().toISOString(),
+        totalProducts: products.length,
+        products: dictionary,
+      })), 4500);
     } catch {}
 
-    if (res?.ok) {
-      return { success: true, count: products.length };
-    } else {
-      return { success: false, count: 0, error: 'Firebase RTDB offline or unreachable' };
-    }
+    return { success: true, count: products.length };
   } catch (e: any) {
     console.warn('[Firebase RTDB] Notice: Could not backup all products:', e);
     return { success: false, count: 0, error: e?.message || 'Network unreachable' };
@@ -99,10 +93,9 @@ export const deleteProductFromFirebase = async (productId: string): Promise<bool
   const safeId = productId.replace(/[.#$[\]/]/g, '_');
 
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/products/${safeId}.json`, {
-      method: 'DELETE',
-    });
-    return Boolean(res?.ok);
+    const pRef = ref(rtdb, `products/${safeId}`);
+    await withTimeout(remove(pRef), 4500);
+    return true;
   } catch (e) {
     console.warn('[Firebase RTDB] Notice: Could not delete product from remote database:', e);
     return false;
@@ -114,12 +107,10 @@ export const deleteProductFromFirebase = async (productId: string): Promise<bool
  */
 export const backupSiteSettingsToFirebase = async (settings: SiteSettings): Promise<boolean> => {
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/site_settings.json`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
-    });
-    return Boolean(res?.ok);
+    const cleanSettings = sanitizeForFirebase(settings);
+    const sRef = ref(rtdb, 'site_settings');
+    await withTimeout(set(sRef, cleanSettings), 4500);
+    return true;
   } catch (e) {
     console.warn('[Firebase RTDB] Notice: Could not backup site settings to remote database:', e);
     return false;
@@ -131,9 +122,10 @@ export const backupSiteSettingsToFirebase = async (settings: SiteSettings): Prom
  */
 export const fetchSiteSettingsFromFirebase = async (): Promise<SiteSettings | null> => {
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/site_settings.json`);
-    if (res?.ok) {
-      const data = await res.json();
+    const sRef = ref(rtdb, 'site_settings');
+    const snapshot = await withTimeout(get(sRef), 4500);
+    if (snapshot && snapshot.exists()) {
+      const data = snapshot.val();
       if (data && typeof data === 'object' && (data.brandName || data.heroTitle || data.contacts)) {
         // Normalize any object-shaped arrays from Firebase RTDB
         const phones = Array.isArray(data.contacts?.phones)
@@ -186,12 +178,10 @@ export const backupCatalogMetaToFirebase = async (meta: {
   forms: string[];
 }): Promise<boolean> => {
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/catalog_meta.json`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(meta),
-    });
-    return Boolean(res?.ok);
+    const cleanMeta = sanitizeForFirebase(meta);
+    const mRef = ref(rtdb, 'catalog_meta');
+    await withTimeout(set(mRef, cleanMeta), 4500);
+    return true;
   } catch (e) {
     console.warn('Firebase RTDB catalog meta backup notice:', e);
     return false;
@@ -206,9 +196,10 @@ export const fetchCatalogMetaFromFirebase = async (): Promise<{
   forms: string[];
 } | null> => {
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/catalog_meta.json`);
-    if (res?.ok) {
-      const data = await res.json();
+    const mRef = ref(rtdb, 'catalog_meta');
+    const snapshot = await withTimeout(get(mRef), 4500);
+    if (snapshot && snapshot.exists()) {
+      const data = snapshot.val();
       if (data && typeof data === 'object') {
         const rawCats = data.categories;
         const rawForms = data.forms;
@@ -235,9 +226,10 @@ export const fetchCatalogMetaFromFirebase = async (): Promise<{
  */
 export const fetchProductsFromFirebase = async (): Promise<HerbalProduct[] | null> => {
   try {
-    const res = await safeFetch(`${firebaseConfig.databaseURL}/products.json`);
-    if (res?.ok) {
-      const data = await res.json();
+    const pRef = ref(rtdb, 'products');
+    const snapshot = await withTimeout(get(pRef), 4500);
+    if (snapshot && snapshot.exists()) {
+      const data = snapshot.val();
       if (data && typeof data === 'object') {
         const list: HerbalProduct[] = Object.values(data);
         if (list.length > 0) {
@@ -266,33 +258,43 @@ export const getOrAutoSeedFirebaseData = async (
   forms: string[];
   products: HerbalProduct[];
 }> => {
-  // 1. Site Settings & Contacts
-  let settings = await fetchSiteSettingsFromFirebase();
-  if (!settings) {
-    console.info('Firebase site_settings is null -> Auto-creating default site settings in Firebase RTDB');
-    await backupSiteSettingsToFirebase(defaultSettings);
-    settings = defaultSettings;
-  }
+  try {
+    // 1. Site Settings & Contacts
+    let settings = await fetchSiteSettingsFromFirebase();
+    if (!settings) {
+      console.info('Firebase site_settings is null -> Auto-creating default site settings in Firebase RTDB');
+      await backupSiteSettingsToFirebase(defaultSettings);
+      settings = defaultSettings;
+    }
 
-  // 2. Categories & Forms
-  let meta = await fetchCatalogMetaFromFirebase();
-  let categories = defaultCategories;
-  let forms = defaultForms;
-  if (!meta || !Array.isArray(meta.categories) || meta.categories.length === 0) {
-    console.info('Firebase catalog_meta is null -> Auto-creating default categories & forms in Firebase RTDB');
-    await backupCatalogMetaToFirebase({ categories: defaultCategories, forms: defaultForms });
-  } else {
-    categories = meta.categories;
-    forms = meta.forms;
-  }
+    // 2. Categories & Forms
+    let meta = await fetchCatalogMetaFromFirebase();
+    let categories = defaultCategories;
+    let forms = defaultForms;
+    if (!meta || !Array.isArray(meta.categories) || meta.categories.length === 0) {
+      console.info('Firebase catalog_meta is null -> Auto-creating default categories & forms in Firebase RTDB');
+      await backupCatalogMetaToFirebase({ categories: defaultCategories, forms: defaultForms });
+    } else {
+      categories = meta.categories;
+      forms = meta.forms;
+    }
 
-  // 3. Products
-  let products = await fetchProductsFromFirebase();
-  if (!products || products.length === 0) {
-    console.info('Firebase products is null -> Auto-creating default product catalog in Firebase RTDB');
-    await backupAllCatalogToFirebase(defaultProducts);
-    products = defaultProducts;
-  }
+    // 3. Products
+    let products = await fetchProductsFromFirebase();
+    if (!products || products.length === 0) {
+      console.info('Firebase products is null -> Auto-creating default product catalog in Firebase RTDB');
+      await backupAllCatalogToFirebase(defaultProducts);
+      products = defaultProducts;
+    }
 
-  return { settings, categories, forms, products };
+    return { settings, categories, forms, products };
+  } catch (err) {
+    console.warn('Firebase auto-seed notice (fallback to local defaults):', err);
+    return {
+      settings: defaultSettings,
+      categories: defaultCategories,
+      forms: defaultForms,
+      products: defaultProducts,
+    };
+  }
 };

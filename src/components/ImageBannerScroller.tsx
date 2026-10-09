@@ -184,7 +184,7 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
     <div className={`w-full group/slider relative ${className}`}>
       {/* Outer Slider Shell */}
       <div
-        className={`w-full ${getAspectRatioClasses()} rounded-xl overflow-hidden relative border border-white/20 shadow-lg select-none cursor-grab active:cursor-grabbing bg-[#14291D]`}
+        className={`w-full ${getAspectRatioClasses()} overflow-hidden relative select-none cursor-grab active:cursor-grabbing bg-transparent`}
         style={
           config?.customHeightPx && config.customHeightPx > 0
             ? { height: `${config.customHeightPx}px` }
@@ -204,7 +204,7 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
       >
         {/* Track */}
         <div
-          className="flex h-full w-full transition-transform duration-500 ease-out"
+          className="flex h-full w-full transition-transform duration-500 ease-out bg-transparent"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
           {items.map((slide, idx) => {
@@ -213,7 +213,7 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
               <div
                 key={slide.id || idx}
                 onClick={() => handleSlideClick(slide)}
-                className={`w-full h-full shrink-0 relative overflow-hidden ${
+                className={`w-full h-full shrink-0 relative overflow-hidden bg-transparent ${
                   hasLink ? 'cursor-pointer' : ''
                 }`}
               >

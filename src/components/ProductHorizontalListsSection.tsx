@@ -196,11 +196,11 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                 <div>
                   {/* Image Container */}
                   {showImage && (
-                    <div className="relative aspect-4/3 sm:aspect-square bg-[#FAF8F5] overflow-hidden border-b border-[#E8E2D5]">
+                    <div className="relative aspect-4/3 sm:aspect-square bg-transparent overflow-hidden rounded-none border-0">
                       <img
                         src={prod.image || (prod.images && prod.images[0]) || ''}
                         alt={prod.name}
-                        className="w-full h-full object-cover group-hover/card:scale-104 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover/card:scale-104 transition-transform duration-300 bg-transparent"
                         onError={(e) => {
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}

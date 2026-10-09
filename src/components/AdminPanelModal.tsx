@@ -18,7 +18,11 @@ import {
   BannerSliderConfig,
   ProductHorizontalList,
   HorizontalListCardFields,
-  HeaderBannerConfig
+  HeaderBannerConfig,
+  CategoryAppearanceConfig,
+  CategoryImagePosition,
+  CategoryImageSize,
+  CategoryImageShape
 } from '../types/pharmacy';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
@@ -75,7 +79,10 @@ import {
   Play,
   Video,
   Film,
-  Palette
+  Palette,
+  Circle,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
@@ -154,12 +161,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Category & Forms Tab Management states
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatLabel, setEditingCatLabel] = useState('');
+  const [editingCatImageUrl, setEditingCatImageUrl] = useState('');
+  const [editingCatShowImage, setEditingCatShowImage] = useState(true);
   const [newCatId, setNewCatId] = useState('');
   const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatImageUrl, setNewCatImageUrl] = useState('');
+  const [newCatShowImage, setNewCatShowImage] = useState(true);
 
   const [editingFormIdx, setEditingFormIdx] = useState<number | null>(null);
   const [editingFormName, setEditingFormName] = useState('');
+  const [editingFormImageUrl, setEditingFormImageUrl] = useState('');
+  const [editingFormShowImage, setEditingFormShowImage] = useState(true);
   const [newFormName, setNewFormName] = useState('');
+  const [newFormImageUrl, setNewFormImageUrl] = useState('');
+  const [newFormShowImage, setNewFormShowImage] = useState(true);
 
   // Multiple Product Images state
   const [imageUrls, setImageUrls] = useState<string[]>(['']);
@@ -331,6 +346,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       topNav: {
         backgroundStyle: s.topNav?.backgroundStyle || DEFAULT_SITE_SETTINGS.topNav?.backgroundStyle || 'default',
       },
+      categoryAppearance: {
+        showImages: s.categoryAppearance?.showImages !== undefined ? Boolean(s.categoryAppearance.showImages) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showImages ?? true),
+        imagePosition: s.categoryAppearance?.imagePosition || DEFAULT_SITE_SETTINGS.categoryAppearance?.imagePosition || 'left',
+        imageSize: s.categoryAppearance?.imageSize || DEFAULT_SITE_SETTINGS.categoryAppearance?.imageSize || 'medium',
+        customImageSizePx: s.categoryAppearance?.customImageSizePx ? Number(s.categoryAppearance.customImageSizePx) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.customImageSizePx || 26),
+        imageShape: s.categoryAppearance?.imageShape || DEFAULT_SITE_SETTINGS.categoryAppearance?.imageShape || 'circle',
+        allProductsImageUrl: s.categoryAppearance?.allProductsImageUrl !== undefined ? s.categoryAppearance.allProductsImageUrl : (DEFAULT_SITE_SETTINGS.categoryAppearance?.allProductsImageUrl || ''),
+        showAllProductsImage: s.categoryAppearance?.showAllProductsImage !== undefined ? Boolean(s.categoryAppearance.showAllProductsImage) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showAllProductsImage ?? true),
+        allFormsImageUrl: s.categoryAppearance?.allFormsImageUrl !== undefined ? s.categoryAppearance.allFormsImageUrl : (DEFAULT_SITE_SETTINGS.categoryAppearance?.allFormsImageUrl || ''),
+        showAllFormsImage: s.categoryAppearance?.showAllFormsImage !== undefined ? Boolean(s.categoryAppearance.showAllFormsImage) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showAllFormsImage ?? true),
+        formImages: s.categoryAppearance?.formImages && typeof s.categoryAppearance.formImages === 'object' ? s.categoryAppearance.formImages : (DEFAULT_SITE_SETTINGS.categoryAppearance?.formImages || {}),
+      },
     };
   };
 
@@ -351,6 +378,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         ...updates,
       },
     }));
+  };
+
+  const updateCategoryAppearance = (updates: Partial<CategoryAppearanceConfig>) => {
+    const updated: SiteSettings = {
+      ...siteForm,
+      categoryAppearance: {
+        ...(siteForm.categoryAppearance || DEFAULT_SITE_SETTINGS.categoryAppearance!),
+        ...updates,
+      },
+    };
+    setSiteForm(updated);
+    onUpdateSiteSettings(updated);
+  };
+
+  const handleUpdateFormImage = (formName: string, imageUrl: string, showImage = true) => {
+    const currentFormImages = siteForm.categoryAppearance?.formImages || DEFAULT_SITE_SETTINGS.categoryAppearance?.formImages || {};
+    const updatedFormImages = {
+      ...currentFormImages,
+      [formName]: {
+        imageUrl: imageUrl.trim(),
+        showImage,
+      },
+    };
+    updateCategoryAppearance({ formImages: updatedFormImages });
   };
 
   const handleUpdateMessageTemplate = (key: keyof MessageTemplates, val: any) => {
@@ -1033,22 +1084,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       alert(`Category with ID "${id}" already exists. Please choose another.`);
       return;
     }
-    const updated = [...categories, { id, label: newCatLabel.trim() }];
+    const newCategory: CategoryItem = {
+      id,
+      label: newCatLabel.trim(),
+      imageUrl: newCatImageUrl.trim() || undefined,
+      showImage: newCatShowImage,
+    };
+    const updated = [...categories, newCategory];
     onUpdateCategories(updated);
     setNewCatId('');
     setNewCatLabel('');
+    setNewCatImageUrl('');
+    setNewCatShowImage(true);
     setSaveSuccessMsg(`Category "${newCatLabel.trim()}" created successfully!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
 
   const handleSaveEditCategory = (id: string) => {
     if (!editingCatLabel.trim()) return;
-    const updated = categories.map((c) => c.id === id ? { ...c, label: editingCatLabel.trim() } : c);
+    const updated = categories.map((c) => c.id === id ? {
+      ...c,
+      label: editingCatLabel.trim(),
+      imageUrl: editingCatImageUrl.trim() || undefined,
+      showImage: editingCatShowImage,
+    } : c);
     onUpdateCategories(updated);
     setEditingCatId(null);
     setEditingCatLabel('');
+    setEditingCatImageUrl('');
+    setEditingCatShowImage(true);
     setSaveSuccessMsg(`Category updated!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleToggleCategoryShowImage = (id: string, currentVal: boolean | undefined) => {
+    const updated = categories.map((c) => c.id === id ? {
+      ...c,
+      showImage: currentVal === undefined ? false : !currentVal,
+    } : c);
+    onUpdateCategories(updated);
+  };
+
+  const handleUpdateCategoryImageUrl = (id: string, url: string) => {
+    const updated = categories.map((c) => c.id === id ? {
+      ...c,
+      imageUrl: url.trim(),
+    } : c);
+    onUpdateCategories(updated);
   };
 
   const handleDeleteCategory = (id: string) => {
@@ -1070,24 +1152,47 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleCreateForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFormName.trim()) return;
-    if (forms.includes(newFormName.trim())) {
+    const trimmed = newFormName.trim();
+    if (forms.includes(trimmed)) {
       alert('This formulation form already exists.');
       return;
     }
-    const updated = [...forms, newFormName.trim()];
+    const updated = [...forms, trimmed];
     onUpdateForms(updated);
+    if (newFormImageUrl.trim()) {
+      handleUpdateFormImage(trimmed, newFormImageUrl.trim(), newFormShowImage);
+    }
     setNewFormName('');
-    setSaveSuccessMsg(`Formulation Form "${newFormName.trim()}" added!`);
+    setNewFormImageUrl('');
+    setNewFormShowImage(true);
+    setSaveSuccessMsg(`Formulation Form "${trimmed}" added!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
 
-  const handleSaveEditForm = (idx: number) => {
+  const handleSaveEditForm = (idx: number, oldName: string) => {
     if (!editingFormName.trim()) return;
+    const newName = editingFormName.trim();
     const updated = [...forms];
-    updated[idx] = editingFormName.trim();
+    updated[idx] = newName;
     onUpdateForms(updated);
+
+    // If form name changed or image updated
+    if (newName !== oldName || editingFormImageUrl) {
+      const currentFormImages = { ...(siteForm.categoryAppearance?.formImages || {}) };
+      if (newName !== oldName) {
+        delete currentFormImages[oldName];
+      }
+      currentFormImages[newName] = {
+        imageUrl: editingFormImageUrl.trim(),
+        showImage: editingFormShowImage,
+      };
+      updateCategoryAppearance({ formImages: currentFormImages });
+    }
+
     setEditingFormIdx(null);
     setEditingFormName('');
+    setEditingFormImageUrl('');
+    setEditingFormShowImage(true);
     setSaveSuccessMsg(`Formulation form updated!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
@@ -5842,266 +5947,935 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           </div>
         )}
 
-        {/* Tab 2: Categories & Forms Manager (Preset & Custom Edit / Add / Delete) */}
-        {activeTab === 'categories_forms' && (
-          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
-            {/* CATEGORIES SECTION */}
-            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-[#B4741E]" />
-                  <div>
-                    <h4 className="font-serif text-base font-bold text-[#14291D]">
-                      Categories Manager (Preset & Custom)
-                    </h4>
-                    <p className="text-xs text-[#695F4F]">
-                      Add new custom categories, edit labels, or delete categories. Updates sync immediately to the store & Firebase.
-                    </p>
+        {/* Tab 2: Categories & Forms Manager (Direct Image Links, Show/Hide, Size, Position: Left/Top/Right/Down & Firebase Sync) */}
+        {activeTab === 'categories_forms' && (() => {
+          const catApp = siteForm.categoryAppearance || DEFAULT_SITE_SETTINGS.categoryAppearance || {
+            showImages: true,
+            imagePosition: 'left',
+            imageSize: 'medium',
+            customImageSizePx: 26,
+            imageShape: 'circle',
+            allProductsImageUrl: '',
+            showAllProductsImage: true,
+            allFormsImageUrl: '',
+            showAllFormsImage: true,
+            formImages: {},
+          };
+
+          const previewSizePx = catApp.imageSize === 'small'
+            ? 18
+            : catApp.imageSize === 'large'
+              ? 36
+              : catApp.imageSize === 'extra_large'
+                ? 46
+                : catApp.imageSize === 'custom'
+                  ? (catApp.customImageSizePx || 26)
+                  : 26;
+
+          const previewShapeClass = catApp.imageShape === 'circle'
+            ? 'rounded-full'
+            : catApp.imageShape === 'rounded'
+              ? 'rounded-md'
+              : 'rounded-none';
+
+          const getMockLayoutClass = (hasImage: boolean) => {
+            if (!hasImage) return 'flex items-center justify-center';
+            switch (catApp.imagePosition) {
+              case 'top':
+                return 'flex flex-col items-center justify-center gap-1 py-1.5 text-center min-w-[62px]';
+              case 'bottom':
+                return 'flex flex-col-reverse items-center justify-center gap-1 py-1.5 text-center min-w-[62px]';
+              case 'right':
+                return 'flex flex-row-reverse items-center justify-center gap-1.5';
+              case 'left':
+              default:
+                return 'flex flex-row items-center justify-center gap-1.5';
+            }
+          };
+
+          return (
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
+              {/* TOP HERO SETTINGS: CATEGORY & FORM IMAGES APPEARANCE (SIZE, POSITION: LEFT/TOP/RIGHT/DOWN, SHOW/HIDE) */}
+              <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE3D4] pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-[#EAE2D2] text-[#14291D] flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-5 h-5 text-[#2C5E43]" />
+                    </div>
+                    <div>
+                      <h4 className="font-serif text-base font-bold text-[#14291D]">
+                        Category & Formulation Images Settings
+                      </h4>
+                      <p className="text-xs text-[#695F4F]">
+                        Set direct image links, toggle display on/off, and customize image size and position (Left, Top, Right, Down) on the website.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateCategoryAppearance({
+                          showImages: true,
+                          imagePosition: 'left',
+                          imageSize: 'medium',
+                          customImageSizePx: 26,
+                          imageShape: 'circle',
+                          allProductsImageUrl: DEFAULT_SITE_SETTINGS.categoryAppearance?.allProductsImageUrl,
+                          showAllProductsImage: true,
+                          allFormsImageUrl: DEFAULT_SITE_SETTINGS.categoryAppearance?.allFormsImageUrl,
+                          showAllFormsImage: true,
+                          formImages: DEFAULT_SITE_SETTINGS.categoryAppearance?.formImages,
+                        });
+                        onUpdateCategories(DEFAULT_CATEGORIES);
+                        onUpdateForms(DEFAULT_FORMS);
+                        setSaveSuccessMsg('Reset all Categories, Forms and Images to herbal defaults!');
+                        setTimeout(() => setSaveSuccessMsg(null), 3000);
+                      }}
+                      className="px-2.5 py-1 text-xs text-[#6D6352] hover:bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg flex items-center gap-1 cursor-pointer"
+                      title="Reset all categories and images to default"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset Defaults</span>
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onUpdateCategories(DEFAULT_CATEGORIES)}
-                  className="px-2.5 py-1 text-xs text-[#6D6352] hover:bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg flex items-center gap-1 cursor-pointer"
-                  title="Reset to default herbal categories"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Defaults</span>
-                </button>
-              </div>
+                {/* 1. MASTER SHOW / HIDE TOGGLE */}
+                <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="font-bold text-xs text-[#14291D] block">
+                      Category & Form Button Images Display
+                    </span>
+                    <span className="text-[11px] text-[#695F4F]">
+                      Turn images ON or OFF across all category & form buttons on the website.
+                    </span>
+                  </div>
 
-              {/* Add New Category Form */}
-              <form onSubmit={handleCreateCategory} className="bg-[#FAF8F5] p-3 rounded-lg border border-[#E4DDD0] flex flex-wrap items-center gap-2.5 text-xs">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Category Name / Label</label>
-                  <input
-                    type="text"
-                    required
-                    value={newCatLabel}
-                    onChange={(e) => setNewCatLabel(e.target.value)}
-                    placeholder="e.g. Renal & Kidney Care, Liver Detox"
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded"
-                  />
-                </div>
-                <div className="w-48">
-                  <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Category ID (Optional)</label>
-                  <input
-                    type="text"
-                    value={newCatId}
-                    onChange={(e) => setNewCatId(e.target.value)}
-                    placeholder="auto-generated if empty"
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded font-mono text-[11px]"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="mt-4 px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-amber-300" />
-                  <span>+ Add Category</span>
-                </button>
-              </form>
-
-              {/* Existing Categories List */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-2">
-                {categories.map((cat) => {
-                  const isEditing = editingCatId === cat.id;
-                  const isRoot = cat.id === 'all';
-                  return (
-                    <div
-                      key={cat.id}
-                      className="p-3 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg flex items-center justify-between gap-2 text-xs"
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateCategoryAppearance({ showImages: !catApp.showImages })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        catApp.showImages
+                          ? 'bg-[#14291D] text-white shadow-xs'
+                          : 'bg-white text-[#6E6352] border border-[#DDD5C5]'
+                      }`}
                     >
-                      {isEditing ? (
-                        <div className="flex-1 flex items-center gap-1">
-                          <input
-                            type="text"
-                            value={editingCatLabel}
-                            onChange={(e) => setEditingCatLabel(e.target.value)}
-                            className="flex-1 px-2 py-1 bg-white border border-[#A5D6B6] rounded text-xs"
-                          />
+                      {catApp.showImages ? <Eye className="w-3.5 h-3.5 text-amber-300" /> : <EyeOff className="w-3.5 h-3.5 text-rose-500" />}
+                      <span>{catApp.showImages ? 'Images Visible on Website' : 'Images Hidden on Website'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. IMAGE POSITION (LEFT, TOP, RIGHT, DOWN) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[#14291D]">
+                      📍 Image Position (Left, Top, Right, Down)
+                    </label>
+                    <span className="text-[11px] font-semibold text-[#2C5E43] uppercase tracking-wider">
+                      Current: {catApp.imagePosition}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#695F4F]">
+                    Choose where the image appears relative to the category & form button text.
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                    {/* Left */}
+                    <button
+                      type="button"
+                      onClick={() => updateCategoryAppearance({ imagePosition: 'left' })}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        catApp.imagePosition === 'left'
+                          ? 'bg-[#14291D] text-white border-[#14291D] shadow-sm'
+                          : 'bg-[#FAF8F5] text-[#453D30] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                      }`}
+                    >
+                      <ArrowLeft className={`w-4 h-4 ${catApp.imagePosition === 'left' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+                      <span>Left (बाएं)</span>
+                    </button>
+
+                    {/* Top */}
+                    <button
+                      type="button"
+                      onClick={() => updateCategoryAppearance({ imagePosition: 'top' })}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        catApp.imagePosition === 'top'
+                          ? 'bg-[#14291D] text-white border-[#14291D] shadow-sm'
+                          : 'bg-[#FAF8F5] text-[#453D30] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                      }`}
+                    >
+                      <ArrowUp className={`w-4 h-4 ${catApp.imagePosition === 'top' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+                      <span>Top (ऊपर)</span>
+                    </button>
+
+                    {/* Right */}
+                    <button
+                      type="button"
+                      onClick={() => updateCategoryAppearance({ imagePosition: 'right' })}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        catApp.imagePosition === 'right'
+                          ? 'bg-[#14291D] text-white border-[#14291D] shadow-sm'
+                          : 'bg-[#FAF8F5] text-[#453D30] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                      }`}
+                    >
+                      <ArrowRight className={`w-4 h-4 ${catApp.imagePosition === 'right' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+                      <span>Right (दाएं)</span>
+                    </button>
+
+                    {/* Down / Bottom */}
+                    <button
+                      type="button"
+                      onClick={() => updateCategoryAppearance({ imagePosition: 'bottom' })}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        catApp.imagePosition === 'bottom'
+                          ? 'bg-[#14291D] text-white border-[#14291D] shadow-sm'
+                          : 'bg-[#FAF8F5] text-[#453D30] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                      }`}
+                    >
+                      <ArrowDown className={`w-4 h-4 ${catApp.imagePosition === 'bottom' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+                      <span>Down / Bottom (नीचे)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. IMAGE SIZE & SHAPE CONTROLS */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  {/* Size Selection */}
+                  <div className="space-y-2 p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5]">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-[#14291D]">
+                        📏 Image Size (आकार)
+                      </label>
+                      <span className="text-[11px] font-mono text-[#2C5E43] font-bold">
+                        {previewSizePx}px
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 text-xs">
+                      {[
+                        { id: 'small', label: 'Small', px: 18 },
+                        { id: 'medium', label: 'Medium', px: 26 },
+                        { id: 'large', label: 'Large', px: 36 },
+                        { id: 'extra_large', label: 'XL', px: 46 },
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => updateCategoryAppearance({ imageSize: s.id as any })}
+                          className={`py-1.5 px-1 rounded-lg text-[11px] font-semibold text-center border cursor-pointer transition-colors ${
+                            catApp.imageSize === s.id
+                              ? 'bg-[#2C5E43] text-white border-[#2C5E43]'
+                              : 'bg-white text-[#52493A] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                          }`}
+                        >
+                          <div>{s.label}</div>
+                          <div className="text-[9px] opacity-80">{s.px}px</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom Size Slider */}
+                    <div className="pt-2 border-t border-[#E5DEC-D]/60">
+                      <div className="flex items-center justify-between text-[11px] text-[#695F4F] mb-1">
+                        <span>Custom Pixel Slider:</span>
+                        <span className="font-bold text-[#14291D]">{catApp.customImageSizePx || 26}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="14"
+                        max="70"
+                        step="2"
+                        value={catApp.customImageSizePx || 26}
+                        onChange={(e) => {
+                          const px = parseInt(e.target.value, 10);
+                          updateCategoryAppearance({
+                            imageSize: 'custom',
+                            customImageSizePx: px,
+                          });
+                        }}
+                        className="w-full accent-[#2C5E43] cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Shape Selection */}
+                  <div className="space-y-2 p-3 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5]">
+                    <label className="block text-xs font-bold text-[#14291D]">
+                      🔘 Image Shape (आकार का रूप)
+                    </label>
+
+                    <div className="grid grid-cols-3 gap-1.5 text-xs">
+                      {[
+                        { id: 'circle', label: 'Circle (गोल)', icon: Circle },
+                        { id: 'rounded', label: 'Rounded (हल्का गोल)', icon: Square },
+                        { id: 'square', label: 'Square (चौकोर)', icon: LayoutGrid },
+                      ].map((sh) => {
+                        const Icon = sh.icon;
+                        return (
                           <button
+                            key={sh.id}
                             type="button"
-                            onClick={() => handleSaveEditCategory(cat.id)}
-                            className="p-1 bg-[#2C5E43] text-white rounded cursor-pointer"
-                            title="Save"
+                            onClick={() => updateCategoryAppearance({ imageShape: sh.id as any })}
+                            className={`py-2 px-1.5 rounded-lg text-[11px] font-semibold flex flex-col items-center justify-center gap-1 border cursor-pointer transition-colors ${
+                              catApp.imageShape === sh.id
+                                ? 'bg-[#2C5E43] text-white border-[#2C5E43]'
+                                : 'bg-white text-[#52493A] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                            }`}
                           >
-                            <Check className="w-3.5 h-3.5" />
+                            <Icon className="w-3.5 h-3.5" />
+                            <span>{sh.label}</span>
                           </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. LIVE INTERACTIVE STOREFRONT SIMULATION */}
+                <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#14291D] flex items-center gap-1.5">
+                      <span>👁️ Live Storefront Simulation:</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono">
+                        Position: {catApp.imagePosition} · Size: {previewSizePx}px · {catApp.showImages ? 'Visible' : 'Hidden'}
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-[#695F4F]">
+                      Exact preview of how website visitors see the buttons
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-lg border border-[#E7DFD1] flex items-center gap-2 overflow-x-auto scrollbar-none">
+                    {/* Simulated "All Products" pill */}
+                    <div className={`px-3 py-1 text-xs font-medium rounded-lg bg-[#14291D] text-white shadow-xs ${getMockLayoutClass(Boolean(catApp.showImages && (catApp.allProductsImageUrl || categories[0]?.imageUrl)))}`}>
+                      {catApp.showImages && (catApp.allProductsImageUrl || categories[0]?.imageUrl) && (
+                        <img
+                          src={catApp.allProductsImageUrl || categories[0]?.imageUrl}
+                          alt="All Products"
+                          style={{ width: `${previewSizePx}px`, height: `${previewSizePx}px` }}
+                          className={`${previewShapeClass} object-cover border border-white/30`}
+                        />
+                      )}
+                      <span>All Products</span>
+                    </div>
+
+                    {/* Simulated Category 1 pill */}
+                    <div className={`px-3 py-1 text-xs font-medium rounded-lg bg-[#FAF8F5] text-[#554C3E] border border-[#E7DFD1] ${getMockLayoutClass(Boolean(catApp.showImages && categories[1]?.imageUrl))}`}>
+                      {catApp.showImages && categories[1]?.imageUrl && (
+                        <img
+                          src={categories[1]?.imageUrl}
+                          alt={categories[1]?.label}
+                          style={{ width: `${previewSizePx}px`, height: `${previewSizePx}px` }}
+                          className={`${previewShapeClass} object-cover`}
+                        />
+                      )}
+                      <span>{categories[1]?.label || 'Immunity & Respiratory'}</span>
+                    </div>
+
+                    {/* Simulated Form 1 pill */}
+                    <div className={`px-2.5 py-0.5 text-[11px] font-medium rounded-md bg-white text-[#554C3E] border border-[#DDD5C5] ${getMockLayoutClass(Boolean(catApp.showImages && catApp.formImages?.['Churna (Powder)']?.imageUrl))}`}>
+                      {catApp.showImages && catApp.formImages?.['Churna (Powder)']?.imageUrl && (
+                        <img
+                          src={catApp.formImages['Churna (Powder)'].imageUrl}
+                          alt="Churna"
+                          style={{ width: `${Math.max(16, Math.round(previewSizePx * 0.85))}px`, height: `${Math.max(16, Math.round(previewSizePx * 0.85))}px` }}
+                          className={`${previewShapeClass} object-cover`}
+                        />
+                      )}
+                      <span>Churna (Powder)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. SPECIAL ROOT BUTTONS ("All Products" & "All Forms") */}
+                <div className="p-4 bg-[#F5F9F6] rounded-xl border border-[#C5DED0] space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#2C5E43]" />
+                    <h5 className="font-bold text-xs text-[#14291D]">
+                      ⭐ Special Root Buttons Image Links ("All Products" & "All Forms")
+                    </h5>
+                  </div>
+                  <p className="text-[11px] text-[#554C3E]">
+                    Set direct image URLs and visibility for the first default "All Products" and "All Forms" buttons.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {/* All Products Image */}
+                    <div className="p-3 bg-white rounded-lg border border-[#D0E2D7] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-[#14291D]">1. "All Products" Image</span>
+                        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[#2C5E43] cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={catApp.showAllProductsImage !== false}
+                            onChange={(e) => updateCategoryAppearance({ showAllProductsImage: e.target.checked })}
+                            className="rounded accent-[#2C5E43]"
+                          />
+                          <span>Show Image</span>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {catApp.allProductsImageUrl ? (
+                          <img
+                            src={catApp.allProductsImageUrl}
+                            alt="All Products"
+                            className="w-9 h-9 rounded-lg object-cover border border-[#DDD5C5] shrink-0"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-stone-100 border border-[#DDD5C5] flex items-center justify-center shrink-0 text-[#9C9180]">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                        )}
+                        <input
+                          type="url"
+                          value={catApp.allProductsImageUrl || ''}
+                          onChange={(e) => updateCategoryAppearance({ allProductsImageUrl: e.target.value })}
+                          placeholder="Paste Direct Image URL (https://...)"
+                          className="flex-1 px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs"
+                        />
+                        {catApp.allProductsImageUrl && (
                           <button
                             type="button"
-                            onClick={() => setEditingCatId(null)}
-                            className="p-1 text-[#645A4B] cursor-pointer"
-                            title="Cancel"
+                            onClick={() => updateCategoryAppearance({ allProductsImageUrl: '' })}
+                            className="p-1.5 text-stone-500 hover:text-rose-600 rounded cursor-pointer"
+                            title="Clear image"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
-                        </div>
-                      ) : (
-                        <>
-                          <div>
-                            <span className="font-bold text-[#14291D] block">{cat.label}</span>
-                            <span className="font-mono text-[10px] text-[#7A705E]">id: {cat.id}</span>
-                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                          {!isRoot && (
-                            <div className="flex items-center gap-1">
+                    {/* All Forms Image */}
+                    <div className="p-3 bg-white rounded-lg border border-[#D0E2D7] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-[#14291D]">2. "All Forms" Image</span>
+                        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[#2C5E43] cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={catApp.showAllFormsImage !== false}
+                            onChange={(e) => updateCategoryAppearance({ showAllFormsImage: e.target.checked })}
+                            className="rounded accent-[#2C5E43]"
+                          />
+                          <span>Show Image</span>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {catApp.allFormsImageUrl ? (
+                          <img
+                            src={catApp.allFormsImageUrl}
+                            alt="All Forms"
+                            className="w-9 h-9 rounded-lg object-cover border border-[#DDD5C5] shrink-0"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-stone-100 border border-[#DDD5C5] flex items-center justify-center shrink-0 text-[#9C9180]">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                        )}
+                        <input
+                          type="url"
+                          value={catApp.allFormsImageUrl || ''}
+                          onChange={(e) => updateCategoryAppearance({ allFormsImageUrl: e.target.value })}
+                          placeholder="Paste Direct Image URL (https://...)"
+                          className="flex-1 px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs"
+                        />
+                        {catApp.allFormsImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => updateCategoryAppearance({ allFormsImageUrl: '' })}
+                            className="p-1.5 text-stone-500 hover:text-rose-600 rounded cursor-pointer"
+                            title="Clear image"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CATEGORIES SECTION (DIRECT IMAGE LINK, LABELS & CRUD) */}
+              <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-[#B4741E]" />
+                    <div>
+                      <h4 className="font-serif text-base font-bold text-[#14291D]">
+                        Categories Manager & Direct Image Links ({categories.length})
+                      </h4>
+                      <p className="text-xs text-[#695F4F]">
+                        Set direct images, toggle display, and manage Category labels. Changes persist to Firebase Realtime Database.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add New Category Form (with Direct Image URL) */}
+                <form onSubmit={handleCreateCategory} className="bg-[#FAF8F5] p-3.5 rounded-lg border border-[#E4DDD0] space-y-2.5 text-xs">
+                  <div className="font-bold text-[#14291D] flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-[#2C5E43]" />
+                    <span>Add New Category with Image</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Category Name / Label *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newCatLabel}
+                        onChange={(e) => setNewCatLabel(e.target.value)}
+                        placeholder="e.g. Renal & Kidney Care"
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Category Image URL (Direct Link)</label>
+                      <input
+                        type="url"
+                        value={newCatImageUrl}
+                        onChange={(e) => setNewCatImageUrl(e.target.value)}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Category ID (Optional)</label>
+                      <input
+                        type="text"
+                        value={newCatId}
+                        onChange={(e) => setNewCatId(e.target.value)}
+                        placeholder="auto-generated if empty"
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-[#2C5E43] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newCatShowImage}
+                        onChange={(e) => setNewCatShowImage(e.target.checked)}
+                        className="rounded accent-[#2C5E43]"
+                      />
+                      <span>Show Image on Website</span>
+                    </label>
+
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-amber-300" />
+                      <span>+ Add Category</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* Existing Categories Grid with Direct Image Links */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {categories.map((cat) => {
+                    const isEditing = editingCatId === cat.id;
+                    const isRoot = cat.id === 'all';
+                    const activeImgUrl = isRoot ? (cat.imageUrl || catApp.allProductsImageUrl) : cat.imageUrl;
+                    const isShown = isRoot ? (cat.showImage !== false && (catApp.showAllProductsImage ?? true)) : (cat.showImage !== false);
+
+                    return (
+                      <div
+                        key={cat.id}
+                        className="p-3 bg-[#FAF8F5] border border-[#DDD5C5] rounded-xl flex flex-col justify-between gap-2.5 text-xs hover:border-[#2C5E43] transition-all"
+                      >
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6E6352] mb-0.5">Category Label:</label>
+                              <input
+                                type="text"
+                                value={editingCatLabel}
+                                onChange={(e) => setEditingCatLabel(e.target.value)}
+                                className="w-full px-2.5 py-1 bg-white border border-[#A5D6B6] rounded text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6E6352] mb-0.5">Direct Image Link URL:</label>
+                              <input
+                                type="url"
+                                value={editingCatImageUrl}
+                                onChange={(e) => setEditingCatImageUrl(e.target.value)}
+                                placeholder="https://..."
+                                className="w-full px-2.5 py-1 bg-white border border-[#A5D6B6] rounded text-xs"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
+                              <label className="flex items-center gap-1 text-[11px] text-[#2C5E43] font-semibold cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editingCatShowImage}
+                                  onChange={(e) => setEditingCatShowImage(e.target.checked)}
+                                  className="accent-[#2C5E43]"
+                                />
+                                <span>Show Image</span>
+                              </label>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditCategory(cat.id)}
+                                  className="px-2.5 py-1 bg-[#2C5E43] text-white rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Save</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCatId(null)}
+                                  className="px-2 py-1 bg-stone-200 text-[#554C3E] rounded text-xs cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start gap-2.5">
+                              {/* Thumbnail */}
+                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#DDD5C5] bg-white shrink-0 flex items-center justify-center">
+                                {activeImgUrl ? (
+                                  <img
+                                    src={activeImgUrl}
+                                    alt={cat.label}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4 text-[#A89E8D]" />
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-[#14291D] truncate block text-xs">{cat.label}</span>
+                                  {isRoot && (
+                                    <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold">
+                                      Root
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="font-mono text-[10px] text-[#7A705E] block truncate">id: {cat.id}</span>
+                              </div>
+                            </div>
+
+                            {/* Direct URL Quick Edit Bar */}
+                            <div className="pt-1 border-t border-[#EAE3D4] flex items-center gap-1.5">
+                              <input
+                                type="url"
+                                value={activeImgUrl || ''}
+                                onChange={(e) => {
+                                  const url = e.target.value;
+                                  if (isRoot) {
+                                    updateCategoryAppearance({ allProductsImageUrl: url });
+                                  }
+                                  handleUpdateCategoryImageUrl(cat.id, url);
+                                }}
+                                placeholder="Direct Image URL (https://...)"
+                                className="flex-1 px-2 py-1 bg-white border border-[#DDD5C5] rounded text-[11px]"
+                              />
+
+                              {/* Toggle Show Image */}
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setEditingCatId(cat.id);
-                                  setEditingCatLabel(cat.label);
+                                  if (isRoot) {
+                                    updateCategoryAppearance({ showAllProductsImage: !isShown });
+                                  }
+                                  handleToggleCategoryShowImage(cat.id, isShown);
+                                }}
+                                className={`p-1.5 rounded cursor-pointer ${
+                                  isShown ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-500'
+                                }`}
+                                title={isShown ? 'Image is visible on store (click to hide)' : 'Image is hidden (click to show)'}
+                              >
+                                {isShown ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                              </button>
+
+                              {!isRoot && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingCatId(cat.id);
+                                      setEditingCatLabel(cat.label);
+                                      setEditingCatImageUrl(cat.imageUrl || '');
+                                      setEditingCatShowImage(cat.showImage !== false);
+                                    }}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+                                    title="Edit category"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCategory(cat.id)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                                    title="Delete category"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* FORMULATION FORMS SECTION (DIRECT IMAGE LINKS & CRUD) */}
+              <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-[#2C5E43]" />
+                    <div>
+                      <h4 className="font-serif text-base font-bold text-[#14291D]">
+                        Formulation Forms & Direct Image Links ({forms.length})
+                      </h4>
+                      <p className="text-xs text-[#695F4F]">
+                        Manage pharmaceutical forms (Churna, Vati, Taila, Liquid, etc.) with custom images and visibility.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add New Form (with Image) */}
+                <form onSubmit={handleCreateForm} className="bg-[#FAF8F5] p-3.5 rounded-lg border border-[#E4DDD0] space-y-2.5 text-xs">
+                  <div className="font-bold text-[#14291D] flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-[#2C5E43]" />
+                    <span>Add New Formulation Form with Image</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Form Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newFormName}
+                        onChange={(e) => setNewFormName(e.target.value)}
+                        placeholder="e.g. Granules, Herbal Jelly, Lepa"
+                        className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#2F2920] mb-0.5">Form Image URL (Direct Link)</label>
+                      <input
+                        type="url"
+                        value={newFormImageUrl}
+                        onChange={(e) => setNewFormImageUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-[#2C5E43] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newFormShowImage}
+                        onChange={(e) => setNewFormShowImage(e.target.checked)}
+                        className="rounded accent-[#2C5E43]"
+                      />
+                      <span>Show Image on Website</span>
+                    </label>
+
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-amber-300" />
+                      <span>+ Add Form</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* Existing Forms List with Direct Images */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {forms.map((formName, idx) => {
+                    const isEditing = editingFormIdx === idx;
+                    const formConfig = catApp.formImages?.[formName];
+                    const fImgUrl = formConfig?.imageUrl;
+                    const isShown = formConfig?.showImage !== false;
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 bg-[#FAF8F5] border border-[#DDD5C5] rounded-xl flex flex-col justify-between gap-2.5 text-xs hover:border-[#2C5E43] transition-all"
+                      >
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6E6352] mb-0.5">Form Name:</label>
+                              <input
+                                type="text"
+                                value={editingFormName}
+                                onChange={(e) => setEditingFormName(e.target.value)}
+                                className="w-full px-2.5 py-1 bg-white border border-[#A5D6B6] rounded text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6E6352] mb-0.5">Direct Image Link URL:</label>
+                              <input
+                                type="url"
+                                value={editingFormImageUrl}
+                                onChange={(e) => setEditingFormImageUrl(e.target.value)}
+                                placeholder="https://..."
+                                className="w-full px-2.5 py-1 bg-white border border-[#A5D6B6] rounded text-xs"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
+                              <label className="flex items-center gap-1 text-[11px] text-[#2C5E43] font-semibold cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editingFormShowImage}
+                                  onChange={(e) => setEditingFormShowImage(e.target.checked)}
+                                  className="accent-[#2C5E43]"
+                                />
+                                <span>Show Image</span>
+                              </label>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditForm(idx, formName)}
+                                  className="px-2.5 py-1 bg-[#2C5E43] text-white rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Save</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingFormIdx(null)}
+                                  className="px-2 py-1 bg-stone-200 text-[#554C3E] rounded text-xs cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start gap-2.5">
+                              {/* Form Thumbnail */}
+                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#DDD5C5] bg-white shrink-0 flex items-center justify-center">
+                                {fImgUrl ? (
+                                  <img
+                                    src={fImgUrl}
+                                    alt={formName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <Sparkles className="w-4 h-4 text-[#A89E8D]" />
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <span className="font-bold text-[#14291D] truncate block text-xs">{formName}</span>
+                                <span className="text-[10px] text-[#7A705E] block">
+                                  {fImgUrl ? 'Custom Image linked' : 'No image set'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Direct URL Quick Edit Bar for Form */}
+                            <div className="pt-1 border-t border-[#EAE3D4] flex items-center gap-1.5">
+                              <input
+                                type="url"
+                                value={fImgUrl || ''}
+                                onChange={(e) => handleUpdateFormImage(formName, e.target.value, isShown)}
+                                placeholder="Direct Image URL (https://...)"
+                                className="flex-1 px-2 py-1 bg-white border border-[#DDD5C5] rounded text-[11px]"
+                              />
+
+                              {/* Toggle Show Image */}
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateFormImage(formName, fImgUrl || '', !isShown)}
+                                className={`p-1.5 rounded cursor-pointer ${
+                                  isShown && fImgUrl ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-500'
+                                }`}
+                                title={isShown ? 'Image is visible on store (click to hide)' : 'Image is hidden (click to show)'}
+                              >
+                                {isShown && fImgUrl ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingFormIdx(idx);
+                                  setEditingFormName(formName);
+                                  setEditingFormImageUrl(fImgUrl || '');
+                                  setEditingFormShowImage(isShown);
                                 }}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
-                                title="Edit category name"
+                                title="Edit form"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteCategory(cat.id)}
+                                onClick={() => handleDeleteForm(idx)}
                                 className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                                title="Delete category"
+                                title="Delete form"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* FORMULATION FORMS SECTION */}
-            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-[#2C5E43]" />
-                  <div>
-                    <h4 className="font-serif text-base font-bold text-[#14291D]">
-                      Formulation Forms Manager (Preset & Custom)
-                    </h4>
-                    <p className="text-xs text-[#695F4F]">
-                      Manage traditional pharmaceutical forms (Churna, Vati, Taila, Capsule, Swaras, etc.).
-                    </p>
-                  </div>
+              {/* BOTTOM SAVE ALL BUTTON FOR CATEGORIES, FORMS & APPEARANCE TO FIREBASE */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#FAF8F5] p-4 rounded-xl border border-[#D5CCBC]">
+                <div className="text-xs text-[#695F4F]">
+                  💾 All image links, sizes, positions (Left, Top, Right, Down) & custom items are saved to Firebase Realtime Database.
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => onUpdateForms(DEFAULT_FORMS)}
-                  className="px-2.5 py-1 text-xs text-[#6D6352] hover:bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg flex items-center gap-1 cursor-pointer"
-                  title="Reset to default forms"
+                  onClick={async () => {
+                    await backupCatalogMetaToFirebase({ categories, forms });
+                    await backupSiteSettingsToFirebase(siteForm);
+                    setSaveSuccessMsg('Categories, Formulation Forms, Images & Layout Settings successfully saved to Firebase!');
+                    setTimeout(() => setSaveSuccessMsg(null), 3500);
+                  }}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer text-xs"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Defaults</span>
+                  <Save className="w-4 h-4 text-amber-300" />
+                  <span>Save Categories & Forms to Firebase</span>
                 </button>
               </div>
-
-              {/* Add New Form */}
-              <form onSubmit={handleCreateForm} className="bg-[#FAF8F5] p-3 rounded-lg border border-[#E4DDD0] flex items-center gap-2.5 text-xs">
-                <input
-                  type="text"
-                  required
-                  value={newFormName}
-                  onChange={(e) => setNewFormName(e.target.value)}
-                  placeholder="New Formulation Form (e.g. Granules, Herbal Jelly, Lepa)"
-                  className="flex-1 px-3 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-amber-300" />
-                  <span>+ Add Form</span>
-                </button>
-              </form>
-
-              {/* Existing Forms List */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-2">
-                {forms.map((formName, idx) => {
-                  const isEditing = editingFormIdx === idx;
-                  return (
-                    <div
-                      key={idx}
-                      className="p-3 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg flex items-center justify-between gap-2 text-xs"
-                    >
-                      {isEditing ? (
-                        <div className="flex-1 flex items-center gap-1">
-                          <input
-                            type="text"
-                            value={editingFormName}
-                            onChange={(e) => setEditingFormName(e.target.value)}
-                            className="flex-1 px-2 py-1 bg-white border border-[#A5D6B6] rounded text-xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveEditForm(idx)}
-                            className="p-1 bg-[#2C5E43] text-white rounded cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingFormIdx(null)}
-                            className="p-1 text-[#645A4B] cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="font-semibold text-[#14291D]">{formName}</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingFormIdx(idx);
-                                setEditingFormName(formName);
-                              }}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
-                              title="Edit form name"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteForm(idx)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                              title="Delete form"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
-
-            {/* Bottom Save All Button for Categories & Forms */}
-            <div className="flex justify-end pt-2 pb-4">
-              <button
-                type="button"
-                onClick={async () => {
-                  await backupCatalogMetaToFirebase({ categories, forms });
-                  setSaveSuccessMsg('All Categories & Formulation Forms saved and synced to Firebase!');
-                  setTimeout(() => setSaveSuccessMsg(null), 3000);
-                }}
-                className="px-6 py-2.5 bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg font-bold flex items-center gap-2 shadow-md cursor-pointer text-xs"
-              >
-                <Save className="w-4 h-4 text-amber-300" />
-                <span>Save Categories & Forms to Firebase</span>
-              </button>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Tab 3: Multiple Contacts (Add, Edit, Delete Phones, WhatsApp, Emails) */}
         {activeTab === 'contacts' && (

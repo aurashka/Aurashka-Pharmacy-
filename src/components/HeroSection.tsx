@@ -520,12 +520,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
                         {/* Product details */}
                         <div className="grid grid-cols-12 gap-4 items-center pt-3">
-                          <div className="col-span-4 aspect-square rounded-lg overflow-hidden bg-[#FAF8F5] border border-[#DDD5C5] relative">
+                          <div className="col-span-4 aspect-square rounded-none overflow-hidden bg-transparent border-0 relative">
                             <img
                               src={deal.customImage || product.image}
                               alt={deal.customTitle || product.name}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103 bg-transparent"
                               draggable={false}
                             />
                             {product.images && product.images.length > 1 && (

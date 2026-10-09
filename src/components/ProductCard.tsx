@@ -164,12 +164,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       className="group bg-white rounded-xl border border-[#E4DDD0] hover:border-[#2C5E43] shadow-xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer relative"
     >
       {/* Product Image Slot - ONLY PRIMARY SET IMAGE SHOWS HERE */}
-      <div className="relative aspect-4/3 bg-[#F2EDE1] overflow-hidden">
+      <div className="relative aspect-4/3 bg-transparent overflow-hidden rounded-none border-0">
         <img
           src={primaryImage}
           alt={product.name}
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300 bg-transparent"
           onError={(e) => {
             (e.currentTarget as HTMLElement).style.display = 'none';
           }}

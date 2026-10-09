@@ -472,11 +472,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-[#D5CCBC] overflow-hidden shadow-xs relative group aspect-4/3 sm:aspect-square flex items-center justify-center bg-[#F7F4EC]">
+              <div className="bg-transparent rounded-none border-0 overflow-hidden shadow-none relative group aspect-4/3 sm:aspect-square flex items-center justify-center">
                 <img
                   src={activeImage}
                   alt={product.name}
-                  className="w-full h-full object-cover cursor-zoom-in group-hover:scale-102 transition-transform duration-300"
+                  className="w-full h-full object-cover cursor-zoom-in group-hover:scale-102 transition-transform duration-300 bg-transparent"
                   onClick={() => setIsLightboxOpen(true)}
                 />
 

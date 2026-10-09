@@ -144,6 +144,18 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
     topNav: {
       backgroundStyle: s.topNav?.backgroundStyle || DEFAULT_SITE_SETTINGS.topNav?.backgroundStyle || 'default',
     },
+    categoryAppearance: {
+      showImages: s.categoryAppearance?.showImages !== undefined ? Boolean(s.categoryAppearance.showImages) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showImages ?? true),
+      imagePosition: s.categoryAppearance?.imagePosition || DEFAULT_SITE_SETTINGS.categoryAppearance?.imagePosition || 'left',
+      imageSize: s.categoryAppearance?.imageSize || DEFAULT_SITE_SETTINGS.categoryAppearance?.imageSize || 'medium',
+      customImageSizePx: s.categoryAppearance?.customImageSizePx ? Number(s.categoryAppearance.customImageSizePx) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.customImageSizePx || 26),
+      imageShape: s.categoryAppearance?.imageShape || DEFAULT_SITE_SETTINGS.categoryAppearance?.imageShape || 'circle',
+      allProductsImageUrl: s.categoryAppearance?.allProductsImageUrl !== undefined ? s.categoryAppearance.allProductsImageUrl : (DEFAULT_SITE_SETTINGS.categoryAppearance?.allProductsImageUrl || ''),
+      showAllProductsImage: s.categoryAppearance?.showAllProductsImage !== undefined ? Boolean(s.categoryAppearance.showAllProductsImage) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showAllProductsImage ?? true),
+      allFormsImageUrl: s.categoryAppearance?.allFormsImageUrl !== undefined ? s.categoryAppearance.allFormsImageUrl : (DEFAULT_SITE_SETTINGS.categoryAppearance?.allFormsImageUrl || ''),
+      showAllFormsImage: s.categoryAppearance?.showAllFormsImage !== undefined ? Boolean(s.categoryAppearance.showAllFormsImage) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showAllFormsImage ?? true),
+      formImages: s.categoryAppearance?.formImages && typeof s.categoryAppearance.formImages === 'object' ? s.categoryAppearance.formImages : (DEFAULT_SITE_SETTINGS.categoryAppearance?.formImages || {}),
+    },
   };
 }
 
@@ -684,29 +696,31 @@ function PharmacyApp() {
       />
 
       {/* Comprehensive Admin Panel Modal */}
-      <AdminPanelModal
-        isOpen={isAdminPanelOpen}
-        onClose={() => {
-          setIsAdminPanelOpen(false);
-          setProductToEditInAdmin(null);
-        }}
-        products={products}
-        onAddProduct={handleAddProduct}
-        onUpdateProduct={handleUpdateProduct}
-        onDeleteProduct={handleDeleteProduct}
-        onResetProductsToDefault={handleResetProductsToDefault}
-        onPreviewProduct={(prod) => {
-          setIsAdminPanelOpen(false);
-          setSelectedProductForDetail(prod);
-        }}
-        initialProductToEdit={productToEditInAdmin}
-        siteSettings={siteSettings}
-        onUpdateSiteSettings={handleUpdateSiteSettings}
-        categories={categories}
-        onUpdateCategories={handleUpdateCategories}
-        forms={forms}
-        onUpdateForms={handleUpdateForms}
-      />
+      {isAdminPanelOpen && (
+        <AdminPanelModal
+          isOpen={isAdminPanelOpen}
+          onClose={() => {
+            setIsAdminPanelOpen(false);
+            setProductToEditInAdmin(null);
+          }}
+          products={products}
+          onAddProduct={handleAddProduct}
+          onUpdateProduct={handleUpdateProduct}
+          onDeleteProduct={handleDeleteProduct}
+          onResetProductsToDefault={handleResetProductsToDefault}
+          onPreviewProduct={(prod) => {
+            setIsAdminPanelOpen(false);
+            setSelectedProductForDetail(prod);
+          }}
+          initialProductToEdit={productToEditInAdmin}
+          siteSettings={siteSettings}
+          onUpdateSiteSettings={handleUpdateSiteSettings}
+          categories={categories}
+          onUpdateCategories={handleUpdateCategories}
+          forms={forms}
+          onUpdateForms={handleUpdateForms}
+        />
+      )}
 
       {/* Authentication Modal (Login & Signup with auto-close and immediate feedback) */}
       <AuthModal
