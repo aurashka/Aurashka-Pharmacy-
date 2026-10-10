@@ -1,4 +1,4 @@
-import { HerbalProduct, SiteSettings, BannerSliderConfig, ProductHorizontalList } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings, BannerSliderConfig, ProductHorizontalList, MarqueeConfig, MarqueeItem } from '../types/pharmacy';
 
 export const HERBAL_PRODUCTS: HerbalProduct[] = [
   {
@@ -998,8 +998,71 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
       },
     },
   },
+  marquee: {
+    enabled: true,
+    placement: 'below_header',
+    direction: 'left',
+    speedSeconds: 26,
+    pauseOnHover: true,
+    backgroundColor: '#14291D',
+    textColor: '#FFFFFF',
+    fontSize: 'medium',
+    paddingSize: 'regular',
+    dividerIcon: 'leaf',
+    showBorder: true,
+    borderColor: '#234632',
+    items: [
+      {
+        id: 'mq-1',
+        type: 'text',
+        text: '🌿 100% Classical Botanical Extracts & Lab Verified AYUSH Formulations',
+        badge: 'AUTHENTIC HERBOLOGY',
+        badgeColor: '#B4741E',
+        badgeTextColor: '#FFFFFF',
+        linkType: 'none',
+      },
+      {
+        id: 'mq-2',
+        type: 'product',
+        productId: 'ashwagandha-ksm66',
+        customLabel: 'Bestseller: Ashwagandha KSM-66 Gold (Standardized 5% Withanolides)',
+        showImage: true,
+        showPrice: true,
+        showBadge: true,
+      },
+      {
+        id: 'mq-3',
+        type: 'text',
+        text: '🚚 Free Express Dispatch across India on orders over ₹999',
+        badge: 'FAST DISPATCH',
+        badgeColor: '#2C5E43',
+        badgeTextColor: '#FFFFFF',
+        linkType: 'category',
+        linkCategory: 'all',
+      },
+      {
+        id: 'mq-4',
+        type: 'product',
+        productId: 'shilajit-himalayan-resin',
+        customLabel: 'Himalayan Shilajit Gold Resin (>75% Fulvic Acid & 84 Minerals)',
+        showImage: true,
+        showPrice: true,
+        showBadge: true,
+      },
+      {
+        id: 'mq-5',
+        type: 'text',
+        text: '💬 Free Dosage & Anupana Guidance from Certified BAMS Doctors on WhatsApp',
+        badge: 'DOCTOR CONSULT',
+        badgeColor: '#166534',
+        badgeTextColor: '#FFFFFF',
+        linkType: 'whatsapp',
+      },
+    ],
+  },
 };
 
+export const DEFAULT_MARQUEE_CONFIG: MarqueeConfig = DEFAULT_SITE_SETTINGS.marquee!;
 export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;
 export const DEFAULT_PRODUCT_HORIZONTAL_LISTS: ProductHorizontalList[] = DEFAULT_SITE_SETTINGS.productHorizontalLists!;
 

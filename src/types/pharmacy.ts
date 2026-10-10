@@ -68,6 +68,48 @@ export interface ProductCustomField {
   section?: ProductTabTarget;
 }
 
+export type MonographPriority = 'high' | 'mid' | 'low' | 'normal';
+
+export interface MonographDetailItem {
+  id: string;
+  title: string;                 // Field title (e.g. "Prescribed Standard Dosage", "Anupana", "Storage")
+  text: string;                  // Description / detailed text
+  priority?: MonographPriority;  // 'high' (Red) | 'mid' (Yellow) | 'low' (Green) | 'normal' (Normal)
+  customTag?: string;            // Custom tag text badge e.g. "Strict Adherence", "100% Pure"
+  customTagBgColor?: string;     // Custom background color for the tag
+  customTagTextColor?: string;   // Custom text color for the tag
+  // Multiple tags support (displayed as separate badges with background colors):
+  tags?: string[];               // e.g. ["Anidra", "Manodaurbalya", "Kshaya"] or ["Text1", "T2"]
+  tagsBgColor?: string;          // Optional custom background color for the tags
+  tagsTextColor?: string;        // Optional custom text color for tags
+  // Ingredient details (composed 1-line item with customizable small image):
+  imageUrl?: string;             // Herb / ingredient image link
+  imageSize?: 'small' | 'medium' | 'large' | string; // Preset or custom string
+  customImageSizePx?: number;    // Manually typed image size in pixels (e.g. 24, 32, 40)
+  botanicalName?: string;        // Botanical Latin species
+  quantityOrPotency?: string;    // e.g. "500 mg", "5% Withanolides"
+  role?: string;                 // Pharmacological role
+  isIngredient?: boolean;        // Composed compact 1-line layout
+  // FAQs:
+  isFaq?: boolean;
+  // Customer Feedbacks / Reviews (Admin managed only, displayed in quotes ""):
+  isReview?: boolean;
+  author?: string;               // Reviewer name
+  rating?: number;               // 1 to 5 stars
+  date?: string;                 // Date / verification label
+}
+
+export interface ProductMonographTab {
+  id: string;                    // Tab identifier (overview, benefits, ingredients, dosage, specifications, faqs_reviews, or custom)
+  title: string;                 // Display title: Tab 1: Overview, Tab 2: Benefits & Uses, etc.
+  subtitle?: string;             // Subtitle description
+  icon?: string;                 // Icon name
+  items: MonographDetailItem[];  // Detail cards inside this tab
+  isCustom?: boolean;
+  enabled?: boolean;
+  order?: number;
+}
+
 export interface ProductCustomTag {
   text: string;
   bgColor: string;
@@ -127,6 +169,7 @@ export interface HerbalProduct {
   primaryImageOverlayOpacity?: number;
   primaryImageOverlayCoveragePercent?: number;
   primaryImageOverlayFadeSoftness?: number;
+  monographTabs?: ProductMonographTab[]; // Horizontal tabs with customizable details, priorities, and cards
 }
 
 export interface ProductAssuranceBadges {
@@ -254,6 +297,50 @@ export interface SiteSettings {
   headerBanner?: HeaderBannerConfig;
   topNav?: TopNavConfig;
   categoryAppearance?: CategoryAppearanceConfig;
+  marquee?: MarqueeConfig;
+}
+
+export type MarqueePlacement = 'top_bar' | 'below_header' | 'below_hero' | 'above_catalog' | 'above_footer';
+export type MarqueeSize = 'small' | 'medium' | 'large';
+export type MarqueeDirection = 'left' | 'right';
+export type MarqueeDividerIcon = 'leaf' | 'sparkles' | 'star' | 'flame' | 'dot' | 'none';
+
+export interface MarqueeItem {
+  id: string;
+  type: 'text' | 'product';
+  // Text Item fields
+  text?: string;
+  badge?: string; // Optional tag text, e.g. "OFFER", "FAST DELIVERY", "AYURVEDA"
+  badgeColor?: string; // Hex color e.g. "#B4741E"
+  badgeTextColor?: string; // Hex color e.g. "#FFFFFF"
+  textColor?: string; // Custom override text color
+  linkType?: 'none' | 'url' | 'product' | 'category' | 'whatsapp';
+  linkUrl?: string;
+  linkProductId?: string;
+  linkCategory?: string;
+
+  // Product Item fields
+  productId?: string;
+  customLabel?: string; // Optional custom title override
+  showImage?: boolean;
+  showPrice?: boolean;
+  showBadge?: boolean;
+}
+
+export interface MarqueeConfig {
+  enabled: boolean;
+  placement: MarqueePlacement;
+  direction: MarqueeDirection;
+  speedSeconds: number; // Duration in seconds for full loop (10 - 70)
+  pauseOnHover: boolean;
+  backgroundColor: string; // Background color e.g. "#14291D"
+  textColor: string; // Text color e.g. "#FFFFFF"
+  fontSize: MarqueeSize; // 'small' | 'medium' | 'large'
+  paddingSize: 'compact' | 'regular' | 'spacious';
+  dividerIcon: MarqueeDividerIcon;
+  showBorder: boolean;
+  borderColor?: string;
+  items: MarqueeItem[];
 }
 
 export interface HeaderBannerConfig {

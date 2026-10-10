@@ -5,10 +5,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { HERBAL_PRODUCTS, DEFAULT_SITE_SETTINGS, DEFAULT_CATEGORIES, DEFAULT_FORMS } from './data/herbalProducts';
-import { HerbalProduct, ProductCategory, SiteSettings, CategoryItem, BannerSliderConfig, BannerSlideItem, ProductHorizontalList } from './types/pharmacy';
+import { HerbalProduct, ProductCategory, SiteSettings, CategoryItem, BannerSliderConfig, BannerSlideItem, ProductHorizontalList, MarqueePlacement } from './types/pharmacy';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
+import { MarqueeTicker } from './components/MarqueeTicker';
 import { ProductDashboard } from './components/ProductDashboard';
 import { ProductDetailPage } from './components/ProductDetailPage';
 import { ContactPage } from './components/ContactPage';
@@ -155,6 +156,25 @@ function normalizeSiteSettings(settings?: Partial<SiteSettings>): SiteSettings {
       allFormsImageUrl: s.categoryAppearance?.allFormsImageUrl !== undefined ? s.categoryAppearance.allFormsImageUrl : (DEFAULT_SITE_SETTINGS.categoryAppearance?.allFormsImageUrl || ''),
       showAllFormsImage: s.categoryAppearance?.showAllFormsImage !== undefined ? Boolean(s.categoryAppearance.showAllFormsImage) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showAllFormsImage ?? true),
       formImages: s.categoryAppearance?.formImages && typeof s.categoryAppearance.formImages === 'object' ? s.categoryAppearance.formImages : (DEFAULT_SITE_SETTINGS.categoryAppearance?.formImages || {}),
+    },
+    marquee: {
+      enabled: s.marquee?.enabled !== undefined ? Boolean(s.marquee.enabled) : (DEFAULT_SITE_SETTINGS.marquee?.enabled ?? true),
+      placement: s.marquee?.placement || DEFAULT_SITE_SETTINGS.marquee?.placement || 'below_header',
+      direction: s.marquee?.direction || DEFAULT_SITE_SETTINGS.marquee?.direction || 'left',
+      speedSeconds: s.marquee?.speedSeconds ? Number(s.marquee.speedSeconds) : (DEFAULT_SITE_SETTINGS.marquee?.speedSeconds || 26),
+      pauseOnHover: s.marquee?.pauseOnHover !== undefined ? Boolean(s.marquee.pauseOnHover) : (DEFAULT_SITE_SETTINGS.marquee?.pauseOnHover ?? true),
+      backgroundColor: s.marquee?.backgroundColor || DEFAULT_SITE_SETTINGS.marquee?.backgroundColor || '#14291D',
+      textColor: s.marquee?.textColor || DEFAULT_SITE_SETTINGS.marquee?.textColor || '#FFFFFF',
+      fontSize: s.marquee?.fontSize || DEFAULT_SITE_SETTINGS.marquee?.fontSize || 'medium',
+      paddingSize: s.marquee?.paddingSize || DEFAULT_SITE_SETTINGS.marquee?.paddingSize || 'regular',
+      dividerIcon: s.marquee?.dividerIcon || DEFAULT_SITE_SETTINGS.marquee?.dividerIcon || 'leaf',
+      showBorder: s.marquee?.showBorder !== undefined ? Boolean(s.marquee.showBorder) : (DEFAULT_SITE_SETTINGS.marquee?.showBorder ?? true),
+      borderColor: s.marquee?.borderColor || DEFAULT_SITE_SETTINGS.marquee?.borderColor || '#234632',
+      items: Array.isArray(s.marquee?.items) && s.marquee.items.length > 0
+        ? s.marquee.items
+        : (s.marquee?.items && typeof s.marquee.items === 'object' && Object.values(s.marquee.items).length > 0
+          ? (Object.values(s.marquee.items) as any[])
+          : (DEFAULT_SITE_SETTINGS.marquee?.items || [])),
     },
   };
 }
@@ -496,8 +516,33 @@ function PharmacyApp() {
     }, 100);
   };
 
+  const renderMarquee = (position: MarqueePlacement) => {
+    if (!siteSettings.marquee || !siteSettings.marquee.enabled) return null;
+    if (siteSettings.marquee.placement !== position) return null;
+    return (
+      <MarqueeTicker
+        config={siteSettings.marquee}
+        products={products}
+        onSelectProduct={handleSelectProduct}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          handleNavigateSection('deals-catalog');
+        }}
+        onOpenConsultationModal={() => handleOpenConsultationModal()}
+        isAdmin={isAdmin}
+        onOpenAdminPanel={() => {
+          setProductToEditInAdmin(null);
+          setIsAdminPanelOpen(true);
+        }}
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#FBF9F5] text-[#1E2922] flex flex-col font-sans">
+      {/* Optional Top-of-Page Marquee Bar */}
+      {renderMarquee('top_bar')}
+
       {/* 3-Zone Navigation Header with Professional Dropdown Menus */}
       <Header
         cartCount={totalCartCount}
@@ -549,6 +594,9 @@ function PharmacyApp() {
           </div>
         </aside>
       )}
+
+      {/* Below Header Marquee Ticker */}
+      {renderMarquee('below_header')}
 
       {/* FLOATING ADMIN ACCESS BUTTON ON MAIN PAGE FRONT (Only for role: admin) */}
       {isAdmin && (
@@ -615,6 +663,9 @@ function PharmacyApp() {
               cartProductIds={cartProductIds}
             />
 
+            {/* Below Hero Marquee Ticker */}
+            {renderMarquee('below_hero')}
+
             {/* Custom Curated Product Horizontal Lists / Shelves */}
             {siteSettings.productHorizontalLists && siteSettings.productHorizontalLists.length > 0 && (
               <ProductHorizontalListsSection
@@ -631,6 +682,9 @@ function PharmacyApp() {
                 }}
               />
             )}
+
+            {/* Above Catalog Marquee Ticker */}
+            {renderMarquee('above_catalog')}
 
             {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
             <ProductDashboard
@@ -728,11 +782,14 @@ function PharmacyApp() {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {/* Bottom Floating Quick-Contact Button (WhatsApp + Phone + Consult) */}
+      {/* Floating Quick-Contact Button (WhatsApp + Phone + Consult) */}
       <FloatingContactWidget
         onOpenConsultationModal={() => handleOpenConsultationModal()}
         siteSettings={siteSettings}
       />
+
+      {/* Above Footer Marquee Ticker */}
+      {renderMarquee('above_footer')}
 
       {/* Footer */}
       <Footer

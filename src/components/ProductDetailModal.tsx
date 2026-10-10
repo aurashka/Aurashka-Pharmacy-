@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HerbalProduct, SiteSettings, ProductVariant } from '../types/pharmacy';
+import { ProductMonographTabs } from "./ProductMonographTabs";
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
@@ -714,88 +715,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Custom Specifications / Fields (Name, Value & Display Position Order) */}
-            {product.customFields && product.customFields.length > 0 && (
-              <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] space-y-2.5">
-                <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-2 border-b border-[#F0EAE0] pb-1.5">
-                  <Sliders className="w-4 h-4 text-[#2C5E43]" />
-                  <span>Custom Formulation Specifications</span>
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-                  {[...product.customFields]
-                    .sort((a, b) => a.position - b.position)
-                    .map((field) => (
-                      <div key={field.id} className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D5] text-xs">
-                        <span className="text-[11px] text-[#7A705E] block font-medium uppercase tracking-wider">{field.name}</span>
-                        <span className="font-bold text-[#14291D] mt-0.5 block">{field.value}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Uses & Dosage Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Uses */}
-              <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] space-y-2">
-                <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-1.5 border-b border-[#F0EAE0] pb-1.5">
-                  <Leaf className="w-4 h-4 text-[#2C5E43]" />
-                  <span>Therapeutic Uses & Clinical Benefits</span>
-                </h3>
-                <ul className="space-y-1 text-xs text-[#4F4638] list-disc list-inside">
-                  {product.detailedUses.primaryBenefits.map((b, i) => (
-                    <li key={i} className="leading-relaxed">{b}</li>
-                  ))}
-                </ul>
-                <div className="text-[11px] text-[#2C5E43] font-medium pt-1">
-                  Dosha Action: {product.detailedUses.doshaEffect}
-                </div>
-              </div>
-
-              {/* Dosage */}
-              <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] space-y-2">
-                <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-1.5 border-b border-[#F0EAE0] pb-1.5">
-                  <Clock className="w-4 h-4 text-[#2C5E43]" />
-                  <span>Prescribed Dosage & Anupana</span>
-                </h3>
-                <div className="space-y-1.5 text-xs text-[#4F4638]">
-                  <p><span className="font-semibold text-[#14291D]">Dosage:</span> {product.dosageAndAnupana.standardDosage}</p>
-                  <p><span className="font-semibold text-[#14291D]">Timing:</span> {product.dosageAndAnupana.bestTiming}</p>
-                  <p><span className="font-semibold text-[#14291D]">Anupana (Carrier):</span> <span className="text-[#2C5E43] font-semibold">{product.dosageAndAnupana.anupanaCarrier}</span></p>
-                  <p><span className="font-semibold text-[#14291D]">Duration:</span> {product.dosageAndAnupana.duration}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Active Herbal Composition */}
-            <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] space-y-2">
-              <h3 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#2C5E43]" />
-                <span>Active Herbal Composition ({product.keyIngredients.length} Ingredients)</span>
-              </h3>
-              <div className="overflow-x-auto visible-tabs-scrollbar">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#EAE3D4] text-[#736856]">
-                      <th className="py-1.5 px-2 font-semibold">Herb</th>
-                      <th className="py-1.5 px-2 font-semibold">Botanical Species</th>
-                      <th className="py-1.5 px-2 font-semibold">Potency</th>
-                      <th className="py-1.5 px-2 font-semibold">Therapeutic Role</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F4EFE6]">
-                    {product.keyIngredients.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="py-1.5 px-2 font-medium text-[#1E2922]">{item.herb}</td>
-                        <td className="py-1.5 px-2 italic text-[#6E6352]">{item.botanicalName}</td>
-                        <td className="py-1.5 px-2 font-mono text-[#2C5E43]">{item.potencyOrMg}</td>
-                        <td className="py-1.5 px-2 text-[#554C3D]">{item.role}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {/* Official Ayurvedic Monograph Tabs (Horizontal scrollable, priority colored cards & admin customizable) */}
+            <ProductMonographTabs product={product} />
 
             {/* Other Product Suggestions (Horizontal Scroll, Same Category > Others, Random) */}
             {suggestedProducts.length > 0 && (

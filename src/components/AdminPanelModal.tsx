@@ -22,8 +22,27 @@ import {
   CategoryAppearanceConfig,
   CategoryImagePosition,
   CategoryImageSize,
-  CategoryImageShape
+  CategoryImageShape,
+  MarqueeConfig,
+  MarqueeItem,
+  MarqueePlacement,
+  MarqueeSize,
+  MarqueeDirection,
+  MarqueeDividerIcon,
+  ProductMonographTab,
+  MonographDetailItem,
+  MonographPriority
 } from '../types/pharmacy';
+import { MarqueeTicker } from './MarqueeTicker';
+import { ProductMonographTabs } from './ProductMonographTabs';
+import { AdminMonographTabsManager } from './AdminMonographTabsManager';
+import { 
+  buildDefaultMonographTabs, 
+  getEffectiveMonographTabs, 
+  getPriorityCardClasses, 
+  getPriorityTagClasses, 
+  HERB_IMAGE_MAP 
+} from '../utils/monographHelper';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
@@ -82,11 +101,17 @@ import {
   Palette,
   Circle,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Repeat,
+  MoveHorizontal,
+  ScrollText,
+  Quote,
+  HelpCircle,
+  FolderPlus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
-import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS } from '../data/herbalProducts';
+import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS, DEFAULT_MARQUEE_CONFIG } from '../data/herbalProducts';
 import { detectVideoType, getYouTubeEmbedUrl, getYouTubeThumbnail, isValidVideoUrl } from '../utils/videoHelper';
 import { GRADIENT_OVERLAY_OPTIONS, GradientOverlayStyle, getProductBottomOverlayClasses } from '../utils/gradientHelper';
 
@@ -126,13 +151,54 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'deal_of_week' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'monograph_tabs' | 'deal_of_week' | 'marquee' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [editingMarqueeItemId, setEditingMarqueeItemId] = useState<string | null>(null);
+  const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>(products[0]?.id || '');
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Product Detail Monograph Tabs Management State (Tabs 1-6 & Custom Tabs)
+  // ══════════════════════════════════════════════════════════════════════════
+  const [selectedProductForMonographId, setSelectedProductForMonographId] = useState<string>(products[0]?.id || '');
+  const [activeMonographTabId, setActiveMonographTabId] = useState<string>('overview');
+  const [isAddingCustomTab, setIsAddingCustomTab] = useState(false);
+  const [newCustomTabTitle, setNewCustomTabTitle] = useState('');
+  const [newCustomTabSubtitle, setNewCustomTabSubtitle] = useState('');
+  const [newCustomTabIcon, setNewCustomTabIcon] = useState('sparkles');
+
+  // Editing tab meta
+  const [editingTabMetaId, setEditingTabMetaId] = useState<string | null>(null);
+  const [editingTabTitle, setEditingTabTitle] = useState('');
+  const [editingTabSubtitle, setEditingTabSubtitle] = useState('');
+
+  // Editing / adding detail items inside tab
+  const [isAddingDetailItem, setIsAddingDetailItem] = useState(false);
+  const [editingDetailItemId, setEditingDetailItemId] = useState<string | null>(null);
+  const [itemTitleInput, setItemTitleInput] = useState('');
+  const [itemTextInput, setItemTextInput] = useState('');
+  const [itemPriorityInput, setItemPriorityInput] = useState<MonographPriority>('normal');
+  const [itemCustomTagInput, setItemCustomTagInput] = useState('');
+  const [itemCustomTagBgColorInput, setItemCustomTagBgColorInput] = useState('');
+  const [itemCustomTagTextColorInput, setItemCustomTagTextColorInput] = useState('');
+  // Ingredient extras:
+  const [itemImageUrlInput, setItemImageUrlInput] = useState('');
+  const [itemImageSizeInput, setItemImageSizeInput] = useState<'small' | 'medium' | 'large'>('medium');
+  const [itemBotanicalNameInput, setItemBotanicalNameInput] = useState('');
+  const [itemPotencyInput, setItemPotencyInput] = useState('');
+  const [itemRoleInput, setItemRoleInput] = useState('');
+  // Feedback & Review extras:
+  const [itemIsReviewInput, setItemIsReviewInput] = useState(false);
+  const [itemAuthorInput, setItemAuthorInput] = useState('');
+  const [itemRatingInput, setItemRatingInput] = useState(5);
+  const [itemDateInput, setItemDateInput] = useState('');
+  // FAQ extras:
+  const [itemIsFaqInput, setItemIsFaqInput] = useState(false);
+  const [monographDeleteConfirmTabId, setMonographDeleteConfirmTabId] = useState<string | null>(null);
 
   // Doctors & Key People (Round Images & Text) Management State
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
@@ -358,6 +424,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         showAllFormsImage: s.categoryAppearance?.showAllFormsImage !== undefined ? Boolean(s.categoryAppearance.showAllFormsImage) : (DEFAULT_SITE_SETTINGS.categoryAppearance?.showAllFormsImage ?? true),
         formImages: s.categoryAppearance?.formImages && typeof s.categoryAppearance.formImages === 'object' ? s.categoryAppearance.formImages : (DEFAULT_SITE_SETTINGS.categoryAppearance?.formImages || {}),
       },
+      marquee: {
+        enabled: s.marquee?.enabled !== undefined ? Boolean(s.marquee.enabled) : (DEFAULT_MARQUEE_CONFIG?.enabled ?? true),
+        placement: s.marquee?.placement || DEFAULT_MARQUEE_CONFIG?.placement || 'below_header',
+        direction: s.marquee?.direction || DEFAULT_MARQUEE_CONFIG?.direction || 'left',
+        speedSeconds: s.marquee?.speedSeconds ? Number(s.marquee.speedSeconds) : (DEFAULT_MARQUEE_CONFIG?.speedSeconds || 26),
+        pauseOnHover: s.marquee?.pauseOnHover !== undefined ? Boolean(s.marquee.pauseOnHover) : (DEFAULT_MARQUEE_CONFIG?.pauseOnHover ?? true),
+        backgroundColor: s.marquee?.backgroundColor || DEFAULT_MARQUEE_CONFIG?.backgroundColor || '#14291D',
+        textColor: s.marquee?.textColor || DEFAULT_MARQUEE_CONFIG?.textColor || '#FFFFFF',
+        fontSize: s.marquee?.fontSize || DEFAULT_MARQUEE_CONFIG?.fontSize || 'medium',
+        paddingSize: s.marquee?.paddingSize || DEFAULT_MARQUEE_CONFIG?.paddingSize || 'regular',
+        dividerIcon: s.marquee?.dividerIcon || DEFAULT_MARQUEE_CONFIG?.dividerIcon || 'leaf',
+        showBorder: s.marquee?.showBorder !== undefined ? Boolean(s.marquee.showBorder) : (DEFAULT_MARQUEE_CONFIG?.showBorder ?? true),
+        borderColor: s.marquee?.borderColor || DEFAULT_MARQUEE_CONFIG?.borderColor || '#234632',
+        items: Array.isArray(s.marquee?.items) && s.marquee.items.length > 0
+          ? s.marquee.items
+          : (s.marquee?.items && typeof s.marquee.items === 'object' && Object.values(s.marquee.items).length > 0
+            ? (Object.values(s.marquee.items) as any[])
+            : (DEFAULT_MARQUEE_CONFIG?.items || [])),
+      },
     };
   };
 
@@ -551,6 +636,291 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     });
     setSaveSuccessMsg('Restored default banner slides!');
     setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  // Marquee Configuration & Infinite Scroll Management Helpers
+  const currentMarquee: MarqueeConfig = siteForm.marquee || DEFAULT_MARQUEE_CONFIG;
+
+  const handleUpdateMarquee = (updates: Partial<MarqueeConfig>) => {
+    const updatedMarquee: MarqueeConfig = {
+      ...currentMarquee,
+      ...updates,
+    };
+    const updatedSite: SiteSettings = {
+      ...siteForm,
+      marquee: updatedMarquee,
+    };
+    setSiteForm(updatedSite);
+    onUpdateSiteSettings(updatedSite);
+  };
+
+  const handleAddMarqueeTextItem = () => {
+    const newItem: MarqueeItem = {
+      id: `mq-${Date.now()}`,
+      type: 'text',
+      text: '🌿 100% Classical Botanical Extracts & Lab Verified Formulations',
+      badge: 'SPECIAL ANNOUNCEMENT',
+      badgeColor: '#B4741E',
+      badgeTextColor: '#FFFFFF',
+      linkType: 'none',
+    };
+    handleUpdateMarquee({ items: [...currentMarquee.items, newItem] });
+    setEditingMarqueeItemId(newItem.id);
+    setSaveSuccessMsg('Added new text item to marquee!');
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  const handleAddMarqueeProductItem = (productId?: string) => {
+    const targetProduct = products.find((p) => p.id === productId) || products[0];
+    if (!targetProduct) return;
+    const newItem: MarqueeItem = {
+      id: `mq-${Date.now()}`,
+      type: 'product',
+      productId: targetProduct.id,
+      customLabel: targetProduct.name,
+      showImage: true,
+      showPrice: true,
+      showBadge: true,
+    };
+    handleUpdateMarquee({ items: [...currentMarquee.items, newItem] });
+    setEditingMarqueeItemId(newItem.id);
+    setSaveSuccessMsg(`Added "${targetProduct.name}" to marquee!`);
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  const handleUpdateMarqueeItem = (id: string, updates: Partial<MarqueeItem>) => {
+    const updatedItems = currentMarquee.items.map((item) =>
+      item.id === id ? { ...item, ...updates } : item
+    );
+    handleUpdateMarquee({ items: updatedItems });
+  };
+
+  const handleDeleteMarqueeItem = (id: string) => {
+    const updatedItems = currentMarquee.items.filter((item) => item.id !== id);
+    handleUpdateMarquee({ items: updatedItems });
+    if (editingMarqueeItemId === id) {
+      setEditingMarqueeItemId(null);
+    }
+    setSaveSuccessMsg('Item removed from marquee');
+    setTimeout(() => setSaveSuccessMsg(null), 2000);
+  };
+
+  const handleMoveMarqueeItem = (idx: number, direction: 'up' | 'down') => {
+    const items = [...currentMarquee.items];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+    handleUpdateMarquee({ items });
+  };
+
+  const handleRestoreDefaultMarquee = () => {
+    handleUpdateMarquee(DEFAULT_MARQUEE_CONFIG);
+    setSaveSuccessMsg('Restored default marquee settings and items!');
+    setTimeout(() => setSaveSuccessMsg(null), 2500);
+  };
+
+  const handleSaveMarqueeTab = async () => {
+    onUpdateSiteSettings(siteForm);
+    await backupSiteSettingsToFirebase(siteForm);
+    setSaveSuccessMsg('Marquee Ticker settings saved & synchronized to Firebase!');
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Product Monograph Tabs Management Helpers
+  // ══════════════════════════════════════════════════════════════════════════
+  const currentMonographProduct: HerbalProduct | undefined = 
+    products.find((p) => p.id === selectedProductForMonographId) || products[0];
+
+  const currentMonographTabs: ProductMonographTab[] = React.useMemo(() => {
+    if (!currentMonographProduct) return [];
+    return getEffectiveMonographTabs(currentMonographProduct);
+  }, [currentMonographProduct]);
+
+  const activeMonographTab: ProductMonographTab | undefined = 
+    currentMonographTabs.find((t) => t.id === activeMonographTabId) || currentMonographTabs[0];
+
+  const handleSaveUpdatedProductTabs = async (updatedTabs: ProductMonographTab[]) => {
+    if (!currentMonographProduct) return;
+    const updatedProd: HerbalProduct = {
+      ...currentMonographProduct,
+      monographTabs: updatedTabs,
+    };
+    onUpdateProduct(updatedProd);
+    await backupProductToFirebase(updatedProd);
+    setSaveSuccessMsg(`Monograph tabs saved for "${currentMonographProduct.name}"!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleAddCustomMonographTab = () => {
+    if (!newCustomTabTitle.trim() || !currentMonographProduct) return;
+    const newTab: ProductMonographTab = {
+      id: `tab_custom_${Date.now()}`,
+      title: newCustomTabTitle.trim(),
+      subtitle: newCustomTabSubtitle.trim() || undefined,
+      icon: newCustomTabIcon || 'sparkles',
+      items: [],
+      isCustom: true,
+      enabled: true,
+      order: currentMonographTabs.length + 1,
+    };
+    const updated = [...currentMonographTabs, newTab];
+    handleSaveUpdatedProductTabs(updated);
+    setActiveMonographTabId(newTab.id);
+    setIsAddingCustomTab(false);
+    setNewCustomTabTitle('');
+    setNewCustomTabSubtitle('');
+  };
+
+  const handleUpdateMonographTabMeta = (tabId: string) => {
+    if (!editingTabTitle.trim() || !currentMonographProduct) return;
+    const updated = currentMonographTabs.map((t) => {
+      if (t.id === tabId) {
+        return {
+          ...t,
+          title: editingTabTitle.trim(),
+          subtitle: editingTabSubtitle.trim() || undefined,
+        };
+      }
+      return t;
+    });
+    handleSaveUpdatedProductTabs(updated);
+    setEditingTabMetaId(null);
+  };
+
+  const handleDeleteMonographTab = (tabId: string) => {
+    if (!currentMonographProduct) return;
+    const updated = currentMonographTabs.filter((t) => t.id !== tabId);
+    handleSaveUpdatedProductTabs(updated);
+    if (activeMonographTabId === tabId && updated.length > 0) {
+      setActiveMonographTabId(updated[0].id);
+    }
+    setMonographDeleteConfirmTabId(null);
+  };
+
+  const handleResetMonographTabsToDefault = () => {
+    if (!currentMonographProduct) return;
+    const defaults = buildDefaultMonographTabs(currentMonographProduct);
+    handleSaveUpdatedProductTabs(defaults);
+    setActiveMonographTabId(defaults[0]?.id || 'overview');
+    setSaveSuccessMsg(`Restored classical 6 default monograph tabs for "${currentMonographProduct.name}"!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleSaveDetailItem = (tabId: string) => {
+    if (!itemTitleInput.trim() && !itemTextInput.trim()) return;
+    if (!currentMonographProduct) return;
+
+    const newItem: MonographDetailItem = {
+      id: editingDetailItemId || `item_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      title: itemTitleInput.trim() || 'Specification Item',
+      text: itemTextInput.trim(),
+      priority: itemPriorityInput,
+      customTag: itemCustomTagInput.trim() || undefined,
+      customTagBgColor: itemCustomTagBgColorInput.trim() || undefined,
+      customTagTextColor: itemCustomTagTextColorInput.trim() || undefined,
+      imageUrl: itemImageUrlInput.trim() || undefined,
+      imageSize: itemImageSizeInput,
+      botanicalName: itemBotanicalNameInput.trim() || undefined,
+      quantityOrPotency: itemPotencyInput.trim() || undefined,
+      role: itemRoleInput.trim() || undefined,
+      isReview: Boolean(itemIsReviewInput),
+      author: itemAuthorInput.trim() || undefined,
+      rating: itemRatingInput,
+      date: itemDateInput.trim() || undefined,
+      isFaq: Boolean(itemIsFaqInput),
+    };
+
+    const updated = currentMonographTabs.map((t) => {
+      if (t.id === tabId) {
+        let updatedItems: MonographDetailItem[];
+        if (editingDetailItemId) {
+          updatedItems = (t.items || []).map((it) => (it.id === editingDetailItemId ? newItem : it));
+        } else {
+          updatedItems = [...(t.items || []), newItem];
+        }
+        return { ...t, items: updatedItems };
+      }
+      return t;
+    });
+
+    handleSaveUpdatedProductTabs(updated);
+    setIsAddingDetailItem(false);
+    setEditingDetailItemId(null);
+
+    // Reset item inputs
+    setItemTitleInput('');
+    setItemTextInput('');
+    setItemPriorityInput('normal');
+    setItemCustomTagInput('');
+    setItemCustomTagBgColorInput('');
+    setItemCustomTagTextColorInput('');
+    setItemImageUrlInput('');
+    setItemBotanicalNameInput('');
+    setItemPotencyInput('');
+    setItemRoleInput('');
+    setItemIsReviewInput(false);
+    setItemAuthorInput('');
+    setItemRatingInput(5);
+    setItemDateInput('');
+    setItemIsFaqInput(false);
+  };
+
+  const handleStartEditDetailItem = (item: MonographDetailItem) => {
+    setEditingDetailItemId(item.id);
+    setIsAddingDetailItem(true);
+    setItemTitleInput(item.title || '');
+    setItemTextInput(item.text || '');
+    setItemPriorityInput(item.priority || 'normal');
+    setItemCustomTagInput(item.customTag || '');
+    setItemCustomTagBgColorInput(item.customTagBgColor || '');
+    setItemCustomTagTextColorInput(item.customTagTextColor || '');
+    setItemImageUrlInput(item.imageUrl || '');
+    setItemImageSizeInput(
+      (item.imageSize as 'small' | 'medium' | 'large') || 'medium'
+    );
+    setItemBotanicalNameInput(item.botanicalName || '');
+    setItemPotencyInput(item.quantityOrPotency || '');
+    setItemRoleInput(item.role || '');
+    setItemIsReviewInput(Boolean(item.isReview));
+    setItemAuthorInput(item.author || '');
+    setItemRatingInput(item.rating || 5);
+    setItemDateInput(item.date || '');
+    setItemIsFaqInput(Boolean(item.isFaq));
+  };
+
+  const handleDeleteDetailItem = (tabId: string, itemId: string) => {
+    if (!currentMonographProduct) return;
+    const updated = currentMonographTabs.map((t) => {
+      if (t.id === tabId) {
+        return {
+          ...t,
+          items: (t.items || []).filter((it) => it.id !== itemId),
+        };
+      }
+      return t;
+    });
+    handleSaveUpdatedProductTabs(updated);
+    if (editingDetailItemId === itemId) {
+      setEditingDetailItemId(null);
+      setIsAddingDetailItem(false);
+    }
+  };
+
+  const handleMoveDetailItem = (tabId: string, idx: number, direction: 'up' | 'down') => {
+    if (!currentMonographProduct) return;
+    const targetTab = currentMonographTabs.find((t) => t.id === tabId);
+    if (!targetTab || !targetTab.items) return;
+    const items = [...targetTab.items];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+    const updated = currentMonographTabs.map((t) => (t.id === tabId ? { ...t, items } : t));
+    handleSaveUpdatedProductTabs(updated);
   };
 
   // Product Horizontal Lists State & Management Helpers
@@ -1667,7 +2037,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             className="flex-1 py-1.5 px-2.5 bg-white border border-[#C8BEAB] rounded-lg text-xs font-semibold text-[#183624] shadow-2xs focus:outline-hidden focus:border-[#2C5E43] cursor-pointer"
           >
             <option value="products">🛍️ Products & Reseller Rates ({products.length})</option>
+            <option value="monograph_tabs">📑 Product Monograph Tabs & Custom Details (6 Standard + Custom)</option>
             <option value="deal_of_week">🔥 Deal of the Week & Banner Scroller ({currentWeeklyDeals.items.length} deals)</option>
+            <option value="marquee">📜 Marquee Ticker & Infinite Scroll ({currentMarquee.enabled ? `${currentMarquee.items.length} items` : 'Off'})</option>
             <option value="horizontal_lists">📦 Product Horizontal Lists ({currentHorizontalLists.length} shelves)</option>
             <option value="categories_forms">🗂️ Categories & Forms Manager</option>
             <option value="contacts">📞 Multiple Contacts (Phones, WhatsApp, Emails)</option>
@@ -1701,6 +2073,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <button
               type="button"
               onClick={() => {
+                setActiveTab('monograph_tabs');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'monograph_tabs'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Layers className={`w-3.5 h-3.5 ${activeTab === 'monograph_tabs' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+              <span>Monograph Tabs</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                activeTab === 'monograph_tabs' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'
+              }`}>
+                Tabs 1-6
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 setActiveTab('deal_of_week');
                 setIsCreatingNew(false);
                 setEditingProduct(null);
@@ -1719,6 +2113,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   : activeTab === 'deal_of_week' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'
               }`}>
                 {!currentWeeklyDeals.enabled ? 'Off' : currentWeeklyDeals.items.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('marquee');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'marquee'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <ScrollText className={`w-3.5 h-3.5 ${activeTab === 'marquee' ? 'text-amber-300' : 'text-[#B4741E]'}`} />
+              <span>Marquee Ticker</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                !currentMarquee.enabled 
+                  ? 'bg-rose-100 text-rose-800' 
+                  : activeTab === 'marquee' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'
+              }`}>
+                {!currentMarquee.enabled ? 'Off' : currentMarquee.items.length}
               </span>
             </button>
 
@@ -3213,275 +3631,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Tagline & Net Volume */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">Tagline / Key Catchphrase</label>
-                        <input
-                          type="text"
-                          value={productForm.tagline}
-                          onChange={(e) => setProductForm({ ...productForm, tagline: e.target.value })}
-                          placeholder="e.g. Pure Classical Rasayana for Vital Immunity"
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">Net Volume/Weight</label>
-                        <input
-                          type="text"
-                          value={productForm.volumeOrWeight}
-                          onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
-                          placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* SECTION 1: INDICATIONS & USES (ROGADHIKAR & MONOGRAPH) */}
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-[#2C5E43]" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            1. Indications & Uses (Rogadhikar & Pharmacopoeia Monograph)
-                          </h5>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
-                          Tab 1 in Detail View
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">
-                          Description & Monograph Text
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={productForm.description}
-                          onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                          placeholder="Detailed classical monograph, clinical preparation rationale, and bio-activity profile..."
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs leading-relaxed"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
-                          <span>Key Indications / Rogadhikar (Comma Separated)</span>
-                          <span className="text-[10px] text-[#716858]">Rendered as high-visibility tags</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={productForm.keyIndications}
-                          onChange={(e) => setProductForm({ ...productForm, keyIndications: e.target.value })}
-                          placeholder="Immunity, Vital Energy, Respiratory Tone, Cognitive Focus, Rasayana"
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
-                            <span>Therapeutic Uses & Primary Benefits</span>
-                            <span className="text-[10px] text-[#716858]">1 per line</span>
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={productForm.primaryBenefits}
-                            onChange={(e) => setProductForm({ ...productForm, primaryBenefits: e.target.value })}
-                            placeholder="Strengthens innate biological vitality&#10;Cleanses cellular ama toxins&#10;Restores healthy tissue tone"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
-                            <span>Ailments & Conditions Treated</span>
-                            <span className="text-[10px] text-[#716858]">1 per line</span>
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={productForm.ailmentsTreated}
-                            onChange={(e) => setProductForm({ ...productForm, ailmentsTreated: e.target.value })}
-                            placeholder="Kasa (Cough)&#10;Shwasa (Dyspnea)&#10;Daurbalya (Debility)"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* SECTION 3: DOSAGE & ANUPANA CARRIER */}
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-[#2C5E43]" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            3. Dosage & Anupana Carrier Guidelines
-                          </h5>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
-                          Tab 3 in Detail View
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Standard Dosage</label>
-                          <input
-                            type="text"
-                            value={productForm.standardDosage}
-                            onChange={(e) => setProductForm({ ...productForm, standardDosage: e.target.value })}
-                            placeholder="e.g. 1 to 2 tablets twice daily"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Recommended Anupana (Carrier Liquid)</label>
-                          <input
-                            type="text"
-                            value={productForm.anupanaCarrier}
-                            onChange={(e) => setProductForm({ ...productForm, anupanaCarrier: e.target.value })}
-                            placeholder="e.g. Warm cow milk, honey or pure lukewarm water"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Best Timing (Kala)</label>
-                          <input
-                            type="text"
-                            value={productForm.bestTiming}
-                            onChange={(e) => setProductForm({ ...productForm, bestTiming: e.target.value })}
-                            placeholder="e.g. Early morning and evening after meals"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Recommended Course Duration</label>
-                          <input
-                            type="text"
-                            value={productForm.duration}
-                            onChange={(e) => setProductForm({ ...productForm, duration: e.target.value })}
-                            placeholder="e.g. 6 to 12 weeks continuous course"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* SECTION 4: ACTION MECHANISM & DOSHAS */}
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#2C5E43]" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            4. Pharmacological Mode of Action & Dosha Balance
-                          </h5>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
-                          Tab 4 in Detail View
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">
-                          Pharmacological Mode of Action (Samprapti Vighatan)
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={productForm.actionMechanism}
-                          onChange={(e) => setProductForm({ ...productForm, actionMechanism: e.target.value })}
-                          placeholder="Phytochemical mode of action, bio-pathways, tissue metabolic nourishment..."
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs leading-relaxed"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1">
-                          Dosha Balancing Affinity
-                        </label>
-                        <input
-                          type="text"
-                          value={productForm.doshaEffect}
-                          onChange={(e) => setProductForm({ ...productForm, doshaEffect: e.target.value })}
-                          placeholder="e.g. Tridosha balancing, pacifies Vata & Kapha, rejuvenates Dhatus"
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* SECTION 5: PRECAUTIONS, LICENSE & QUALITY STANDARDS */}
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck className="w-4 h-4 text-[#2C5E43]" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            5. Precautions, AYUSH License & Quality Standards
-                          </h5>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
-                          Tab 5 in Detail View
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
-                          <span>Precautions & Contraindications</span>
-                          <span className="text-[10px] text-[#716858]">1 warning per line</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={productForm.precautions}
-                          onChange={(e) => setProductForm({ ...productForm, precautions: e.target.value })}
-                          placeholder="Use under medical supervision if pregnant&#10;Keep away from reach of children&#10;Avoid during acute hyperacidity flare-ups"
-                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">AYUSH License Number</label>
-                          <input
-                            type="text"
-                            value={productForm.ayushLicenseNo}
-                            onChange={(e) => setProductForm({ ...productForm, ayushLicenseNo: e.target.value })}
-                            placeholder="AYUSH-DL-2026-HERB-9901"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Batch & Shelf Life Info</label>
-                          <input
-                            type="text"
-                            value={productForm.batchInfo}
-                            onChange={(e) => setProductForm({ ...productForm, batchInfo: e.target.value })}
-                            placeholder="Batch #VK-2026-01 | Exp: 2028"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-medium text-[#2B251D] mb-1">Storage Guidelines</label>
-                          <input
-                            type="text"
-                            value={productForm.storageGuideline}
-                            onChange={(e) => setProductForm({ ...productForm, storageGuideline: e.target.value })}
-                            placeholder="Store below 25°C away from direct sunlight"
-                            className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                          />
-                        </div>
-                      </div>
+                    {/* Net Volume / Weight (Classical Monograph Tabs are now managed in the dedicated Monograph Tabs section below) */}
+                    <div className="max-w-md">
+                      <label className="block font-medium text-[#2B251D] mb-1">Net Volume/Weight</label>
+                      <input
+                        type="text"
+                        value={productForm.volumeOrWeight}
+                        onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
+                        placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                      />
                     </div>
 
                     {/* ══════════════════════════════════════════════════════════════ */}
@@ -3661,6 +3820,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           )}
                         </div>
                       </div>
+                    </div>
+
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    {/* SECTION 6: PRODUCT DETAIL MONOGRAPH TABS & CLINICAL CARDS */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <div className="p-4 sm:p-5 bg-[#FAF8F5] rounded-xl border border-[#A5D6B6] space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E0D7C6] pb-3">
+                        <div className="flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-[#2C5E43]" />
+                          <div>
+                            <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                              6. Product Monograph Tabs, Priority Cards & Reviews
+                            </h5>
+                            <p className="text-[11px] text-[#716858]">
+                              Customize the 6 standard tabs (Overview, Benefits, Ingredients, Dosage, Specs, FAQs & Reviews) or create custom tabs with priority color tags (Red, Yellow, Green, Normal).
+                            </p>
+                          </div>
+                        </div>
+
+                        {editingProduct && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedProductForMonographId(editingProduct.id);
+                              setActiveTab('monograph_tabs');
+                            }}
+                            className="px-3 py-1.5 bg-[#183624] hover:bg-[#20442E] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-amber-300" />
+                            <span>Open Full Monograph Tabs Editor</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {editingProduct && (
+                        <AdminMonographTabsManager
+                          products={products}
+                          selectedProductId={editingProduct.id}
+                          onUpdateProduct={onUpdateProduct}
+                          onPreviewProduct={onPreviewProduct}
+                          onNotify={(msg) => {
+                            setSaveSuccessMsg(msg);
+                            setTimeout(() => setSaveSuccessMsg(null), 3000);
+                          }}
+                          hideProductPicker={true}
+                        />
+                      )}
                     </div>
 
                     {/* Form Submit & Cancel Buttons */}
@@ -4000,6 +4206,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     <Eye className="w-4 h-4" />
                                   </button>
                                   <button
+                                    onClick={() => {
+                                      setSelectedProductForMonographId(prod.id);
+                                      setActiveTab('monograph_tabs');
+                                    }}
+                                    className="p-1.5 text-amber-700 hover:bg-amber-50 rounded cursor-pointer"
+                                    title="Manage Monograph Tabs & Clinical Details (Tabs 1-6 & Custom)"
+                                  >
+                                    <Layers className="w-4 h-4" />
+                                  </button>
+                                  <button
                                     onClick={() => startEdit(prod)}
                                     className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
                                     title="Edit product, images, custom fields & reseller price"
@@ -4045,6 +4261,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               )}
             </div>
           </>
+        )}
+
+        {/* Tab: Product Detail Monograph Tabs Manager (Tabs 1-6 & Custom Tabs, Priority Cards, Images & Reviews) */}
+        {activeTab === 'monograph_tabs' && (
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
+            <AdminMonographTabsManager
+              products={products}
+              selectedProductId={selectedProductForMonographId}
+              onUpdateProduct={onUpdateProduct}
+              onPreviewProduct={onPreviewProduct}
+              onNotify={(msg) => {
+                setSaveSuccessMsg(msg);
+                setTimeout(() => setSaveSuccessMsg(null), 3000);
+              }}
+            />
+          </div>
         )}
 
         {/* Tab: Deal of the Week (Add, Edit, Reorder, Delete Section & Multiple Products in Horizontal Scroll) */}
@@ -5157,6 +5389,898 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               >
                 <Save className="w-4 h-4 text-amber-300" />
                 <span>Save All Deal of the Week Changes to Firebase & Storefront</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Marquee Infinite Scrolling Ticker (Customize Texts, Existing Products, Colors, Speed, Size, Click Actions) */}
+        {activeTab === 'marquee' && (
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-5 pb-28 sm:pb-8 text-xs">
+            {/* Header & Quick Action Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#14291D] text-amber-300 flex items-center justify-center shrink-0 shadow-xs">
+                  <ScrollText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-[#14291D] flex items-center gap-2">
+                    <span>Marquee Infinite Scroll Customizer</span>
+                    <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                      currentMarquee.enabled ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}>
+                      {currentMarquee.enabled ? 'Active on Store' : 'Hidden'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[#695F4F]">
+                    Smooth infinite scrolling announcement bar with custom texts and pre-existed products. Customize size, speed, colors, pause-on-hover & click targets.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleRestoreDefaultMarquee}
+                  className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#52493A] flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-[#2C5E43]" />
+                  <span>Reset Defaults</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveMarqueeTab}
+                  className="px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Save & Sync</span>
+                </button>
+              </div>
+            </div>
+
+            {/* LIVE INTERACTIVE PREVIEW */}
+            <div className="bg-white p-4 rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                  <Eye className="w-4 h-4 text-[#2C5E43]" />
+                  <span>Live Storefront Interactive Preview</span>
+                </span>
+                <span className="text-[11px] text-[#716858] italic">
+                  (Hover to pause · Click products to preview detail modal)
+                </span>
+              </div>
+
+              <div className="rounded-xl overflow-hidden border border-[#D5CCBC] shadow-inner bg-stone-100">
+                {currentMarquee.enabled ? (
+                  <MarqueeTicker
+                    config={currentMarquee}
+                    products={products}
+                    onSelectProduct={onPreviewProduct}
+                  />
+                ) : (
+                  <div className="py-4 text-center text-xs font-medium text-stone-500 bg-stone-200/60">
+                    Marquee is currently set to HIDDEN. Toggle switch below to show it on storefront.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* MASTER CONTROLS & DISPLAY SETTINGS */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-3">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-[#2C5E43]" />
+                  <h4 className="font-serif text-sm font-bold text-[#14291D]">
+                    Master Marquee Controls & Display Options
+                  </h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateMarquee({ enabled: !currentMarquee.enabled })}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      currentMarquee.enabled
+                        ? 'bg-[#183624] text-white shadow-xs'
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${currentMarquee.enabled ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+                    <span>{currentMarquee.enabled ? 'Marquee Display: ACTIVE' : 'Marquee Display: HIDDEN'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Placement */}
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Marquee Position on Page
+                  </label>
+                  <select
+                    value={currentMarquee.placement || 'below_header'}
+                    onChange={(e) => handleUpdateMarquee({ placement: e.target.value as MarqueePlacement })}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D] focus:outline-hidden focus:border-[#2C5E43]"
+                  >
+                    <option value="below_header">Below Header Navigation (Recommended)</option>
+                    <option value="top_bar">Top of Screen (Above Header Bar)</option>
+                    <option value="below_hero">Below Hero Banner Section</option>
+                    <option value="above_catalog">Above Product Catalog & Shelves</option>
+                    <option value="above_footer">Above Bottom Footer</option>
+                  </select>
+                  <p className="text-[10.5px] text-[#716858] mt-1">
+                    Select where the scrolling bar appears on the storefront.
+                  </p>
+                </div>
+
+                {/* Direction */}
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Scroll Direction
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateMarquee({ direction: 'left' })}
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        currentMarquee.direction !== 'right'
+                          ? 'bg-[#183624] text-white border-[#183624]'
+                          : 'bg-[#FAF8F5] text-[#52493A] border-[#DDD5C5] hover:bg-stone-100'
+                      }`}
+                    >
+                      <MoveLeft className="w-3.5 h-3.5" />
+                      <span>Left (← Standard)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateMarquee({ direction: 'right' })}
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        currentMarquee.direction === 'right'
+                          ? 'bg-[#183624] text-white border-[#183624]'
+                          : 'bg-[#FAF8F5] text-[#52493A] border-[#DDD5C5] hover:bg-stone-100'
+                      }`}
+                    >
+                      <MoveRight className="w-3.5 h-3.5" />
+                      <span>Right (→ Reverse)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Divider Icon */}
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Divider Icon Between Items
+                  </label>
+                  <select
+                    value={currentMarquee.dividerIcon || 'leaf'}
+                    onChange={(e) => handleUpdateMarquee({ dividerIcon: e.target.value as MarqueeDividerIcon })}
+                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D] focus:outline-hidden focus:border-[#2C5E43]"
+                  >
+                    <option value="leaf">🌿 Ayurvedic Herbal Leaf</option>
+                    <option value="sparkles">✨ Golden Sparkles</option>
+                    <option value="star">⭐ Star Accent</option>
+                    <option value="flame">🔥 Flame / Agni</option>
+                    <option value="dot">• Minimal Bullet Dot</option>
+                    <option value="none">| Subtle Vertical Line</option>
+                  </select>
+                </div>
+
+                {/* Font Size */}
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Text Font Size
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'small', label: 'Small (11px)' },
+                      { id: 'medium', label: 'Medium (13px)' },
+                      { id: 'large', label: 'Large (15px)' },
+                    ].map((sz) => (
+                      <button
+                        key={sz.id}
+                        type="button"
+                        onClick={() => handleUpdateMarquee({ fontSize: sz.id as MarqueeSize })}
+                        className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold text-center cursor-pointer border ${
+                          (currentMarquee.fontSize || 'medium') === sz.id
+                            ? 'bg-[#183624] text-white border-[#183624]'
+                            : 'bg-[#FAF8F5] text-[#52493A] border-[#DDD5C5] hover:bg-stone-100'
+                        }`}
+                      >
+                        {sz.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Padding / Height */}
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Bar Height & Padding
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'compact', label: 'Compact' },
+                      { id: 'regular', label: 'Regular' },
+                      { id: 'spacious', label: 'Spacious' },
+                    ].map((pd) => (
+                      <button
+                        key={pd.id}
+                        type="button"
+                        onClick={() => handleUpdateMarquee({ paddingSize: pd.id as any })}
+                        className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold text-center cursor-pointer border ${
+                          (currentMarquee.paddingSize || 'regular') === pd.id
+                            ? 'bg-[#183624] text-white border-[#183624]'
+                            : 'bg-[#FAF8F5] text-[#52493A] border-[#DDD5C5] hover:bg-stone-100'
+                        }`}
+                      >
+                        {pd.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pause on Hover */}
+                <div>
+                  <label className="block font-semibold text-[#2F2920] mb-1">
+                    Pause on Hover / Touch
+                  </label>
+                  <label className="flex items-center gap-2 p-2 bg-[#FAF8F5] rounded-lg border border-[#DDD5C5] cursor-pointer text-xs font-semibold text-[#14291D]">
+                    <input
+                      type="checkbox"
+                      checked={currentMarquee.pauseOnHover !== false}
+                      onChange={(e) => handleUpdateMarquee({ pauseOnHover: e.target.checked })}
+                      className="rounded accent-[#2C5E43]"
+                    />
+                    <span>Pause scroll when cursor hovers</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Speed Slider with Presets */}
+              <div className="pt-3 border-t border-[#F0EAE1] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#2C5E43]" />
+                    <span>Scroll Speed / Cycle Duration:</span>
+                    <span className="font-mono text-[#2C5E43] font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      {currentMarquee.speedSeconds || 26} seconds
+                    </span>
+                  </label>
+                  <span className="text-[11px] text-[#716858]">
+                    (Lower seconds = faster scroll, higher = gentler and slower)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-stone-500 font-mono">Fast (8s)</span>
+                  <input
+                    type="range"
+                    min={8}
+                    max={70}
+                    step={2}
+                    value={currentMarquee.speedSeconds || 26}
+                    onChange={(e) => handleUpdateMarquee({ speedSeconds: Number(e.target.value) })}
+                    className="flex-1 accent-[#2C5E43] cursor-pointer"
+                  />
+                  <span className="text-[10px] text-stone-500 font-mono">Slow (70s)</span>
+                </div>
+
+                {/* Quick Speed Presets */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-[#716858] font-medium mr-1">Quick Presets:</span>
+                  {[
+                    { label: '⚡ Fast (14s)', val: 14 },
+                    { label: '🌿 Balanced (26s)', val: 26 },
+                    { label: '🍃 Gentle (38s)', val: 38 },
+                    { label: '⏳ Relaxed (52s)', val: 52 },
+                  ].map((p) => (
+                    <button
+                      key={p.val}
+                      type="button"
+                      onClick={() => handleUpdateMarquee({ speedSeconds: p.val })}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer ${
+                        currentMarquee.speedSeconds === p.val
+                          ? 'bg-[#183624] text-white border-[#183624]'
+                          : 'bg-[#FAF8F5] text-[#52493A] border-[#DDD5C5] hover:bg-stone-100'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* COLOR & PALETTE CUSTOMIZER */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-[#B4741E]" />
+                  <h4 className="font-serif text-sm font-bold text-[#14291D]">
+                    Colors & Palette Styling
+                  </h4>
+                </div>
+                <span className="text-[11px] text-[#716858]">
+                  Fully customizable background, text & border colors
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Background Color */}
+                <div className="space-y-2.5">
+                  <label className="block font-bold text-[#14291D]">
+                    Marquee Background Color
+                  </label>
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="color"
+                      value={currentMarquee.backgroundColor || '#14291D'}
+                      onChange={(e) => handleUpdateMarquee({ backgroundColor: e.target.value })}
+                      className="w-10 h-10 rounded-lg border border-[#DDD5C5] cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={currentMarquee.backgroundColor || '#14291D'}
+                      onChange={(e) => handleUpdateMarquee({ backgroundColor: e.target.value })}
+                      placeholder="#14291D"
+                      className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-mono text-xs font-bold text-[#14291D]"
+                    />
+                  </div>
+
+                  {/* Preset Background Chips */}
+                  <div className="space-y-1">
+                    <span className="text-[10.5px] text-[#716858] font-medium">Ayurvedic Presets:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Deep Forest', color: '#14291D' },
+                        { label: 'Golden Amber', color: '#B4741E' },
+                        { label: 'Herbal Emerald', color: '#1B432E' },
+                        { label: 'Warm Cream', color: '#FDF8EE' },
+                        { label: 'Terracotta', color: '#9A3412' },
+                        { label: 'Midnight', color: '#0F172A' },
+                        { label: 'White', color: '#FFFFFF' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.color}
+                          type="button"
+                          onClick={() => {
+                            const isLight = preset.color === '#FDF8EE' || preset.color === '#FFFFFF';
+                            handleUpdateMarquee({ 
+                              backgroundColor: preset.color,
+                              textColor: isLight ? '#14291D' : '#FFFFFF'
+                            });
+                          }}
+                          className="px-2 py-1 rounded border border-[#DDD5C5] text-[10.5px] font-semibold flex items-center gap-1.5 hover:bg-stone-50 cursor-pointer"
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: preset.color }} />
+                          <span>{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Text Color */}
+                <div className="space-y-2.5">
+                  <label className="block font-bold text-[#14291D]">
+                    Default Text Color
+                  </label>
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="color"
+                      value={currentMarquee.textColor || '#FFFFFF'}
+                      onChange={(e) => handleUpdateMarquee({ textColor: e.target.value })}
+                      className="w-10 h-10 rounded-lg border border-[#DDD5C5] cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={currentMarquee.textColor || '#FFFFFF'}
+                      onChange={(e) => handleUpdateMarquee({ textColor: e.target.value })}
+                      placeholder="#FFFFFF"
+                      className="flex-1 px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-mono text-xs font-bold text-[#14291D]"
+                    />
+                  </div>
+
+                  {/* Preset Text Chips */}
+                  <div className="space-y-1">
+                    <span className="text-[10.5px] text-[#716858] font-medium">Text Color Presets:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Pure White', color: '#FFFFFF' },
+                        { label: 'Soft Gold', color: '#FEF08A' },
+                        { label: 'Mint Sage', color: '#A7F3D0' },
+                        { label: 'Dark Pine', color: '#14291D' },
+                        { label: 'Bronze', color: '#78350F' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.color}
+                          type="button"
+                          onClick={() => handleUpdateMarquee({ textColor: preset.color })}
+                          className="px-2 py-1 rounded border border-[#DDD5C5] text-[10.5px] font-semibold flex items-center gap-1.5 hover:bg-stone-50 cursor-pointer"
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: preset.color }} />
+                          <span>{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Border Toggle & Color */}
+              <div className="pt-3 border-t border-[#F0EAE1] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#14291D]">
+                  <input
+                    type="checkbox"
+                    checked={currentMarquee.showBorder !== false}
+                    onChange={(e) => handleUpdateMarquee({ showBorder: e.target.checked })}
+                    className="rounded accent-[#2C5E43]"
+                  />
+                  <span>Show subtle top & bottom border line</span>
+                </label>
+
+                {currentMarquee.showBorder && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-[#716858]">Border Color:</span>
+                    <input
+                      type="color"
+                      value={currentMarquee.borderColor || '#234632'}
+                      onChange={(e) => handleUpdateMarquee({ borderColor: e.target.value })}
+                      className="w-7 h-7 rounded border border-[#DDD5C5] cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={currentMarquee.borderColor || '#234632'}
+                      onChange={(e) => handleUpdateMarquee({ borderColor: e.target.value })}
+                      className="w-24 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* MARQUEE ITEMS MANAGER (TEXTS & PRE-EXISTED PRODUCTS) */}
+            <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE3D4] pb-3">
+                <div>
+                  <h4 className="font-serif text-base font-bold text-[#14291D] flex items-center gap-2">
+                    <span>Marquee Items Reel</span>
+                    <span className="text-xs font-mono font-bold bg-[#FAF8F5] text-[#2C5E43] px-2 py-0.5 rounded-full border border-[#DDD5C5]">
+                      {currentMarquee.items.length} items
+                    </span>
+                  </h4>
+                  <p className="text-xs text-[#695F4F]">
+                    Add custom announcement texts or pre-existed products from your catalog. Items scroll in continuous order.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleAddMarqueeTextItem}
+                    className="px-3.5 py-1.5 bg-[#2C5E43] hover:bg-[#1E422F] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Custom Text</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] p-1 rounded-lg border border-[#DDD5C5]">
+                    <select
+                      value={selectedProductToAdd}
+                      onChange={(e) => setSelectedProductToAdd(e.target.value)}
+                      className="px-2 py-1 bg-white border border-[#DDD5C5] rounded text-xs font-semibold text-[#14291D] max-w-[170px] truncate"
+                    >
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (₹{p.price})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleAddMarqueeProductItem(selectedProductToAdd)}
+                      className="px-3 py-1 bg-[#B4741E] hover:bg-[#965E14] text-white rounded text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Product</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items List */}
+              {currentMarquee.items.length === 0 ? (
+                <div className="py-8 text-center text-xs text-stone-500 bg-[#FAF8F5] rounded-xl border border-dashed border-[#DDD5C5] space-y-2">
+                  <p>No items in marquee reel yet.</p>
+                  <p className="text-[11px] text-stone-400">Click "+ Add Custom Text" or choose a pre-existed product above.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {currentMarquee.items.map((item, idx) => {
+                    const isEditing = editingMarqueeItemId === item.id;
+                    const linkedProduct = item.type === 'product' ? products.find((p) => p.id === item.productId) : null;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-xl border transition-all ${
+                          isEditing
+                            ? 'bg-[#FAF8F5] border-[#2C5E43] shadow-md ring-1 ring-[#2C5E43]'
+                            : 'bg-white border-[#DDD5C5] hover:border-[#B4741E]'
+                        }`}
+                      >
+                        {/* Item Summary Bar */}
+                        <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {/* Order & Reorder */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="font-mono font-bold text-stone-500 text-xs w-6 text-center">
+                                #{idx + 1}
+                              </span>
+                              <div className="flex flex-col">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveMarqueeItem(idx, 'up')}
+                                  className="p-0.5 text-stone-500 hover:text-stone-800 disabled:opacity-20 cursor-pointer"
+                                  title="Move earlier"
+                                >
+                                  <ArrowUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === currentMarquee.items.length - 1}
+                                  onClick={() => handleMoveMarqueeItem(idx, 'down')}
+                                  className="p-0.5 text-stone-500 hover:text-stone-800 disabled:opacity-20 cursor-pointer"
+                                  title="Move later"
+                                >
+                                  <ArrowDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Type Indicator */}
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                                item.type === 'product'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              }`}
+                            >
+                              {item.type === 'product' ? '🛍️ Product' : '🏷️ Custom Text'}
+                            </span>
+
+                            {/* Content Preview */}
+                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                              {item.type === 'product' ? (
+                                <>
+                                  {item.showImage !== false && linkedProduct?.image && (
+                                    <img
+                                      src={linkedProduct.image}
+                                      alt={linkedProduct.name}
+                                      className="w-7 h-7 rounded-full object-cover border border-[#DDD5C5] shrink-0"
+                                      onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                    />
+                                  )}
+                                  <span className="font-bold text-[#14291D] truncate">
+                                    {item.customLabel || linkedProduct?.name || 'Product'}
+                                  </span>
+                                  {linkedProduct && (
+                                    <span className="font-mono text-[11px] font-bold text-[#2C5E43] shrink-0">
+                                      ₹{linkedProduct.price}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0">
+                                    (Opens Product Detail Modal)
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  {item.badge && (
+                                    <span
+                                      className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0"
+                                      style={{
+                                        backgroundColor: item.badgeColor || '#B4741E',
+                                        color: item.badgeTextColor || '#FFFFFF',
+                                      }}
+                                    >
+                                      {item.badge}
+                                    </span>
+                                  )}
+                                  <span className="text-[#14291D] truncate font-medium">
+                                    {item.text || 'Custom announcement text...'}
+                                  </span>
+                                  {item.linkType && item.linkType !== 'none' && (
+                                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
+                                      🔗 {item.linkType === 'whatsapp' ? 'WhatsApp' : item.linkType === 'product' ? 'Product Link' : item.linkType === 'category' ? 'Category Filter' : 'URL Link'}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                            <button
+                              type="button"
+                              onClick={() => setEditingMarqueeItemId(isEditing ? null : item.id)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                                isEditing
+                                  ? 'bg-[#183624] text-white'
+                                  : 'bg-stone-100 text-[#52493A] hover:bg-stone-200 border border-[#DDD5C5]'
+                              }`}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>{isEditing ? 'Close' : 'Edit'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMarqueeItem(item.id)}
+                              className="p-1 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors"
+                              title="Delete Item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Inline Editor Drawer */}
+                        {isEditing && (
+                          <div className="p-4 border-t border-[#DDD5C5] bg-white rounded-b-xl space-y-4">
+                            {item.type === 'text' ? (
+                              /* EDIT CUSTOM TEXT ITEM */
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block font-semibold text-[#14291D] mb-1">
+                                    Announcement Text Message *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={item.text || ''}
+                                    onChange={(e) => handleUpdateMarqueeItem(item.id, { text: e.target.value })}
+                                    placeholder="e.g. 🌿 100% Classical Botanical Extracts & Heavy-Metal Lab Verified"
+                                    className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  {/* Badge Tag */}
+                                  <div>
+                                    <label className="block font-medium text-[#2F2920] mb-1">
+                                      Optional Badge Tag (e.g. OFFER, NEW)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={item.badge || ''}
+                                      onChange={(e) => handleUpdateMarqueeItem(item.id, { badge: e.target.value })}
+                                      placeholder="e.g. FESTIVAL SPECIAL"
+                                      className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                                    />
+                                  </div>
+
+                                  {/* Badge Colors */}
+                                  <div>
+                                    <label className="block font-medium text-[#2F2920] mb-1">
+                                      Badge Background Color
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="color"
+                                        value={item.badgeColor || '#B4741E'}
+                                        onChange={(e) => handleUpdateMarqueeItem(item.id, { badgeColor: e.target.value })}
+                                        className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={item.badgeColor || '#B4741E'}
+                                        onChange={(e) => handleUpdateMarqueeItem(item.id, { badgeColor: e.target.value })}
+                                        className="w-24 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Custom Text Color Override */}
+                                  <div>
+                                    <label className="block font-medium text-[#2F2920] mb-1">
+                                      Item Text Color (Optional Override)
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="color"
+                                        value={item.textColor || currentMarquee.textColor || '#FFFFFF'}
+                                        onChange={(e) => handleUpdateMarqueeItem(item.id, { textColor: e.target.value })}
+                                        className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateMarqueeItem(item.id, { textColor: undefined })}
+                                        className="px-2 py-1 text-[10px] bg-stone-100 hover:bg-stone-200 rounded border border-[#DDD5C5] cursor-pointer"
+                                      >
+                                        Use Default
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Clickable Target Selector */}
+                                <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#DDD5C5] space-y-2.5">
+                                  <label className="block font-bold text-xs text-[#14291D]">
+                                    Click Action (What happens when customer clicks this announcement text?)
+                                  </label>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                      <select
+                                        value={item.linkType || 'none'}
+                                        onChange={(e) => handleUpdateMarqueeItem(item.id, { linkType: e.target.value as any })}
+                                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-semibold text-[#14291D]"
+                                      >
+                                        <option value="none">None (Plain non-clickable announcement)</option>
+                                        <option value="product">Open Specific Product Detail Modal</option>
+                                        <option value="category">Filter Catalog by Category</option>
+                                        <option value="whatsapp">Open WhatsApp Consultation / Chat</option>
+                                        <option value="url">Open Custom Web URL / Link</option>
+                                      </select>
+                                    </div>
+
+                                    <div>
+                                      {item.linkType === 'product' && (
+                                        <select
+                                          value={item.linkProductId || products[0]?.id || ''}
+                                          onChange={(e) => handleUpdateMarqueeItem(item.id, { linkProductId: e.target.value })}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                                        >
+                                          {products.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                              {p.name} (₹{p.price})
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
+
+                                      {item.linkType === 'category' && (
+                                        <select
+                                          value={item.linkCategory || 'all'}
+                                          onChange={(e) => handleUpdateMarqueeItem(item.id, { linkCategory: e.target.value })}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                                        >
+                                          {categories.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                              {c.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
+
+                                      {item.linkType === 'url' && (
+                                        <input
+                                          type="text"
+                                          value={item.linkUrl || ''}
+                                          onChange={(e) => handleUpdateMarqueeItem(item.id, { linkUrl: e.target.value })}
+                                          placeholder="https://... or #deals-catalog"
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                                        />
+                                      )}
+
+                                      {item.linkType === 'whatsapp' && (
+                                        <div className="text-xs text-[#2C5E43] font-semibold py-2">
+                                          ✓ Opens Doctor Consultation inquiry modal or WhatsApp chat directly
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              /* EDIT PRODUCT ITEM */
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {/* Product Selector */}
+                                  <div>
+                                    <label className="block font-semibold text-[#14291D] mb-1">
+                                      Select Catalog Product (Pre-existed) *
+                                    </label>
+                                    <select
+                                      value={item.productId || products[0]?.id}
+                                      onChange={(e) => {
+                                        const p = products.find((prod) => prod.id === e.target.value);
+                                        handleUpdateMarqueeItem(item.id, { 
+                                          productId: e.target.value,
+                                          customLabel: p?.name || ''
+                                        });
+                                      }}
+                                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-bold text-[#14291D]"
+                                    >
+                                      {products.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                          {p.name} — ₹{p.price} (MRP ₹{p.mrp})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Custom Label Override */}
+                                  <div>
+                                    <label className="block font-medium text-[#2F2920] mb-1">
+                                      Custom Headline / Subtitle (Optional)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={item.customLabel || ''}
+                                      onChange={(e) => handleUpdateMarqueeItem(item.id, { customLabel: e.target.value })}
+                                      placeholder="Leave empty to use official product name"
+                                      className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Visibility Toggles */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                                  <label className="flex items-center gap-2 p-2 bg-[#FAF8F5] rounded-lg border border-[#DDD5C5] cursor-pointer text-xs font-semibold text-[#14291D]">
+                                    <input
+                                      type="checkbox"
+                                      checked={item.showImage !== false}
+                                      onChange={(e) => handleUpdateMarqueeItem(item.id, { showImage: e.target.checked })}
+                                      className="rounded accent-[#2C5E43]"
+                                    />
+                                    <span>Show Product Photo</span>
+                                  </label>
+
+                                  <label className="flex items-center gap-2 p-2 bg-[#FAF8F5] rounded-lg border border-[#DDD5C5] cursor-pointer text-xs font-semibold text-[#14291D]">
+                                    <input
+                                      type="checkbox"
+                                      checked={item.showPrice !== false}
+                                      onChange={(e) => handleUpdateMarqueeItem(item.id, { showPrice: e.target.checked })}
+                                      className="rounded accent-[#2C5E43]"
+                                    />
+                                    <span>Show Price & MRP</span>
+                                  </label>
+
+                                  <label className="flex items-center gap-2 p-2 bg-[#FAF8F5] rounded-lg border border-[#DDD5C5] cursor-pointer text-xs font-semibold text-[#14291D]">
+                                    <input
+                                      type="checkbox"
+                                      checked={item.showBadge !== false}
+                                      onChange={(e) => handleUpdateMarqueeItem(item.id, { showBadge: e.target.checked })}
+                                      className="rounded accent-[#2C5E43]"
+                                    />
+                                    <span>Show Trending / Top Badge</span>
+                                  </label>
+                                </div>
+
+                                <div className="text-[11px] text-[#2C5E43] font-semibold bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                                  ✨ Clicking this product in the marquee automatically opens the full Product Detail & Purchasing Modal on the storefront.
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex justify-end pt-2 border-t border-[#EAE3D4]">
+                              <button
+                                type="button"
+                                onClick={() => setEditingMarqueeItemId(null)}
+                                className="px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                Done Editing
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Save All Button */}
+            <div className="flex justify-end pt-2 pb-6">
+              <button
+                type="button"
+                onClick={handleSaveMarqueeTab}
+                className="px-6 py-2.5 bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg font-bold flex items-center gap-2 shadow-md cursor-pointer text-xs"
+              >
+                <Save className="w-4 h-4 text-amber-300" />
+                <span>Save All Marquee Ticker Changes to Firebase & Storefront</span>
               </button>
             </div>
           </div>
