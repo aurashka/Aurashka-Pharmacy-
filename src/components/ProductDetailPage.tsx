@@ -40,6 +40,7 @@ import {
 import { backupProductToFirebase, backupSiteSettingsToFirebase } from '../utils/firebaseSync';
 import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
 import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
+import { hexToRgba } from '../utils/monographHelper';
 
 interface ProductDetailPageProps {
   product: HerbalProduct;
@@ -407,6 +408,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           <span className="text-[#14291D] font-medium truncate max-w-xs">{product.name}</span>
         </div>
       </div>
+
+      {/* Draft Mode Notice Banner (Visible only to Admin) */}
+      {product.isDraft && (
+        <div className="bg-amber-50 border-b border-amber-300 px-4 sm:px-6 py-2.5 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-medium">
+            <span className="font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-950 border border-amber-400">
+              📝 DRAFT PREVIEW
+            </span>
+            <span>This formulation is in Draft Mode and only visible to administrators. It is hidden from regular customers.</span>
+          </div>
+          {isAdmin && onOpenAdminPanel && (
+            <button
+              onClick={onOpenAdminPanel}
+              className="px-2.5 py-1 bg-amber-800 hover:bg-amber-900 text-white rounded font-bold text-[11px] shrink-0 cursor-pointer transition-colors"
+            >
+              Edit / Publish
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main Product Presentation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
@@ -867,12 +888,90 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           </div>
         </div>
 
+        {/* Pre-Monograph Custom Detail Highlights (Configured in Product Add, shown above Monograph Tabs) */}
+        {product.customDetails && product.customDetails.length > 0 && (
+          <div className="mt-12 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-[#2C5E43] text-white">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <h3 className="font-serif font-bold text-base sm:text-lg text-[#14291D]">
+                  Product Highlights & Apothecary Details
+                </h3>
+              </div>
+              <span className="text-[11px] text-[#716858] font-medium hidden sm:inline">
+                Verified Apothecary Assurances
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {product.customDetails.map((detail) => {
+                const bg = hexToRgba(detail.bgColor || '#FAF5EE', detail.bgOpacity ?? 100);
+                const textColor = detail.textColor || '#14291D';
+                const isLarge = detail.size === 'large';
+                const isSmall = detail.size === 'small';
+
+                return (
+                  <div
+                    key={detail.id}
+                    style={{ backgroundColor: bg, color: textColor }}
+                    className={`rounded-2xl border border-black/10 shadow-xs transition-all flex ${
+                      isLarge ? 'sm:col-span-2 lg:col-span-3 p-4 sm:p-5 flex-col sm:flex-row items-start sm:items-center gap-4' :
+                      isSmall ? 'p-3 items-center gap-3' :
+                      'p-4 flex-col justify-between gap-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {detail.image && (
+                        <div className={`overflow-hidden rounded-xl shrink-0 border border-black/10 bg-white/50 shadow-2xs ${
+                          isLarge ? 'w-16 h-16 sm:w-20 sm:h-20' :
+                          isSmall ? 'w-9 h-9' :
+                          'w-12 h-12'
+                        }`}>
+                          <img
+                            src={detail.image}
+                            alt={detail.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <h4 className={`font-serif font-bold leading-snug ${
+                          isLarge ? 'text-base sm:text-lg' :
+                          isSmall ? 'text-xs sm:text-sm' :
+                          'text-sm sm:text-base'
+                        }`}>
+                          {detail.title}
+                        </h4>
+                        {detail.text && (
+                          <p className={`mt-0.5 opacity-90 leading-relaxed ${
+                            isLarge ? 'text-xs sm:text-sm' :
+                            isSmall ? 'text-[11px] line-clamp-1' :
+                            'text-xs'
+                          }`}>
+                            {detail.text}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Official Ayurvedic Monograph Tabs (Horizontal scrollable, priority colored cards & admin customizable) */}
         <ProductMonographTabs
           product={product}
           isAdmin={isAdmin}
           onOpenAdminEdit={onOpenAdminPanel}
-          className="mt-12"
+          className="mt-8"
         />
 
         {/* Other Product Suggestions (Horizontal Scroll, Same Category > Others, Random) */}

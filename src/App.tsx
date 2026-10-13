@@ -255,6 +255,12 @@ function PharmacyApp() {
   // Inquiry / Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
+  // Visible products: customers see only non-draft published products, while logged-in admins can preview drafts
+  const visibleProducts = useMemo(() => {
+    if (isAdmin) return products;
+    return products.filter((p) => !p.isDraft);
+  }, [products, isAdmin]);
+
   // Hash-based routing to support unique direct links (#product/code or #contact)
   useEffect(() => {
     const syncHashToView = () => {
@@ -269,6 +275,13 @@ function PharmacyApp() {
             p.name.toLowerCase() === slug.toLowerCase()
         );
         if (matched) {
+          if (matched.isDraft && !isAdmin) {
+            // Customer cannot view draft products via direct link
+            window.location.hash = '';
+            setCurrentView('home');
+            setSelectedProductForDetail(null);
+            return;
+          }
           setSelectedProductForDetail(matched);
           setCurrentView('product');
           return;
@@ -286,7 +299,7 @@ function PharmacyApp() {
     syncHashToView();
     window.addEventListener('hashchange', syncHashToView);
     return () => window.removeEventListener('hashchange', syncHashToView);
-  }, [products]);
+  }, [products, isAdmin]);
 
   // Sync products, site settings, categories & forms from Firebase Realtime Database on initial mount
   // If remote is null, auto-create/seed Firebase with initial defaults
@@ -522,7 +535,7 @@ function PharmacyApp() {
     return (
       <MarqueeTicker
         config={siteSettings.marquee}
-        products={products}
+        products={visibleProducts}
         onSelectProduct={handleSelectProduct}
         onSelectCategory={(cat) => {
           setSelectedCategory(cat);
@@ -631,7 +644,7 @@ function PharmacyApp() {
             onAddToCart={handleAddToCart}
             isInCart={cartProductIds.has(selectedProductForDetail.id)}
             siteSettings={siteSettings}
-            allProducts={products}
+            allProducts={visibleProducts}
             onSelectProduct={handleSelectProduct}
             onOpenConsultationModal={handleOpenConsultationModal}
             isAdmin={isAdmin}
@@ -657,8 +670,8 @@ function PharmacyApp() {
                 setIsAdminPanelOpen(true);
               }}
               siteSettings={siteSettings}
-              featuredDeal={products[0]}
-              products={products}
+              featuredDeal={visibleProducts[0]}
+              products={visibleProducts}
               onAddToCart={handleAddToCart}
               cartProductIds={cartProductIds}
             />
@@ -670,7 +683,7 @@ function PharmacyApp() {
             {siteSettings.productHorizontalLists && siteSettings.productHorizontalLists.length > 0 && (
               <ProductHorizontalListsSection
                 lists={siteSettings.productHorizontalLists}
-                products={products}
+                products={visibleProducts}
                 siteSettings={siteSettings}
                 onSelectProduct={handleSelectProduct}
                 onAddToCart={handleAddToCart}
@@ -688,7 +701,7 @@ function PharmacyApp() {
 
             {/* Product Dashboard with Categories, Forms, Sort Focus & Admin Controls */}
             <ProductDashboard
-              products={products}
+              products={visibleProducts}
               selectedCategory={selectedCategory}
               onSelectCategory={(cat) => setSelectedCategory(cat)}
               selectedForm={selectedForm}

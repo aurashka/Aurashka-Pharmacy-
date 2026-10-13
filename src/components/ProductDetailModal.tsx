@@ -310,6 +310,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                     {/* Primary Badge or Image Position Tag */}
                     <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+                      {product.isDraft && (
+                        <div className="bg-amber-400 text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded shadow-xs border border-amber-300">
+                          📝 Draft Preview
+                        </div>
+                      )}
                       {discountPercent > 0 && (
                         <div className="bg-[#B4741E] text-white text-[11px] font-bold px-2 py-0.5 rounded shadow-xs">
                           Save {discountPercent}%

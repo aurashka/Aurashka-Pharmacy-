@@ -31,7 +31,8 @@ import {
   MarqueeDividerIcon,
   ProductMonographTab,
   MonographDetailItem,
-  MonographPriority
+  MonographPriority,
+  ProductCustomDetailItem
 } from '../types/pharmacy';
 import { MarqueeTicker } from './MarqueeTicker';
 import { ProductMonographTabs } from './ProductMonographTabs';
@@ -41,7 +42,8 @@ import {
   getEffectiveMonographTabs, 
   getPriorityCardClasses, 
   getPriorityTagClasses, 
-  HERB_IMAGE_MAP 
+  HERB_IMAGE_MAP,
+  hexToRgba
 } from '../utils/monographHelper';
 import { DEFAULT_MESSAGE_TEMPLATES, formatCustomMessage } from '../utils/messageFormatter';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
@@ -107,7 +109,10 @@ import {
   ScrollText,
   Quote,
   HelpCircle,
-  FolderPlus
+  FolderPlus,
+  Copy,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
@@ -305,7 +310,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     videoUrl: '',
     videoType: 'none' as 'youtube' | 'direct' | 'none',
     primaryImageGradient: 'default' as 'default' | GradientOverlayStyle,
+    isDraft: false,
   });
+
+  // Step-by-Step Multi-Tab / Wizard Process State for Product Form
+  type ProductFormStep = 'basic' | 'media' | 'variants' | 'badges' | 'monograph' | 'custom_details';
+  const [productFormStep, setProductFormStep] = useState<ProductFormStep>('basic');
+  const [customDetailsList, setCustomDetailsList] = useState<ProductCustomDetailItem[]>([]);
+  const [productMonographTabs, setProductMonographTabs] = useState<ProductMonographTab[]>([]);
+  const [isFormFullScreen, setIsFormFullScreen] = useState(false);
+  const [productFilterMode, setProductFilterMode] = useState<'all' | 'published' | 'drafts'>('all');
 
   // Helper to normalize siteSettings data
   const normalizeSettings = (settings?: SiteSettings): SiteSettings => {
@@ -1145,6 +1159,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const startCreate = () => {
     setIsCreatingNew(true);
     setEditingProduct(null);
+    setProductFormStep('basic');
+    setIsFormFullScreen(false);
     setImageUrls(['https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80']);
     setIngredientsList([
       { herb: 'Shuddha Herb', botanicalName: 'Botanical species', potencyOrMg: '500mg', role: 'Active Herbal Principle' },
@@ -1204,12 +1220,48 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       videoUrl: '',
       videoType: 'none',
       primaryImageGradient: 'default',
+      isDraft: false,
     });
+    setCustomDetailsList([]);
+    const defaultNewTabs = buildDefaultMonographTabs({
+      id: `prod_${Date.now()}`,
+      name: 'New Formulation',
+      sanskritName: 'दिव्य रस',
+      category: firstCat.id,
+      categoryLabel: firstCat.label,
+      form: firstForm,
+      tagline: '',
+      description: '',
+      price: 0,
+      mrp: 0,
+      volumeOrWeight: '100g Pure Powder',
+      rating: 4.9,
+      reviewsCount: 15,
+      inStock: true,
+      image: '',
+      keyIndications: [],
+      detailedUses: { primaryBenefits: [], ailmentsTreated: [], actionMechanism: '', doshaEffect: '' },
+      dosageAndAnupana: { standardDosage: '', bestTiming: '', anupanaCarrier: '', duration: '' },
+      keyIngredients: [],
+      precautionsAndContraindications: [],
+      storageGuideline: '',
+      ayushLicenseNo: '',
+      batchInfo: ''
+    });
+    setProductMonographTabs(defaultNewTabs);
   };
 
-  const startEdit = (p: HerbalProduct) => {
+  const startEdit = (p: HerbalProduct, initialStep: ProductFormStep = 'basic') => {
     setIsCreatingNew(false);
     setEditingProduct(p);
+    setProductFormStep(initialStep);
+    setIsFormFullScreen(false);
+    setCustomDetailsList(p.customDetails && Array.isArray(p.customDetails) ? [...p.customDetails] : []);
+    setProductMonographTabs(
+      p.monographTabs && Array.isArray(p.monographTabs) && p.monographTabs.length > 0 
+        ? JSON.parse(JSON.stringify(p.monographTabs)) 
+        : buildDefaultMonographTabs(p)
+    );
     
     // Setup multiple images
     const allImgs = p.images && p.images.length > 0 ? [...p.images] : [p.image];
@@ -1287,6 +1339,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       videoUrl: p.videoUrl || '',
       videoType: p.videoType || (p.videoUrl ? detectVideoType(p.videoUrl) : 'none'),
       primaryImageGradient: (p.primaryImageGradient as any) || 'default',
+      isDraft: Boolean(p.isDraft),
     });
   };
 
@@ -1402,6 +1455,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     copy[index] = copy[targetIndex];
     copy[targetIndex] = temp;
     setCustomFieldsList(copy);
+  };
+
+  // Custom Detail Highlights Handlers (Shown above Monograph Tabs in Product View)
+  const handleAddCustomDetail = () => {
+    const newDetail: ProductCustomDetailItem = {
+      id: `cd_${Date.now()}`,
+      title: 'Apothecary Purity Guarantee',
+      text: 'Standardized extraction protocol verified for active chemical bio-markers.',
+      image: 'https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?auto=format&fit=crop&w=400&q=80',
+      size: 'medium',
+      bgColor: '#FAF5EE',
+      textColor: '#14291D',
+      bgOpacity: 100,
+    };
+    setCustomDetailsList((prev) => [...prev, newDetail]);
+  };
+
+  const handleUpdateCustomDetail = (index: number, field: keyof ProductCustomDetailItem, value: any) => {
+    setCustomDetailsList((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleRemoveCustomDetail = (index: number) => {
+    setCustomDetailsList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMoveCustomDetail = (index: number, direction: 'up' | 'down') => {
+    setCustomDetailsList((prev) => {
+      const copy = [...prev];
+      const target = direction === 'up' ? index - 1 : index + 1;
+      if (target < 0 || target >= copy.length) return prev;
+      const temp = copy[index];
+      copy[index] = copy[target];
+      copy[target] = temp;
+      return copy;
+    });
   };
 
   // Quick inline add Category
@@ -1678,8 +1770,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     });
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveProduct = (e?: React.FormEvent, forceDraft?: boolean) => {
+    if (e) e.preventDefault();
+
+    const isDraftVal = forceDraft !== undefined ? forceDraft : Boolean(productForm.isDraft);
 
     const cleanImgs = imageUrls.map((u) => u.trim()).filter(Boolean);
     const primaryImg = cleanImgs[0] || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80';
@@ -1768,7 +1862,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     };
 
     if (isCreatingNew) {
-      const newProd: HerbalProduct = {
+      const preliminaryProd: HerbalProduct = {
         id: `prod_${Date.now()}`,
         name: productForm.name.trim() || 'New Herbal Medicine',
         sanskritName: productForm.sanskritName.trim() || 'दिव्य हर्बल रस',
@@ -1814,10 +1908,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         videoUrl: productForm.videoUrl?.trim() || undefined,
         videoType: productForm.videoUrl?.trim() ? detectVideoType(productForm.videoUrl.trim()) : undefined,
         primaryImageGradient: productForm.primaryImageGradient !== 'default' ? productForm.primaryImageGradient : undefined,
+        isDraft: isDraftVal,
+        customDetails: customDetailsList,
+      };
+
+      const newProd: HerbalProduct = {
+        ...preliminaryProd,
+        monographTabs: productMonographTabs && productMonographTabs.length > 0 
+          ? productMonographTabs 
+          : buildDefaultMonographTabs(preliminaryProd),
       };
 
       onAddProduct(newProd);
-      setSaveSuccessMsg(`Product "${newProd.name}" added and synced to Firebase!`);
+      setSaveSuccessMsg(
+        isDraftVal 
+          ? `Formulation "${newProd.name}" saved as DRAFT (Hidden from storefront)!` 
+          : `Formulation "${newProd.name}" added & synced to Firebase!`
+      );
     } else if (editingProduct) {
       const updatedProd: HerbalProduct = {
         ...editingProduct,
@@ -1865,15 +1972,54 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         ayushLicenseNo: productForm.ayushLicenseNo,
         batchInfo: productForm.batchInfo,
         primaryImageGradient: productForm.primaryImageGradient !== 'default' ? productForm.primaryImageGradient : undefined,
+        isDraft: isDraftVal,
+        customDetails: customDetailsList,
+        monographTabs: productMonographTabs && productMonographTabs.length > 0 ? productMonographTabs : (editingProduct.monographTabs || buildDefaultMonographTabs(editingProduct)),
       };
 
       onUpdateProduct(updatedProd);
-      setSaveSuccessMsg(`Product "${updatedProd.name}" updated & saved to Firebase!`);
+      setSaveSuccessMsg(
+        isDraftVal 
+          ? `Formulation "${updatedProd.name}" saved as DRAFT (Hidden from customers)!` 
+          : `Formulation "${updatedProd.name}" updated & saved to Firebase!`
+      );
     }
 
-    setTimeout(() => setSaveSuccessMsg(null), 3000);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
     setIsCreatingNew(false);
     setEditingProduct(null);
+    setIsFormFullScreen(false);
+  };
+
+  // Direct Save as Draft button handler
+  const handleSaveAsDraft = () => {
+    setProductForm((prev) => ({ ...prev, isDraft: true }));
+    handleSaveProduct(undefined, true);
+  };
+
+  // Duplicate product handler (Requirement: Product Duplicate ka option bhi add kardo List me)
+  const handleDuplicateProduct = (prod: HerbalProduct) => {
+    const newId = `prod_${Date.now()}`;
+    const clonedVariants = (prod.variants || []).map((v, i) => ({
+      ...v,
+      id: `var_${Date.now()}_${i + 1}`,
+    }));
+    const clonedMonographTabs = prod.monographTabs
+      ? JSON.parse(JSON.stringify(prod.monographTabs))
+      : buildDefaultMonographTabs(prod);
+    const duplicated: HerbalProduct = {
+      ...prod,
+      id: newId,
+      name: `${prod.name} (Copy)`,
+      isDraft: true,
+      variants: clonedVariants,
+      monographTabs: clonedMonographTabs,
+      customDetails: prod.customDetails ? JSON.parse(JSON.stringify(prod.customDetails)) : [],
+      displayOrder: products.length + 1,
+    };
+    onAddProduct(duplicated);
+    setSaveSuccessMsg(`Formulation "${prod.name}" duplicated as Draft! Click Edit to customize.`);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
   const handleSaveSiteSettings = async (e: React.FormEvent) => {
@@ -1959,13 +2105,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const filteredProducts = React.useMemo(() => {
     const list = [...products].sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999));
-    return list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.sanskritName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.categoryLabel.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [products, searchTerm]);
+    return list.filter((p) => {
+      if (productFilterMode === 'published' && p.isDraft) return false;
+      if (productFilterMode === 'drafts' && !p.isDraft) return false;
+      if (!searchTerm.trim()) return true;
+      const q = searchTerm.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.sanskritName.toLowerCase().includes(q) ||
+        p.categoryLabel.toLowerCase().includes(q)
+      );
+    });
+  }, [products, searchTerm, productFilterMode]);
 
   if (!isOpen) return null;
 
@@ -2037,7 +2188,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             className="flex-1 py-1.5 px-2.5 bg-white border border-[#C8BEAB] rounded-lg text-xs font-semibold text-[#183624] shadow-2xs focus:outline-hidden focus:border-[#2C5E43] cursor-pointer"
           >
             <option value="products">🛍️ Products & Reseller Rates ({products.length})</option>
-            <option value="monograph_tabs">📑 Product Monograph Tabs & Custom Details (6 Standard + Custom)</option>
             <option value="deal_of_week">🔥 Deal of the Week & Banner Scroller ({currentWeeklyDeals.items.length} deals)</option>
             <option value="marquee">📜 Marquee Ticker & Infinite Scroll ({currentMarquee.enabled ? `${currentMarquee.items.length} items` : 'Off'})</option>
             <option value="horizontal_lists">📦 Product Horizontal Lists ({currentHorizontalLists.length} shelves)</option>
@@ -2068,28 +2218,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             >
               <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'products' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
               <span>Products & Rates ({products.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('monograph_tabs');
-                setIsCreatingNew(false);
-                setEditingProduct(null);
-              }}
-              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTab === 'monograph_tabs'
-                  ? 'bg-[#183624] text-white shadow-xs'
-                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
-              }`}
-            >
-              <Layers className={`w-3.5 h-3.5 ${activeTab === 'monograph_tabs' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
-              <span>Monograph Tabs</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                activeTab === 'monograph_tabs' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'
-              }`}>
-                Tabs 1-6
-              </span>
             </button>
 
             <button
@@ -2284,34 +2412,90 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         {/* Tab 1: Products */}
         {activeTab === 'products' && (
           <>
-            {/* Products Sub-Bar */}
+            {/* Products Sub-Bar with Filter Tabs (All / Published / Drafts) */}
             {!isCreatingNew && !editingProduct && (
-              <div className="p-3 sm:p-4 sm:px-6 bg-[#FAF8F5] border-b border-[#E7DFD1] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
-                <div className="relative w-full sm:flex-1 sm:max-w-md">
-                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#887E6D]" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search formulation title, herb, or category..."
-                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43]"
-                  />
+              <div className="p-3 sm:p-4 sm:px-6 bg-[#FAF8F5] border-b border-[#E7DFD1] flex flex-col gap-2.5 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                  <div className="relative w-full sm:flex-1 sm:max-w-md">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#887E6D]" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search formulation title, herb, or category..."
+                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43]"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={onResetProductsToDefault}
+                      className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer text-center"
+                    >
+                      Reset Defaults
+                    </button>
+
+                    <button
+                      onClick={startCreate}
+                      className="flex-1 sm:flex-none px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-amber-300" />
+                      <span>+ Add Product</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                {/* Filter Pills: All Formulations, Published, Drafts */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5">
                   <button
-                    onClick={onResetProductsToDefault}
-                    className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer text-center"
+                    type="button"
+                    onClick={() => setProductFilterMode('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                      productFilterMode === 'all'
+                        ? 'bg-[#183624] text-white shadow-2xs'
+                        : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+                    }`}
                   >
-                    Reset Defaults
+                    <span>All Formulations</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      productFilterMode === 'all' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
+                    }`}>
+                      {products.length}
+                    </span>
                   </button>
 
                   <button
-                    onClick={startCreate}
-                    className="flex-1 sm:flex-none px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    type="button"
+                    onClick={() => setProductFilterMode('published')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                      productFilterMode === 'published'
+                        ? 'bg-[#183624] text-white shadow-2xs'
+                        : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+                    }`}
                   >
-                    <Plus className="w-3.5 h-3.5 text-amber-300" />
-                    <span>+ Add Product</span>
+                    <span>✅ Published</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      productFilterMode === 'published' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
+                    }`}>
+                      {products.filter(p => !p.isDraft).length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setProductFilterMode('drafts')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                      productFilterMode === 'drafts'
+                        ? 'bg-amber-800 text-white shadow-2xs'
+                        : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300'
+                    }`}
+                  >
+                    <span>📝 Drafts (Admin Only)</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      productFilterMode === 'drafts' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'
+                    }`}>
+                      {products.filter(p => p.isDraft).length}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -2320,30 +2504,101 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             {/* Products Content Body */}
             <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
               {(isCreatingNew || editingProduct) ? (
-                /* Full Comprehensive Product Form */
-                <div className="bg-white p-6 rounded-xl border border-[#D5CCBC] shadow-xs space-y-6">
-                  <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-4">
+                /* Step-by-Step Multi-Tab Wizard Product Form (Fullscreen Expandable) */
+                <div className={`bg-white rounded-xl border border-[#D5CCBC] shadow-xs flex flex-col transition-all ${
+                  isFormFullScreen 
+                    ? "fixed inset-2 sm:inset-4 z-50 rounded-2xl shadow-2xl overflow-hidden" 
+                    : "overflow-hidden"
+                }`}>
+                  {/* Wizard Top Header */}
+                  <div className="px-5 py-3.5 bg-[#FAF8F5] border-b border-[#EAE3D4] flex items-center justify-between shrink-0">
                     <div>
-                      <span className="text-[11px] uppercase tracking-wider text-[#2C5E43] font-semibold">
-                        {isCreatingNew ? 'Create New Custom Formulation' : `Editing: ${editingProduct?.name}`}
-                      </span>
-                      <h4 className="font-serif text-xl font-bold text-[#14291D]">
-                        Edit Product Titles, Images, Reseller Price, Custom Fields & Badges
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-wider text-[#2C5E43] font-bold px-2 py-0.5 rounded bg-[#EBF5EF]">
+                          {isCreatingNew ? "Create New Formulation Wizard" : `Editing: ${editingProduct?.name}`}
+                        </span>
+                        {productForm.isDraft && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                            📝 Draft Mode (Admin Only)
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-serif text-base sm:text-lg font-bold text-[#14291D] mt-0.5">
+                        {productFormStep === "basic" && "Step 1: Commercial Titles, Formulation Form & Pricing"}
+                        {productFormStep === "media" && "Step 2: High-Resolution Photos, Media & Card Gradient"}
+                        {productFormStep === "variants" && "Step 3: Size & Packaging Variants (100ml, 500gm, 1kg...)"}
+                        {productFormStep === "badges" && "Step 4: Star Ratings, Focus Badge & Ayush Trust Ribbons"}
+                        {productFormStep === "monograph" && "Step 5: Product Monograph Tabs & Clinical Formulation (Integrated)"}
+                        {productFormStep === "custom_details" && "Step 6: Custom Detail Highlights (Optional — Displays Above Monograph Tabs)"}
                       </h4>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCreatingNew(false);
-                        setEditingProduct(null);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium text-[#645A4B] hover:bg-[#EFEAE0] rounded-lg cursor-pointer"
-                    >
-                      Cancel
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsFormFullScreen(!isFormFullScreen)}
+                        className="p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium text-[#4A4133] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] flex items-center gap-1 cursor-pointer transition-colors"
+                        title={isFormFullScreen ? "Exit Fullscreen" : "Expand Full Screen (Expentable page)"}
+                      >
+                        {isFormFullScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">{isFormFullScreen ? "Standard Card" : "Full Screen"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCreatingNew(false);
+                          setEditingProduct(null);
+                          setIsFormFullScreen(false);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium text-[#645A4B] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
 
-                  <form onSubmit={handleSaveProduct} className="space-y-6 text-xs">
+                  {/* Wizard Step Navigation Bar */}
+                  <div className="px-3 sm:px-5 py-2.5 bg-[#FDFCFB] border-b border-[#EAE3D4] overflow-x-auto shrink-0 flex items-center gap-1.5 sm:gap-2">
+                    {[
+                      { id: "basic", num: "1", title: "Basic Info & Rates", icon: FileText },
+                      { id: "media", num: "2", title: "Photos & Media", icon: ImageIcon },
+                      { id: "variants", num: "3", title: "Packaging & Variants", icon: Package },
+                      { id: "badges", num: "4", title: "Badges & Trust", icon: Star },
+                      { id: "monograph", num: "5", title: "Monograph Tabs", icon: Layers },
+                      { id: "custom_details", num: "6", title: "Custom Details (Optional)", icon: Sparkles },
+                    ].map((step) => {
+                      const IconComponent = step.icon;
+                      const isActive = productFormStep === step.id;
+                      return (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => setProductFormStep(step.id as any)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-[#14291D] text-white shadow-xs"
+                              : "bg-white text-[#554B3B] hover:bg-[#F2ECE1] border border-[#E0D7C6]"
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                            isActive ? "bg-amber-400 text-amber-950" : "bg-[#E7DFD1] text-[#4A4133]"
+                          }`}>
+                            {step.num}
+                          </span>
+                          <IconComponent className="w-3.5 h-3.5" />
+                          <span>{step.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Form Step Body */}
+                  <form onSubmit={(e) => handleSaveProduct(e)} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs flex flex-col justify-between">
+                    <div className="space-y-6">
+                      {/* STEP 1: BASIC INFO & PRICING */}
+                      {productFormStep === "basic" && (
+                        <div className="space-y-5 animate-in fade-in duration-150">
                     {/* Titles, Custom Link, Display Order & In-Stock Status */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="md:col-span-2">
@@ -2550,384 +2805,367 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* RATING STARS, REVIEWS & CUSTOM PRODUCT TAGS */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
-                        <div className="flex items-center gap-2">
-                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            Rating Stars, Reviews & Custom Product Tags
-                          </h5>
-                        </div>
-                        <span className="text-[11px] text-[#2C5E43] font-medium bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                          Pricing managed via Variants (starts ₹0)
-                        </span>
-                      </div>
 
-                      {/* Notice about Variant-based pricing */}
-                      <div className="p-2.5 bg-white rounded-lg border border-[#D5CCBC] flex items-center justify-between gap-3 text-xs text-[#5B5141]">
-                        <div className="flex items-center gap-2">
-                          <Package className="w-4 h-4 text-[#2C5E43] shrink-0" />
-                          <span>
-                            <strong>Note:</strong> Product Retail Price, MRP & Reseller Rate are configured exclusively inside <strong>Size & Packaging Variants</strong> below (starts from ₹0).
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-mono font-bold text-[#14291D] shrink-0">
-                          {variantsList.length > 0 ? `${variantsList.length} Variant(s) set` : 'Single default size'}
-                        </span>
-                      </div>
+                    {/* Net Volume / Weight (Classical Monograph Tabs are now managed in the dedicated Monograph Tabs section below) */}
+                    <div className="max-w-md">
+                      <label className="block font-medium text-[#2B251D] mb-1">Net Volume/Weight</label>
+                      <input
+                        type="text"
+                        value={productForm.volumeOrWeight}
+                        onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
+                        placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
+                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                      />
+                    </div>
 
-                      {/* Rating Stars & Reviews Count */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* RATING STARS (BRANDED SVG ICONS) */}
-                        <div className="p-3 bg-white rounded-xl border border-[#DDD5C5]">
-                          <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
-                            <span className="text-xs font-semibold">Rating Stars (1.0 to 5.0)</span>
-                            <span className="text-amber-600 font-bold flex items-center gap-0.5 text-xs">
-                              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                              <span>{productForm.rating}</span>
-                            </span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="1.0"
-                            max="5.0"
-                            required
-                            value={productForm.rating}
-                            onChange={(e) => setProductForm({ ...productForm, rating: parseFloat(e.target.value) || 5 })}
-                            className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold"
-                          />
-                          <div className="flex text-amber-500 text-xs mt-1.5">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-3.5 h-3.5 ${
-                                  i < Math.round(productForm.rating || 5)
-                                    ? 'fill-amber-400 text-amber-400'
-                                    : 'fill-gray-200 text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* REVIEWS COUNT */}
-                        <div className="p-3 bg-white rounded-xl border border-[#DDD5C5]">
-                          <label className="block font-medium text-[#2B251D] mb-1 text-xs font-semibold">
-                            Total Customer Reviews Count
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={productForm.reviewsCount}
-                            onChange={(e) => setProductForm({ ...productForm, reviewsCount: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                          />
-                          <span className="text-[10px] text-[#786D5C] mt-1 block">
-                            Displayed on product card & monograph header (e.g. {formatCompactNumber(productForm.reviewsCount || 0)} reviews)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* SORT BADGE SELECTOR (BRANDED LUCIDE ICONS, NO EMOJIS) */}
-                      <div className="pt-2 border-t border-[#EAE3D4]">
-                        <label className="block font-semibold text-[#2B251D] mb-1.5 text-xs">
-                          Catalog Standard Sort Category
-                        </label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                          {SORT_BADGE_OPTIONS.map((opt) => {
-                            const isSelected = productForm.sortBadge === opt.id;
-                            return (
-                              <button
-                                key={opt.id}
-                                type="button"
-                                onClick={() => setProductForm({ ...productForm, sortBadge: opt.id })}
-                                className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium text-left transition-all cursor-pointer flex items-center gap-1.5 ${
-                                  isSelected
-                                    ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
-                                    : 'bg-white text-[#4A3F2F] border-[#DDD5C5] hover:bg-[#F2ECE1]'
-                                }`}
-                              >
-                                {opt.id === 'trending' && <Flame className="w-3.5 h-3.5 text-red-500" />}
-                                {opt.id === 'top_seller' && <Trophy className="w-3.5 h-3.5 text-amber-500" />}
-                                {opt.id === 'best_deal' && <Tag className="w-3.5 h-3.5 text-emerald-600" />}
-                                {opt.id === 'featured' && <Sparkles className="w-3.5 h-3.5 text-indigo-500" />}
-                                {opt.id === 'new_launch' && <Rocket className="w-3.5 h-3.5 text-blue-500" />}
-                                {opt.id === 'none' && <Check className="w-3.5 h-3.5 text-gray-400" />}
-                                <span>{opt.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* CUSTOM MANUAL TAG SETTING (PRESETS OR TYPE MANUALLY WITH BG & TEXT COLOR SELECTION) */}
-                      <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#14291D]">
-                            <input
-                              type="checkbox"
-                              checked={productForm.hasCustomTag}
-                              onChange={(e) => setProductForm({ ...productForm, hasCustomTag: e.target.checked })}
-                              className="rounded border-[#DDD5C5] text-[#2C5E43] focus:ring-[#2C5E43] cursor-pointer"
-                            />
-                            <span>Add Custom Product Tag (Badge on Card & Product View)</span>
-                          </label>
-
-                          {productForm.hasCustomTag && (
-                            <span className="text-[10px] text-[#2C5E43] font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              Custom Tag Active
-                            </span>
-                          )}
-                        </div>
-
-                        {productForm.hasCustomTag && (
-                          <div className="space-y-3 pt-2 border-t border-[#F0EAE0]">
-                            {/* Preset Quick Tags */}
-                            <div>
-                              <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#6E6352] mb-1.5">
-                                Quick Preset Tag Options:
-                              </span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {[
-                                  { label: '🔥 Trending', text: 'Trending', bg: '#DC2626', color: '#FFFFFF' },
-                                  { label: '⭐ Top Seller', text: 'Top Seller', bg: '#D97706', color: '#FFFFFF' },
-                                  { label: '🏷️ Best Deal', text: 'Best Deal', bg: '#059669', color: '#FFFFFF' },
-                                  { label: '✨ Featured', text: 'Featured', bg: '#4F46E5', color: '#FFFFFF' },
-                                  { label: '🚀 New Launch', text: 'New Launch', bg: '#2563EB', color: '#FFFFFF' },
-                                  { label: '🌿 100% Ayurvedic', text: '100% Ayurvedic', bg: '#14291D', color: '#A5D6B6' },
-                                  { label: '⚡ Hot Offer', text: 'Hot Offer', bg: '#EA580C', color: '#FFFFFF' },
-                                ].map((pre, idx) => (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => {
-                                      setProductForm({
-                                        ...productForm,
-                                        customTagText: pre.text,
-                                        customTagBgColor: pre.bg,
-                                        customTagTextColor: pre.color,
-                                        hasCustomTag: true,
-                                      });
-                                    }}
-                                    className="px-2.5 py-1 rounded text-[11px] font-semibold border cursor-pointer transition-transform hover:scale-103 shadow-2xs"
-                                    style={{ backgroundColor: pre.bg, color: pre.color, borderColor: pre.bg }}
-                                  >
-                                    {pre.label}
-                                  </button>
-                                ))}
-                                <button
-                                  type="button"
-                                  onClick={() => setProductForm({ ...productForm, customTagText: '', hasCustomTag: false })}
-                                  className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded text-[11px] font-medium border border-stone-300 cursor-pointer"
-                                >
-                                  Clear Tag
-                                </button>
+                          {/* Base Pricing Card */}
+                          <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
+                            <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="w-4 h-4 text-[#2C5E43]" />
+                                <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                                  Formulation Base Pricing (Retail, MRP & Reseller Rate)
+                                </h5>
                               </div>
+                              <span className="text-[10px] text-[#786D5C]">
+                                Packaging Variants in Step 3 can also override per-size pricing
+                              </span>
                             </div>
 
-                            {/* Manual Text and Colors */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                              {/* Custom Tag Text */}
-                              <div className="sm:col-span-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
                                 <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                                  Custom Tag Text (Type Manually)
+                                  Retail Selling Price (₹) <span className="text-red-600">*</span>
                                 </label>
                                 <input
-                                  type="text"
-                                  value={productForm.customTagText}
-                                  onChange={(e) => setProductForm({ ...productForm, customTagText: e.target.value })}
-                                  placeholder="e.g. Special Deal, Limited Batch, Pure Herb"
-                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                                  type="number"
+                                  min="0"
+                                  value={productForm.price}
+                                  onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                                  className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold text-[#14291D] focus:border-[#2C5E43] focus:outline-hidden"
                                 />
                               </div>
 
-                              {/* Background Color */}
                               <div>
                                 <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                                  Background Color
+                                  Maximum Retail Price (MRP ₹)
                                 </label>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={productForm.customTagBgColor || '#14291D'}
-                                    onChange={(e) => setProductForm({ ...productForm, customTagBgColor: e.target.value })}
-                                    className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={productForm.customTagBgColor || '#14291D'}
-                                    onChange={(e) => setProductForm({ ...productForm, customTagBgColor: e.target.value })}
-                                    className="flex-1 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
-                                  />
-                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={productForm.mrp}
+                                  onChange={(e) => setProductForm({ ...productForm, mrp: Number(e.target.value) })}
+                                  className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold text-[#14291D] focus:border-[#2C5E43] focus:outline-hidden"
+                                />
                               </div>
 
-                              {/* Text Color */}
                               <div>
                                 <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
-                                  Text Color
+                                  Reseller / B2B Wholesale Rate (₹)
                                 </label>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={productForm.customTagTextColor || '#FFFFFF'}
-                                    onChange={(e) => setProductForm({ ...productForm, customTagTextColor: e.target.value })}
-                                    className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={productForm.customTagTextColor || '#FFFFFF'}
-                                    onChange={(e) => setProductForm({ ...productForm, customTagTextColor: e.target.value })}
-                                    className="flex-1 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
-                                  />
-                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={productForm.resellerPrice}
+                                  onChange={(e) => setProductForm({ ...productForm, resellerPrice: Number(e.target.value) })}
+                                  className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold text-[#14291D] focus:border-[#2C5E43] focus:outline-hidden"
+                                />
                               </div>
-                            </div>
-
-                            {/* Live Badge Preview */}
-                            <div className="pt-2 flex items-center gap-3">
-                              <span className="text-[10px] uppercase font-bold text-[#716858]">Live Badge Preview:</span>
-                              {productForm.customTagText.trim() ? (
-                                <span
-                                  className="text-xs font-bold px-2.5 py-1 rounded shadow-xs flex items-center gap-1.5"
-                                  style={{
-                                    backgroundColor: productForm.customTagBgColor || '#14291D',
-                                    color: productForm.customTagTextColor || '#FFFFFF',
-                                  }}
-                                >
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                  <span>{productForm.customTagText}</span>
-                                </span>
-                              ) : (
-                                <span className="text-xs text-stone-400 italic">Type a tag text above to preview</span>
-                              )}
                             </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* CUSTOM FIELDS SECTION (NAME, VALUE & DISPLAY POSITION SETTING) */}
+                          {/* Draft Mode Toggle Switch */}
+                          <div className="p-4 bg-[#FFFBF0] rounded-xl border border-amber-200">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={productForm.isDraft}
+                                onChange={(e) => setProductForm({ ...productForm, isDraft: e.target.checked })}
+                                className="mt-1 w-4 h-4 rounded text-amber-700 focus:ring-amber-500 cursor-pointer accent-amber-700"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-xs text-amber-950">
+                                    📝 Save Formulation in Draft Mode (Admin-Only Visibility)
+                                  </span>
+                                  {productForm.isDraft ? (
+                                    <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-amber-200 text-amber-950 border border-amber-300">
+                                      DRAFT ACTIVE (HIDDEN FROM CUSTOMERS)
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                                      WILL BE PUBLISHED LIVE
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-amber-800/90 mt-1 leading-relaxed">
+                                  Draft products storefront par regular visitors/customers ko <strong>kewal aur kewal hidden</strong> rehte hain. Kewal logged-in administrators ko catalog me aur Admin Panel me <strong>Draft</strong> tag ke sath show honge.
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* STEP 2: PHOTOS & MEDIA */}
+                      {productFormStep === "media" && (
+                        <div className="space-y-5 animate-in fade-in duration-150">
+
+                    {/* MULTIPLE PRODUCT IMAGES SECTION */}
                     <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <Sliders className="w-4 h-4 text-[#2C5E43]" />
+                          <ImageIcon className="w-4 h-4 text-[#2C5E43]" />
                           <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            Custom Product Fields (Name, Value & Display Position)
+                            Multiple Product Images (Direct Image Links)
                           </h5>
                         </div>
-                        <button
-                          type="button"
-                          onClick={handleAddCustomField}
-                          className="px-3 py-1 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer shadow-xs"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-amber-300" />
-                          <span>Add Custom Field</span>
-                        </button>
+                        <span className="text-[11px] text-[#716858]">
+                          {imageUrls.length} image(s) configured
+                        </span>
                       </div>
 
                       <p className="text-[11px] text-[#695E4F] bg-white p-2.5 rounded-lg border border-[#E2D8C7] leading-relaxed">
-                        Add custom attributes (e.g. <em>Shelf Life</em>, <em>Extraction Ratio</em>, <em>Storage Temp</em>, <em>Origin</em>, <em>Preservative Free</em>). Set the <strong>Display Position</strong> number (1, 2, 3...) to control the exact sorting order on the product page.
+                        <strong className="text-[#14291D]">Primary Rule:</strong> Only the <span className="font-semibold text-[#183624]">Primary Image (#1)</span> displays on the product list / catalog cards. All added images (#1, #2, etc.) appear inside the multi-angle gallery when a customer opens the product view.
                       </p>
 
-                      {customFieldsList.length === 0 ? (
-                        <div className="p-4 text-center border border-dashed border-[#DDD5C5] rounded-lg bg-white text-xs text-[#7A705E]">
-                          No custom fields added yet. Click <strong>"+ Add Custom Field"</strong> to add specifications with custom name, value and position.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {customFieldsList.map((field, idx) => (
-                            <div key={field.id || idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white p-2 rounded-lg border border-[#E7E0D2]">
-                              {/* Position Setting Control */}
-                              <div className="flex items-center gap-1 shrink-0 bg-[#FAF8F5] px-2 py-1 rounded border border-[#DDD5C5]">
-                                <span className="text-[10px] font-semibold text-[#7A705E]">Pos:</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={field.position}
-                                  onChange={(e) => handleUpdateCustomField(idx, 'position', parseInt(e.target.value) || 1)}
-                                  className="w-12 text-center text-xs font-mono font-bold bg-white border border-[#DDD5C5] rounded py-0.5"
-                                  title="Display position order (1 = first)"
-                                />
-                                <div className="flex flex-col">
-                                  <button
-                                    type="button"
-                                    disabled={idx === 0}
-                                    onClick={() => handleMoveCustomField(idx, 'up')}
-                                    className="p-0.5 text-[#433A2D] hover:text-black disabled:opacity-20 cursor-pointer"
-                                    title="Move Up"
-                                  >
-                                    <ArrowUp className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={idx === customFieldsList.length - 1}
-                                    onClick={() => handleMoveCustomField(idx, 'down')}
-                                    className="p-0.5 text-[#433A2D] hover:text-black disabled:opacity-20 cursor-pointer"
-                                    title="Move Down"
-                                  >
-                                    <ArrowDown className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Field Name */}
-                              <div className="flex-1 min-w-[140px]">
-                                <input
-                                  type="text"
-                                  required
-                                  value={field.name}
-                                  placeholder="Field Name (e.g. Shelf Life, Extraction Ratio)"
-                                  onChange={(e) => handleUpdateCustomField(idx, 'name', e.target.value)}
-                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-semibold text-[#14291D]"
-                                />
-                              </div>
-
-                              {/* Field Value */}
-                              <div className="flex-1 min-w-[160px]">
-                                <input
-                                  type="text"
-                                  required
-                                  value={field.value}
-                                  placeholder="Field Value (e.g. 24 Months, 10:1 Extract)"
-                                  onChange={(e) => handleUpdateCustomField(idx, 'value', e.target.value)}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded text-xs"
-                                />
-                              </div>
-
-                              {/* Target Tab / Section Placement */}
-                              <div className="shrink-0">
-                                <select
-                                  value={field.section || 'all'}
-                                  onChange={(e) => handleUpdateCustomField(idx, 'section', e.target.value)}
-                                  className="px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-[11px] font-medium text-[#14291D] cursor-pointer"
-                                  title="Choose which monograph tab this field displays inside"
-                                >
-                                  <option value="all">📌 All Tabs / Apothecary Specs</option>
-                                  <option value="indications">📋 Indications & Uses</option>
-                                  <option value="ingredients">🌿 Ingredients & Potency</option>
-                                  <option value="dosage">🥄 Dosage & Anupana</option>
-                                  <option value="action">⚖️ Action & Doshas</option>
-                                  <option value="precautions">🛡️ Precautions & License</option>
-                                </select>
-                              </div>
-
-                              {/* Delete Action */}
+                      <div className="space-y-2">
+                        {imageUrls.map((url, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-[#E7E0D2]">
+                            <span className="w-6 text-center font-mono text-[11px] text-[#807666]">
+                              #{idx + 1}
+                            </span>
+                            <div className="w-10 h-10 rounded bg-[#EFEAE0] overflow-hidden border border-[#D5CCBC] shrink-0">
+                              <img
+                                src={url}
+                                alt={`Thumb ${idx}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              value={url}
+                              onChange={(e) => {
+                                const copy = [...imageUrls];
+                                copy[idx] = e.target.value;
+                                setImageUrls(copy);
+                              }}
+                              placeholder="Direct image link (https://...)"
+                              className="flex-1 px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                            />
+                            {idx === 0 ? (
+                              <span className="px-2.5 py-1 rounded bg-[#E7EFEA] text-[#183624] text-[10px] font-bold border border-[#A5D6B6] shrink-0">
+                                Primary (List View)
+                              </span>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => handleRemoveCustomField(idx)}
+                                onClick={() => handleSetPrimaryImage(idx)}
+                                className="px-2.5 py-1 rounded bg-white text-[#2C5E43] hover:bg-[#E7EFEA] border border-[#B5D6C4] text-[10px] font-semibold shrink-0 cursor-pointer transition-colors"
+                                title="Set as primary thumbnail for product list view"
+                              >
+                                Set as Primary
+                              </button>
+                            )}
+                            {imageUrls.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImageUrl(idx)}
                                 className="p-1.5 text-red-600 hover:bg-red-50 rounded shrink-0 cursor-pointer"
-                                title="Delete this custom field"
+                                title="Delete image"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                            </div>
-                          ))}
+                            )}
+                          </div>
+                        ))}
+
+                        <div className="flex gap-2 pt-1">
+                          <input
+                            type="text"
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            placeholder="Add another image direct URL (https://...)"
+                            className="flex-1 px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddImageUrl}
+                            className="px-3 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Image</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PRODUCT PRIMARY IMAGE BOTTOM GRADIENT SETTING */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-600" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            Product Primary Image Bottom Gradient (Card & Monograph)
+                          </h5>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#183624] text-white capitalize">
+                          Current: {productForm.primaryImageGradient === 'default' ? `Store Default (${siteForm.productImageGradient || 'none'})` : productForm.primaryImageGradient}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-[#695E4F] leading-relaxed">
+                        Is formulation ke main primary photo par bottom gradient (Black, White, Emerald, Blur Glassy) lagana hai ya clean photo (None) rakhna hai:
+                      </p>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                        {/* Store Default Option */}
+                        <button
+                          type="button"
+                          onClick={() => setProductForm({ ...productForm, primaryImageGradient: 'default' })}
+                          className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                            productForm.primaryImageGradient === 'default'
+                              ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
+                              : 'border-[#DDD5C5] bg-white hover:bg-[#F5EFE6]'
+                          }`}
+                        >
+                          <div className="w-full h-7 rounded bg-[#EFEAE0] border border-[#DDD5C5] flex items-center justify-center text-[9.5px] font-bold text-[#716858]">
+                            Store Default
+                          </div>
+                          <span className="text-[10.5px] font-bold text-[#14291D] mt-1.5 line-clamp-1">
+                            Follow Store
+                          </span>
+                          <span className="text-[9px] text-[#716858]">
+                            {siteForm.productImageGradient || 'none'}
+                          </span>
+                        </button>
+
+                        {/* All 6 gradient styles */}
+                        {GRADIENT_OVERLAY_OPTIONS.map((opt) => {
+                          const isSelected = productForm.primaryImageGradient === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setProductForm({ ...productForm, primaryImageGradient: opt.value })}
+                              className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
+                                  : 'border-[#DDD5C5] bg-white hover:bg-[#F5EFE6]'
+                              }`}
+                            >
+                              <div className="w-full h-7 rounded overflow-hidden border border-[#DDD5C5] relative bg-stone-100 flex items-end">
+                                <div className={`w-full h-full ${opt.previewBg}`} />
+                                <span className="absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white">
+                                  {opt.badge}
+                                </span>
+                              </div>
+                              <span className="text-[10.5px] font-bold text-[#14291D] mt-1.5 line-clamp-1">
+                                {opt.badge}
+                              </span>
+                              <span className="text-[9px] text-[#716858] line-clamp-1">
+                                {opt.value === 'none' ? 'Clean' : 'Gradient'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* PRODUCT MAIN VIDEO SECTION (YOUTUBE / DIRECT PLAYABLE VIDEO) */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
+                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Video className="w-4 h-4 text-red-600" />
+                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                            Product Video (YouTube or Direct Playable Video)
+                          </h5>
+                        </div>
+                        {productForm.videoUrl?.trim() && (
+                          <div className="flex items-center gap-1.5">
+                            {detectVideoType(productForm.videoUrl) === 'youtube' && (
+                              <span className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
+                                <Play className="w-2.5 h-2.5 fill-white" />
+                                <span>YouTube Video</span>
+                              </span>
+                            )}
+                            {detectVideoType(productForm.videoUrl) === 'direct' && (
+                              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
+                                <Film className="w-2.5 h-2.5" />
+                                <span>Direct Video (.mp4 / webm)</span>
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setProductForm({ ...productForm, videoUrl: '', videoType: 'none' })}
+                              className="text-[10px] text-red-600 hover:underline font-semibold ml-1 cursor-pointer"
+                            >
+                              Remove Video
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-[#695E4F] bg-white p-2.5 rounded-lg border border-[#E2D8C7] leading-relaxed">
+                        Attach an official product presentation video (YouTube watch/shorts/embed URL or direct MP4/WebM video). Customers can play this video directly inside the product gallery alongside photos!
+                      </p>
+
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="url"
+                          value={productForm.videoUrl || ''}
+                          placeholder="Paste YouTube link (https://youtube.com/watch?v=... / shorts) or direct MP4/WebM URL"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setProductForm({
+                              ...productForm,
+                              videoUrl: val,
+                              videoType: detectVideoType(val),
+                            });
+                          }}
+                          className="flex-1 px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                        />
+                      </div>
+
+                      {/* Live Main Product Video Preview */}
+                      {productForm.videoUrl?.trim() && isValidVideoUrl(productForm.videoUrl) && (
+                        <div className="mt-2 p-2.5 bg-white rounded-lg border border-[#DDD5C5] space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] text-[#716858]">
+                            <span className="font-bold text-[#14291D] flex items-center gap-1">
+                              <Play className="w-3.5 h-3.5 text-[#2C5E43]" />
+                              <span>Live Product Video Player Preview:</span>
+                            </span>
+                            <span className="italic">Appears inside product gallery & monograph view</span>
+                          </div>
+                          <div className="rounded-lg overflow-hidden bg-black aspect-16/9 max-h-56 flex items-center justify-center">
+                            {detectVideoType(productForm.videoUrl) === 'youtube' ? (
+                              <iframe
+                                src={getYouTubeEmbedUrl(productForm.videoUrl, false) || ''}
+                                title="Product Main Video Preview"
+                                className="w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            ) : (
+                              <video
+                                src={productForm.videoUrl}
+                                controls
+                                preload="metadata"
+                                className="w-full h-full object-contain"
+                              />
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
+
+                        </div>
+                      )}
+
+                      {/* STEP 3: VARIANTS & SIZES */}
+                      {productFormStep === "variants" && (
+                        <div className="space-y-5 animate-in fade-in duration-150">
 
                     {/* SIZE & PACKAGING VARIANTS SECTION (e.g. 100ml, 200ml, 500gm, 1kg, 1 Liter) */}
                     <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
@@ -3286,361 +3524,269 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
                       )}
                     </div>
+                        </div>
+                      )}
 
-                    {/* MULTIPLE PRODUCT IMAGES SECTION */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <ImageIcon className="w-4 h-4 text-[#2C5E43]" />
+                      {/* STEP 4: BADGES & TRUST */}
+                      {productFormStep === "badges" && (
+                        <div className="space-y-5 animate-in fade-in duration-150">
+                    {/* RATING STARS, REVIEWS & CUSTOM PRODUCT TAGS */}
+                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE3D4] pb-2">
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                           <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            Multiple Product Images (Direct Image Links)
+                            Rating Stars, Reviews & Custom Product Tags
                           </h5>
                         </div>
-                        <span className="text-[11px] text-[#716858]">
-                          {imageUrls.length} image(s) configured
+                        <span className="text-[11px] text-[#2C5E43] font-medium bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          Pricing managed via Variants (starts ₹0)
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-[#695E4F] bg-white p-2.5 rounded-lg border border-[#E2D8C7] leading-relaxed">
-                        <strong className="text-[#14291D]">Primary Rule:</strong> Only the <span className="font-semibold text-[#183624]">Primary Image (#1)</span> displays on the product list / catalog cards. All added images (#1, #2, etc.) appear inside the multi-angle gallery when a customer opens the product view.
-                      </p>
+                      {/* Notice about Variant-based pricing */}
+                      <div className="p-2.5 bg-white rounded-lg border border-[#D5CCBC] flex items-center justify-between gap-3 text-xs text-[#5B5141]">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-[#2C5E43] shrink-0" />
+                          <span>
+                            <strong>Note:</strong> Product Retail Price, MRP & Reseller Rate are configured exclusively inside <strong>Size & Packaging Variants</strong> below (starts from ₹0).
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono font-bold text-[#14291D] shrink-0">
+                          {variantsList.length > 0 ? `${variantsList.length} Variant(s) set` : 'Single default size'}
+                        </span>
+                      </div>
 
-                      <div className="space-y-2">
-                        {imageUrls.map((url, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-[#E7E0D2]">
-                            <span className="w-6 text-center font-mono text-[11px] text-[#807666]">
-                              #{idx + 1}
+                      {/* Rating Stars & Reviews Count */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* RATING STARS (BRANDED SVG ICONS) */}
+                        <div className="p-3 bg-white rounded-xl border border-[#DDD5C5]">
+                          <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                            <span className="text-xs font-semibold">Rating Stars (1.0 to 5.0)</span>
+                            <span className="text-amber-600 font-bold flex items-center gap-0.5 text-xs">
+                              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                              <span>{productForm.rating}</span>
                             </span>
-                            <div className="w-10 h-10 rounded bg-[#EFEAE0] overflow-hidden border border-[#D5CCBC] shrink-0">
-                              <img
-                                src={url}
-                                alt={`Thumb ${idx}`}
-                                className="w-full h-full object-cover"
-                                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                              />
-                            </div>
-                            <input
-                              type="text"
-                              value={url}
-                              onChange={(e) => {
-                                const copy = [...imageUrls];
-                                copy[idx] = e.target.value;
-                                setImageUrls(copy);
-                              }}
-                              placeholder="Direct image link (https://...)"
-                              className="flex-1 px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                            />
-                            {idx === 0 ? (
-                              <span className="px-2.5 py-1 rounded bg-[#E7EFEA] text-[#183624] text-[10px] font-bold border border-[#A5D6B6] shrink-0">
-                                Primary (List View)
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleSetPrimaryImage(idx)}
-                                className="px-2.5 py-1 rounded bg-white text-[#2C5E43] hover:bg-[#E7EFEA] border border-[#B5D6C4] text-[10px] font-semibold shrink-0 cursor-pointer transition-colors"
-                                title="Set as primary thumbnail for product list view"
-                              >
-                                Set as Primary
-                              </button>
-                            )}
-                            {imageUrls.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveImageUrl(idx)}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded shrink-0 cursor-pointer"
-                                title="Delete image"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-
-                        <div className="flex gap-2 pt-1">
+                          </label>
                           <input
-                            type="text"
-                            value={newImageUrl}
-                            onChange={(e) => setNewImageUrl(e.target.value)}
-                            placeholder="Add another image direct URL (https://...)"
-                            className="flex-1 px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                            type="number"
+                            step="0.1"
+                            min="1.0"
+                            max="5.0"
+                            required
+                            value={productForm.rating}
+                            onChange={(e) => setProductForm({ ...productForm, rating: parseFloat(e.target.value) || 5 })}
+                            className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold"
                           />
-                          <button
-                            type="button"
-                            onClick={handleAddImageUrl}
-                            className="px-3 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Image</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* PRODUCT PRIMARY IMAGE BOTTOM GRADIENT SETTING */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-amber-600" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            Product Primary Image Bottom Gradient (Card & Monograph)
-                          </h5>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#183624] text-white capitalize">
-                          Current: {productForm.primaryImageGradient === 'default' ? `Store Default (${siteForm.productImageGradient || 'none'})` : productForm.primaryImageGradient}
-                        </span>
-                      </div>
-
-                      <p className="text-[11px] text-[#695E4F] leading-relaxed">
-                        Is formulation ke main primary photo par bottom gradient (Black, White, Emerald, Blur Glassy) lagana hai ya clean photo (None) rakhna hai:
-                      </p>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                        {/* Store Default Option */}
-                        <button
-                          type="button"
-                          onClick={() => setProductForm({ ...productForm, primaryImageGradient: 'default' })}
-                          className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
-                            productForm.primaryImageGradient === 'default'
-                              ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
-                              : 'border-[#DDD5C5] bg-white hover:bg-[#F5EFE6]'
-                          }`}
-                        >
-                          <div className="w-full h-7 rounded bg-[#EFEAE0] border border-[#DDD5C5] flex items-center justify-center text-[9.5px] font-bold text-[#716858]">
-                            Store Default
+                          <div className="flex text-amber-500 text-xs mt-1.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3.5 h-3.5 ${
+                                  i < Math.round(productForm.rating || 5)
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'fill-gray-200 text-gray-300'
+                                }`}
+                              />
+                            ))}
                           </div>
-                          <span className="text-[10.5px] font-bold text-[#14291D] mt-1.5 line-clamp-1">
-                            Follow Store
-                          </span>
-                          <span className="text-[9px] text-[#716858]">
-                            {siteForm.productImageGradient || 'none'}
-                          </span>
-                        </button>
-
-                        {/* All 6 gradient styles */}
-                        {GRADIENT_OVERLAY_OPTIONS.map((opt) => {
-                          const isSelected = productForm.primaryImageGradient === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setProductForm({ ...productForm, primaryImageGradient: opt.value })}
-                              className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'border-[#183624] bg-white ring-2 ring-[#2C5E43] shadow-xs'
-                                  : 'border-[#DDD5C5] bg-white hover:bg-[#F5EFE6]'
-                              }`}
-                            >
-                              <div className="w-full h-7 rounded overflow-hidden border border-[#DDD5C5] relative bg-stone-100 flex items-end">
-                                <div className={`w-full h-full ${opt.previewBg}`} />
-                                <span className="absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white">
-                                  {opt.badge}
-                                </span>
-                              </div>
-                              <span className="text-[10.5px] font-bold text-[#14291D] mt-1.5 line-clamp-1">
-                                {opt.badge}
-                              </span>
-                              <span className="text-[9px] text-[#716858] line-clamp-1">
-                                {opt.value === 'none' ? 'Clean' : 'Gradient'}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* PRODUCT MAIN VIDEO SECTION (YOUTUBE / DIRECT PLAYABLE VIDEO) */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-1.5">
-                          <Video className="w-4 h-4 text-red-600" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            Product Video (YouTube or Direct Playable Video)
-                          </h5>
                         </div>
-                        {productForm.videoUrl?.trim() && (
-                          <div className="flex items-center gap-1.5">
-                            {detectVideoType(productForm.videoUrl) === 'youtube' && (
-                              <span className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
-                                <Play className="w-2.5 h-2.5 fill-white" />
-                                <span>YouTube Video</span>
+
+                        {/* REVIEWS COUNT */}
+                        <div className="p-3 bg-white rounded-xl border border-[#DDD5C5]">
+                          <label className="block font-medium text-[#2B251D] mb-1 text-xs font-semibold">
+                            Total Customer Reviews Count
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={productForm.reviewsCount}
+                            onChange={(e) => setProductForm({ ...productForm, reviewsCount: parseInt(e.target.value) || 0 })}
+                            className="w-full px-3 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-mono"
+                          />
+                          <span className="text-[10px] text-[#786D5C] mt-1 block">
+                            Displayed on product card & monograph header (e.g. {formatCompactNumber(productForm.reviewsCount || 0)} reviews)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* SORT BADGE SELECTOR (BRANDED LUCIDE ICONS, NO EMOJIS) */}
+                      <div className="pt-2 border-t border-[#EAE3D4]">
+                        <label className="block font-semibold text-[#2B251D] mb-1.5 text-xs">
+                          Catalog Standard Sort Category
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                          {SORT_BADGE_OPTIONS.map((opt) => {
+                            const isSelected = productForm.sortBadge === opt.id;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setProductForm({ ...productForm, sortBadge: opt.id })}
+                                className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium text-left transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
+                                    : 'bg-white text-[#4A3F2F] border-[#DDD5C5] hover:bg-[#F2ECE1]'
+                                }`}
+                              >
+                                {opt.id === 'trending' && <Flame className="w-3.5 h-3.5 text-red-500" />}
+                                {opt.id === 'top_seller' && <Trophy className="w-3.5 h-3.5 text-amber-500" />}
+                                {opt.id === 'best_deal' && <Tag className="w-3.5 h-3.5 text-emerald-600" />}
+                                {opt.id === 'featured' && <Sparkles className="w-3.5 h-3.5 text-indigo-500" />}
+                                {opt.id === 'new_launch' && <Rocket className="w-3.5 h-3.5 text-blue-500" />}
+                                {opt.id === 'none' && <Check className="w-3.5 h-3.5 text-gray-400" />}
+                                <span>{opt.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* CUSTOM MANUAL TAG SETTING (PRESETS OR TYPE MANUALLY WITH BG & TEXT COLOR SELECTION) */}
+                      <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-[#14291D]">
+                            <input
+                              type="checkbox"
+                              checked={productForm.hasCustomTag}
+                              onChange={(e) => setProductForm({ ...productForm, hasCustomTag: e.target.checked })}
+                              className="rounded border-[#DDD5C5] text-[#2C5E43] focus:ring-[#2C5E43] cursor-pointer"
+                            />
+                            <span>Add Custom Product Tag (Badge on Card & Product View)</span>
+                          </label>
+
+                          {productForm.hasCustomTag && (
+                            <span className="text-[10px] text-[#2C5E43] font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              Custom Tag Active
+                            </span>
+                          )}
+                        </div>
+
+                        {productForm.hasCustomTag && (
+                          <div className="space-y-3 pt-2 border-t border-[#F0EAE0]">
+                            {/* Preset Quick Tags */}
+                            <div>
+                              <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#6E6352] mb-1.5">
+                                Quick Preset Tag Options:
                               </span>
-                            )}
-                            {detectVideoType(productForm.videoUrl) === 'direct' && (
-                              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs">
-                                <Film className="w-2.5 h-2.5" />
-                                <span>Direct Video (.mp4 / webm)</span>
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setProductForm({ ...productForm, videoUrl: '', videoType: 'none' })}
-                              className="text-[10px] text-red-600 hover:underline font-semibold ml-1 cursor-pointer"
-                            >
-                              Remove Video
-                            </button>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  { label: '🔥 Trending', text: 'Trending', bg: '#DC2626', color: '#FFFFFF' },
+                                  { label: '⭐ Top Seller', text: 'Top Seller', bg: '#D97706', color: '#FFFFFF' },
+                                  { label: '🏷️ Best Deal', text: 'Best Deal', bg: '#059669', color: '#FFFFFF' },
+                                  { label: '✨ Featured', text: 'Featured', bg: '#4F46E5', color: '#FFFFFF' },
+                                  { label: '🚀 New Launch', text: 'New Launch', bg: '#2563EB', color: '#FFFFFF' },
+                                  { label: '🌿 100% Ayurvedic', text: '100% Ayurvedic', bg: '#14291D', color: '#A5D6B6' },
+                                  { label: '⚡ Hot Offer', text: 'Hot Offer', bg: '#EA580C', color: '#FFFFFF' },
+                                ].map((pre, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                      setProductForm({
+                                        ...productForm,
+                                        customTagText: pre.text,
+                                        customTagBgColor: pre.bg,
+                                        customTagTextColor: pre.color,
+                                        hasCustomTag: true,
+                                      });
+                                    }}
+                                    className="px-2.5 py-1 rounded text-[11px] font-semibold border cursor-pointer transition-transform hover:scale-103 shadow-2xs"
+                                    style={{ backgroundColor: pre.bg, color: pre.color, borderColor: pre.bg }}
+                                  >
+                                    {pre.label}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setProductForm({ ...productForm, customTagText: '', hasCustomTag: false })}
+                                  className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded text-[11px] font-medium border border-stone-300 cursor-pointer"
+                                >
+                                  Clear Tag
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Manual Text and Colors */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                              {/* Custom Tag Text */}
+                              <div className="sm:col-span-1">
+                                <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                  Custom Tag Text (Type Manually)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={productForm.customTagText}
+                                  onChange={(e) => setProductForm({ ...productForm, customTagText: e.target.value })}
+                                  placeholder="e.g. Special Deal, Limited Batch, Pure Herb"
+                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-semibold"
+                                />
+                              </div>
+
+                              {/* Background Color */}
+                              <div>
+                                <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                  Background Color
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={productForm.customTagBgColor || '#14291D'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagBgColor: e.target.value })}
+                                    className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={productForm.customTagBgColor || '#14291D'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagBgColor: e.target.value })}
+                                    className="flex-1 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Text Color */}
+                              <div>
+                                <label className="block text-[11px] font-medium text-[#2B251D] mb-1">
+                                  Text Color
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={productForm.customTagTextColor || '#FFFFFF'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagTextColor: e.target.value })}
+                                    className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={productForm.customTagTextColor || '#FFFFFF'}
+                                    onChange={(e) => setProductForm({ ...productForm, customTagTextColor: e.target.value })}
+                                    className="flex-1 px-2 py-1 bg-[#FAF8F5] border border-[#DDD5C5] rounded text-xs font-mono"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Live Badge Preview */}
+                            <div className="pt-2 flex items-center gap-3">
+                              <span className="text-[10px] uppercase font-bold text-[#716858]">Live Badge Preview:</span>
+                              {productForm.customTagText.trim() ? (
+                                <span
+                                  className="text-xs font-bold px-2.5 py-1 rounded shadow-xs flex items-center gap-1.5"
+                                  style={{
+                                    backgroundColor: productForm.customTagBgColor || '#14291D',
+                                    color: productForm.customTagTextColor || '#FFFFFF',
+                                  }}
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span>{productForm.customTagText}</span>
+                                </span>
+                              ) : (
+                                <span className="text-xs text-stone-400 italic">Type a tag text above to preview</span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      <p className="text-[11px] text-[#695E4F] bg-white p-2.5 rounded-lg border border-[#E2D8C7] leading-relaxed">
-                        Attach an official product presentation video (YouTube watch/shorts/embed URL or direct MP4/WebM video). Customers can play this video directly inside the product gallery alongside photos!
-                      </p>
-
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="url"
-                          value={productForm.videoUrl || ''}
-                          placeholder="Paste YouTube link (https://youtube.com/watch?v=... / shorts) or direct MP4/WebM URL"
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setProductForm({
-                              ...productForm,
-                              videoUrl: val,
-                              videoType: detectVideoType(val),
-                            });
-                          }}
-                          className="flex-1 px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono"
-                        />
-                      </div>
-
-                      {/* Live Main Product Video Preview */}
-                      {productForm.videoUrl?.trim() && isValidVideoUrl(productForm.videoUrl) && (
-                        <div className="mt-2 p-2.5 bg-white rounded-lg border border-[#DDD5C5] space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] text-[#716858]">
-                            <span className="font-bold text-[#14291D] flex items-center gap-1">
-                              <Play className="w-3.5 h-3.5 text-[#2C5E43]" />
-                              <span>Live Product Video Player Preview:</span>
-                            </span>
-                            <span className="italic">Appears inside product gallery & monograph view</span>
-                          </div>
-                          <div className="rounded-lg overflow-hidden bg-black aspect-16/9 max-h-56 flex items-center justify-center">
-                            {detectVideoType(productForm.videoUrl) === 'youtube' ? (
-                              <iframe
-                                src={getYouTubeEmbedUrl(productForm.videoUrl, false) || ''}
-                                title="Product Main Video Preview"
-                                className="w-full h-full border-0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            ) : (
-                              <video
-                                src={productForm.videoUrl}
-                                controls
-                                preload="metadata"
-                                className="w-full h-full object-contain"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* SECTION 2: INGREDIENTS & POTENCY (ACTIVE BOTANICALS) */}
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-3">
-                      <div className="flex items-center justify-between border-b border-[#E7DFD1] pb-2">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#2C5E43]" />
-                          <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                            2. Ingredients & Potency (Active Botanical Composition Table)
-                          </h5>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#E7EFEA] text-[#14291D] rounded">
-                            Tab 2 in Detail View
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleAddIngredient}
-                            className="px-3 py-1 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Herb</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                          <thead>
-                            <tr className="border-b border-[#DDD5C5] text-[#695F4F]">
-                              <th className="py-1.5 px-2">Herb Name</th>
-                              <th className="py-1.5 px-2">Botanical Species</th>
-                              <th className="py-1.5 px-2">Potency / mg</th>
-                              <th className="py-1.5 px-2">Therapeutic Role</th>
-                              <th className="py-1.5 px-2 text-right">Delete</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#EAE3D4]">
-                            {ingredientsList.map((ing, idx) => (
-                              <tr key={idx}>
-                                <td className="py-1.5 px-2">
-                                  <input
-                                    type="text"
-                                    required
-                                    value={ing.herb}
-                                    placeholder="Herb (e.g. Ashwagandha)"
-                                    onChange={(e) => handleUpdateIngredient(idx, 'herb', e.target.value)}
-                                    className="w-full px-2 py-1 bg-white border border-[#DDD5C5] rounded text-xs"
-                                  />
-                                </td>
-                                <td className="py-1.5 px-2">
-                                  <input
-                                    type="text"
-                                    value={ing.botanicalName}
-                                    placeholder="Botanical Name"
-                                    onChange={(e) => handleUpdateIngredient(idx, 'botanicalName', e.target.value)}
-                                    className="w-full px-2 py-1 bg-white border border-[#DDD5C5] rounded text-xs italic"
-                                  />
-                                </td>
-                                <td className="py-1.5 px-2">
-                                  <input
-                                    type="text"
-                                    value={ing.potencyOrMg}
-                                    placeholder="500mg"
-                                    onChange={(e) => handleUpdateIngredient(idx, 'potencyOrMg', e.target.value)}
-                                    className="w-full px-2 py-1 bg-white border border-[#DDD5C5] rounded text-xs"
-                                  />
-                                </td>
-                                <td className="py-1.5 px-2">
-                                  <input
-                                    type="text"
-                                    value={ing.role}
-                                    placeholder="Adaptogen / Bio-enhancer"
-                                    onChange={(e) => handleUpdateIngredient(idx, 'role', e.target.value)}
-                                    className="w-full px-2 py-1 bg-white border border-[#DDD5C5] rounded text-xs"
-                                  />
-                                </td>
-                                <td className="py-1.5 px-2 text-right">
-                                  {ingredientsList.length > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveIngredient(idx)}
-                                      className="p-1 text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Net Volume / Weight (Classical Monograph Tabs are now managed in the dedicated Monograph Tabs section below) */}
-                    <div className="max-w-md">
-                      <label className="block font-medium text-[#2B251D] mb-1">Net Volume/Weight</label>
-                      <input
-                        type="text"
-                        value={productForm.volumeOrWeight}
-                        onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
-                        placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
-                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                      />
                     </div>
 
                     {/* ══════════════════════════════════════════════════════════════ */}
@@ -3822,72 +3968,378 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* SECTION 6: PRODUCT DETAIL MONOGRAPH TABS & CLINICAL CARDS */}
-                    {/* ══════════════════════════════════════════════════════════════ */}
-                    <div className="p-4 sm:p-5 bg-[#FAF8F5] rounded-xl border border-[#A5D6B6] space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E0D7C6] pb-3">
-                        <div className="flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-[#2C5E43]" />
-                          <div>
-                            <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                              6. Product Monograph Tabs, Priority Cards & Reviews
-                            </h5>
-                            <p className="text-[11px] text-[#716858]">
-                              Customize the 6 standard tabs (Overview, Benefits, Ingredients, Dosage, Specs, FAQs & Reviews) or create custom tabs with priority color tags (Red, Yellow, Green, Normal).
-                            </p>
+
+                        </div>
+                      )}
+
+                      {/* STEP 5: MONOGRAPH TABS */}
+                      {productFormStep === "monograph" && (
+                        <div className="space-y-5 animate-in fade-in duration-150">
+                          <div className="p-4 sm:p-5 bg-[#FAF8F5] rounded-xl border border-[#A5D6B6] space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E0D7C6] pb-3">
+                              <div className="flex items-center gap-2">
+                                <Layers className="w-4 h-4 text-[#2C5E43]" />
+                                <div>
+                                  <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                                    Step 5: Product Monograph Tabs & Clinical Formulation
+                                  </h5>
+                                  <p className="text-[11px] text-[#716858]">
+                                    Har ek product ke Monograph Tabs (Overview, Benefits, Botanical Ingredients, Dosage & Anupana, Apothecary Specs, FAQs & Reviews) yahin manage karein.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <AdminMonographTabsManager
+                              products={products}
+                              selectedProductId={editingProduct?.id}
+                              controlledTabs={productMonographTabs}
+                              onTabsChange={(tabs) => setProductMonographTabs(tabs)}
+                              onUpdateProduct={onUpdateProduct}
+                              onPreviewProduct={onPreviewProduct}
+                              onNotify={(msg) => {
+                                setSaveSuccessMsg(msg);
+                                setTimeout(() => setSaveSuccessMsg(null), 3000);
+                              }}
+                              hideProductPicker={true}
+                              productTitle={productForm.name || (editingProduct ? editingProduct.name : 'New Formulation')}
+                            />
                           </div>
                         </div>
+                      )}
 
-                        {editingProduct && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedProductForMonographId(editingProduct.id);
-                              setActiveTab('monograph_tabs');
-                            }}
-                            className="px-3 py-1.5 bg-[#183624] hover:bg-[#20442E] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
-                          >
-                            <Layers className="w-3.5 h-3.5 text-amber-300" />
-                            <span>Open Full Monograph Tabs Editor</span>
-                          </button>
-                        )}
-                      </div>
+                      {/* STEP 6: CUSTOM DETAIL HIGHLIGHTS (OPTIONAL - DISPLAYS ABOVE MONOGRAPH TABS) */}
+                      {productFormStep === "custom_details" && (
+                        <div className="space-y-5 animate-in fade-in duration-150">
+                          <div className="p-4 sm:p-5 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E0D7C6] pb-3">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-[#2C5E43]" />
+                                <div>
+                                  <h5 className="font-serif text-sm font-bold text-[#14291D]">
+                                    Step 6: Custom Detail Highlights (Optional — Displays Above Monograph Tabs)
+                                  </h5>
+                                  <p className="text-[11px] text-[#716858]">
+                                    Product view me Monograph Tabs ke theek upar custom cards/details add karein. Har card ka Title, Text, Size, Bg Color, Text Color, Bg Opacity, aur Image manage karein.
+                                  </p>
+                                </div>
+                              </div>
 
-                      {editingProduct && (
-                        <AdminMonographTabsManager
-                          products={products}
-                          selectedProductId={editingProduct.id}
-                          onUpdateProduct={onUpdateProduct}
-                          onPreviewProduct={onPreviewProduct}
-                          onNotify={(msg) => {
-                            setSaveSuccessMsg(msg);
-                            setTimeout(() => setSaveSuccessMsg(null), 3000);
-                          }}
-                          hideProductPicker={true}
-                        />
+                              <button
+                                type="button"
+                                onClick={handleAddCustomDetail}
+                                className="px-3 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                              >
+                                <Plus className="w-3.5 h-3.5 text-amber-300" />
+                                <span>+ Add Custom Detail Card</span>
+                              </button>
+                            </div>
+
+                            {customDetailsList.length === 0 ? (
+                              <div className="p-8 text-center border-2 border-dashed border-[#DDD5C5] rounded-xl bg-white space-y-2">
+                                <Sparkles className="w-8 h-8 text-[#8C806D] mx-auto opacity-70" />
+                                <h6 className="font-serif text-sm font-bold text-[#14291D]">
+                                  No Custom Detail Cards Added (Optional)
+                                </h6>
+                                <p className="text-xs text-[#6B6150] max-w-md mx-auto">
+                                  Yeh step bilkul optional hai. Agar aap product page par Monograph Tabs ke upar special highlights (e.g. Guarantee, Extraction Protocol, Testing Badge) dikhana chahte hain, toh card add karein.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={handleAddCustomDetail}
+                                  className="mt-2 px-4 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <Plus className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Add First Custom Detail</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {customDetailsList.map((detail, idx) => (
+                                  <div
+                                    key={detail.id || idx}
+                                    className="p-4 bg-white rounded-xl border border-[#DDD5C5] shadow-2xs space-y-3 transition-all hover:border-[#2C5E43]"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EFEAE0] pb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-5 h-5 rounded-full bg-[#14291D] text-white text-[10px] font-bold flex items-center justify-center">
+                                          {idx + 1}
+                                        </span>
+                                        <span className="font-serif font-bold text-xs text-[#14291D]">
+                                          Card #{idx + 1}: {detail.title || 'Untitled Detail'}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          disabled={idx === 0}
+                                          onClick={() => handleMoveCustomDetail(idx, 'up')}
+                                          className="p-1 rounded bg-[#FAF8F5] border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
+                                          title="Move Up"
+                                        >
+                                          <ArrowUp className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={idx === customDetailsList.length - 1}
+                                          onClick={() => handleMoveCustomDetail(idx, 'down')}
+                                          className="p-1 rounded bg-[#FAF8F5] border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
+                                          title="Move Down"
+                                        >
+                                          <ArrowDown className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveCustomDetail(idx)}
+                                          className="p-1 rounded bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 cursor-pointer ml-1"
+                                          title="Delete Card"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Card Form Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                      {/* Title */}
+                                      <div className="sm:col-span-2">
+                                        <label className="block font-semibold text-[#14291D] mb-1">
+                                          Title <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={detail.title}
+                                          onChange={(e) => handleUpdateCustomDetail(idx, 'title', e.target.value)}
+                                          placeholder="e.g. Apothecary Purity Guarantee"
+                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-bold text-xs"
+                                        />
+                                      </div>
+
+                                      {/* Size Selector */}
+                                      <div>
+                                        <label className="block font-semibold text-[#14291D] mb-1">
+                                          Card Size
+                                        </label>
+                                        <select
+                                          value={detail.size || 'medium'}
+                                          onChange={(e) => handleUpdateCustomDetail(idx, 'size', e.target.value as any)}
+                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs cursor-pointer font-medium"
+                                        >
+                                          <option value="small">Small (Compact single line)</option>
+                                          <option value="medium">Medium (Standard Card)</option>
+                                          <option value="large">Large (Wide Hero Feature)</option>
+                                        </select>
+                                      </div>
+
+                                      {/* Image URL */}
+                                      <div>
+                                        <label className="block font-semibold text-[#14291D] mb-1">
+                                          Icon / Photo URL (Optional)
+                                        </label>
+                                        <input
+                                          type="url"
+                                          value={detail.image || ''}
+                                          onChange={(e) => handleUpdateCustomDetail(idx, 'image', e.target.value)}
+                                          placeholder="https://... or unsplash"
+                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                                        />
+                                      </div>
+
+                                      {/* Text / Subtitle */}
+                                      <div className="sm:col-span-2 md:col-span-4">
+                                        <label className="block font-semibold text-[#14291D] mb-1">
+                                          Card Description / Details (Optional)
+                                        </label>
+                                        <textarea
+                                          rows={2}
+                                          value={detail.text || ''}
+                                          onChange={(e) => handleUpdateCustomDetail(idx, 'text', e.target.value)}
+                                          placeholder="e.g. Standardized extraction protocol verified for active chemical bio-markers."
+                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
+                                        />
+                                      </div>
+
+                                      {/* Background Color */}
+                                      <div>
+                                        <label className="block font-semibold text-[#14291D] mb-1">
+                                          Background Color
+                                        </label>
+                                        <div className="flex items-center gap-1.5">
+                                          <input
+                                            type="color"
+                                            value={detail.bgColor || '#FAF5EE'}
+                                            onChange={(e) => handleUpdateCustomDetail(idx, 'bgColor', e.target.value)}
+                                            className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white shrink-0"
+                                          />
+                                          <input
+                                            type="text"
+                                            value={detail.bgColor || '#FAF5EE'}
+                                            onChange={(e) => handleUpdateCustomDetail(idx, 'bgColor', e.target.value)}
+                                            className="w-full px-2 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-mono text-xs"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Text Color */}
+                                      <div>
+                                        <label className="block font-semibold text-[#14291D] mb-1">
+                                          Text Color
+                                        </label>
+                                        <div className="flex items-center gap-1.5">
+                                          <input
+                                            type="color"
+                                            value={detail.textColor || '#14291D'}
+                                            onChange={(e) => handleUpdateCustomDetail(idx, 'textColor', e.target.value)}
+                                            className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white shrink-0"
+                                          />
+                                          <input
+                                            type="text"
+                                            value={detail.textColor || '#14291D'}
+                                            onChange={(e) => handleUpdateCustomDetail(idx, 'textColor', e.target.value)}
+                                            className="w-full px-2 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-mono text-xs"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Background Opacity */}
+                                      <div className="sm:col-span-2">
+                                        <label className="block font-semibold text-[#14291D] mb-1 flex items-center justify-between">
+                                          <span>Background Opacity:</span>
+                                          <span className="font-mono font-bold text-[#2C5E43]">{detail.bgOpacity ?? 100}%</span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="range"
+                                            min="10"
+                                            max="100"
+                                            step="5"
+                                            value={detail.bgOpacity ?? 100}
+                                            onChange={(e) => handleUpdateCustomDetail(idx, 'bgOpacity', Number(e.target.value))}
+                                            className="w-full accent-[#2C5E43] cursor-pointer"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Real-time Preview Pill */}
+                                    <div className="pt-2 border-t border-[#F2EDE1]">
+                                      <span className="text-[10px] font-bold text-[#7A705E] uppercase tracking-wider block mb-1">
+                                        Live Storefront Preview:
+                                      </span>
+                                      <div
+                                        style={{
+                                          backgroundColor: hexToRgba(detail.bgColor || '#FAF5EE', detail.bgOpacity ?? 100),
+                                          color: detail.textColor || '#14291D',
+                                        }}
+                                        className={`rounded-xl border border-black/10 p-3 flex items-center gap-3 ${
+                                          detail.size === 'large' ? 'p-4' : detail.size === 'small' ? 'p-2' : 'p-3'
+                                        }`}
+                                      >
+                                        {detail.image && (
+                                          <img
+                                            src={detail.image}
+                                            alt={detail.title}
+                                            className={`rounded-lg object-cover shrink-0 border border-black/10 bg-white ${
+                                              detail.size === 'large' ? 'w-12 h-12' : detail.size === 'small' ? 'w-7 h-7' : 'w-10 h-10'
+                                            }`}
+                                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                                          />
+                                        )}
+                                        <div className="min-w-0">
+                                          <div className={`font-serif font-bold ${detail.size === 'large' ? 'text-sm' : 'text-xs'}`}>
+                                            {detail.title || 'Untitled Detail'}
+                                          </div>
+                                          {detail.text && (
+                                            <div className="text-[11px] opacity-85 mt-0.5">
+                                              {detail.text}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    {/* Form Submit & Cancel Buttons */}
-                    <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs py-3.5 px-4 -mx-6 -mb-6 border-t border-[#EAE3D4] flex items-center justify-end gap-3 z-10 shadow-xs rounded-b-xl">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsCreatingNew(false);
-                          setEditingProduct(null);
-                        }}
-                        className="px-4 py-2 border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded-lg font-medium cursor-pointer text-xs"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-5 sm:px-6 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-md cursor-pointer text-xs"
-                      >
-                        <Save className="w-4 h-4 text-amber-300" />
-                        <span>{isCreatingNew ? 'Save & Sync to Firebase' : 'Update & Save to Firebase'}</span>
-                      </button>
+                    {/* Sticky Step Footer Navigation & Save Actions */}
+                    <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs py-3.5 px-4 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 border-t border-[#EAE3D4] flex flex-wrap items-center justify-between gap-3 z-10 shadow-xs">
+                      {/* Step Prev/Next buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={productFormStep === "basic"}
+                          onClick={() => {
+                            const order: ProductFormStep[] = ["basic", "media", "variants", "badges", "monograph", "custom_details"];
+                            const curIdx = order.indexOf(productFormStep);
+                            if (curIdx > 0) setProductFormStep(order[curIdx - 1]);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+                            productFormStep === "basic"
+                              ? "opacity-40 border-stone-200 text-stone-400 cursor-not-allowed"
+                              : "border-[#DDD5C5] text-[#332C22] hover:bg-[#F2ECE1] cursor-pointer"
+                          }`}
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          <span>Previous Step</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={productFormStep === "custom_details"}
+                          onClick={() => {
+                            const order: ProductFormStep[] = ["basic", "media", "variants", "badges", "monograph", "custom_details"];
+                            const curIdx = order.indexOf(productFormStep);
+                            if (curIdx < order.length - 1) setProductFormStep(order[curIdx + 1]);
+                          }}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                            productFormStep === "custom_details"
+                              ? "opacity-40 bg-stone-200 text-stone-400 cursor-not-allowed"
+                              : "bg-[#2C5E43] hover:bg-[#20442E] text-white cursor-pointer shadow-2xs"
+                          }`}
+                        >
+                          <span>Next Step</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Save Actions: Draft + Final Save */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCreatingNew(false);
+                            setEditingProduct(null);
+                            setIsFormFullScreen(false);
+                          }}
+                          className="px-3.5 py-1.5 border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded-lg font-medium cursor-pointer text-xs"
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSaveAsDraft}
+                          className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                          title="Save as Draft: only visible to admins"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Save as Draft</span>
+                        </button>
+
+                        <button
+                          type="submit"
+                          className="px-5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-colors"
+                        >
+                          <Save className="w-4 h-4 text-amber-300" />
+                          <span>{isCreatingNew ? "Publish / Save Formulation" : "Update Formulation"}</span>
+                        </button>
+                      </div>
                     </div>
                   </form>
                 </div>
@@ -3976,7 +4428,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-1">
-                              <h4 className="font-bold text-[#14291D] text-sm leading-snug line-clamp-1">{prod.name}</h4>
+                              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                <h4 className="font-bold text-[#14291D] text-sm leading-snug line-clamp-1">{prod.name}</h4>
+                                {prod.isDraft && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                                    📝 Draft
+                                  </span>
+                                )}
+                              </div>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                                 prod.inStock !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                               }`}>
@@ -4037,21 +4496,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           )}
                         </div>
 
-                        {/* Action Buttons on mobile */}
-                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#F0EAE0]">
+                        {/* Action Buttons on mobile (4 buttons: Preview, Duplicate, Edit, Delete) */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-[#F0EAE0]">
                           <button
                             type="button"
                             onClick={() => onPreviewProduct(prod)}
-                            className="py-1.5 px-2 bg-[#E7EFEA] hover:bg-[#d8e8de] text-[#183624] rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-[#BBDDC7] cursor-pointer"
+                            className="py-1.5 px-1 bg-[#E7EFEA] hover:bg-[#d8e8de] text-[#183624] rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-[#BBDDC7] cursor-pointer"
+                            title="Preview product"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>Preview</span>
+                            <span>View</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateProduct(prod)}
+                            className="py-1.5 px-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-purple-200 cursor-pointer"
+                            title="Duplicate formulation as draft"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => startEdit(prod)}
-                            className="py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-blue-200 cursor-pointer"
+                            className="py-1.5 px-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border border-blue-200 cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                             <span>Edit</span>
@@ -4122,7 +4592,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     />
                                   </div>
                                   <div>
-                                    <div className="font-bold text-[#14291D] line-clamp-1">{prod.name}</div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-[#14291D] line-clamp-1">{prod.name}</span>
+                                      {prod.isDraft && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                          📝 DRAFT
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="text-[11px] text-[#7A705E] italic line-clamp-1">{prod.sanskritName}</div>
                                     {prod.customFields && prod.customFields.length > 0 && (
                                       <div className="text-[10px] text-[#2C5E43] font-medium">
@@ -4206,14 +4683,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     <Eye className="w-4 h-4" />
                                   </button>
                                   <button
-                                    onClick={() => {
-                                      setSelectedProductForMonographId(prod.id);
-                                      setActiveTab('monograph_tabs');
-                                    }}
+                                    onClick={() => startEdit(prod, 'monograph')}
                                     className="p-1.5 text-amber-700 hover:bg-amber-50 rounded cursor-pointer"
-                                    title="Manage Monograph Tabs & Clinical Details (Tabs 1-6 & Custom)"
+                                    title="Manage Monograph Tabs for this formulation"
                                   >
                                     <Layers className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDuplicateProduct(prod)}
+                                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded cursor-pointer"
+                                    title="Duplicate formulation as draft"
+                                  >
+                                    <Copy className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => startEdit(prod)}
@@ -4261,22 +4742,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               )}
             </div>
           </>
-        )}
-
-        {/* Tab: Product Detail Monograph Tabs Manager (Tabs 1-6 & Custom Tabs, Priority Cards, Images & Reviews) */}
-        {activeTab === 'monograph_tabs' && (
-          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
-            <AdminMonographTabsManager
-              products={products}
-              selectedProductId={selectedProductForMonographId}
-              onUpdateProduct={onUpdateProduct}
-              onPreviewProduct={onPreviewProduct}
-              onNotify={(msg) => {
-                setSaveSuccessMsg(msg);
-                setTimeout(() => setSaveSuccessMsg(null), 3000);
-              }}
-            />
-          </div>
         )}
 
         {/* Tab: Deal of the Week (Add, Edit, Reorder, Delete Section & Multiple Products in Horizontal Scroll) */}

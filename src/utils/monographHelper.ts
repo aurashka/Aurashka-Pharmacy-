@@ -1,4 +1,12 @@
-import { HerbalProduct, ProductMonographTab, MonographDetailItem, MonographPriority } from '../types/pharmacy';
+import { 
+  HerbalProduct, 
+  ProductMonographTab, 
+  MonographDetailItem, 
+  MonographPriority,
+  MonographContentBlock,
+  BlockDesignSettings,
+  TagItem
+} from '../types/pharmacy';
 
 // Botanical Herb Image Presets for rich visual ingredient cards
 export const HERB_IMAGE_MAP: Record<string, string> = {
@@ -73,7 +81,7 @@ export const getPriorityTagClasses = (priority: MonographPriority = 'normal'): {
       return {
         bgClass: 'bg-[#991B1B]',
         textClass: 'text-white',
-        defaultLabel: 'High Priority (Red)',
+        defaultLabel: 'Clinical Attention',
         defaultHex: '#991B1B',
         dotColor: 'bg-red-300 animate-pulse',
       };
@@ -81,7 +89,7 @@ export const getPriorityTagClasses = (priority: MonographPriority = 'normal'): {
       return {
         bgClass: 'bg-[#B45309]',
         textClass: 'text-white',
-        defaultLabel: 'Mid Priority (Yellow)',
+        defaultLabel: 'Pharmacological Key',
         defaultHex: '#B45309',
         dotColor: 'bg-amber-300',
       };
@@ -89,7 +97,7 @@ export const getPriorityTagClasses = (priority: MonographPriority = 'normal'): {
       return {
         bgClass: 'bg-[#14532D]',
         textClass: 'text-white',
-        defaultLabel: 'Low Priority (Green)',
+        defaultLabel: 'Apothecary Standard',
         defaultHex: '#14532D',
         dotColor: 'bg-emerald-300',
       };
@@ -98,7 +106,7 @@ export const getPriorityTagClasses = (priority: MonographPriority = 'normal'): {
       return {
         bgClass: 'bg-[#1F2937]',
         textClass: 'text-white',
-        defaultLabel: 'Normal',
+        defaultLabel: '',
         defaultHex: '#1F2937',
         dotColor: 'bg-stone-300',
       };
@@ -124,17 +132,37 @@ export const parseItemTags = (item: { tags?: string[]; text?: string }): string[
 };
 
 /**
+ * Converts HEX color to RGBA with opacity percent (10 - 100)
+ */
+export const hexToRgba = (hex: string, opacityPercent = 100): string => {
+  if (!hex || !hex.startsWith('#')) return hex;
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map((c) => c + c).join('');
+  }
+  if (cleanHex.length !== 6) return hex;
+  const num = parseInt(cleanHex, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  const a = Math.max(0.05, Math.min(1, (Number(opacityPercent) || 100) / 100));
+  return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
+};
+
+/**
  * Resolves the effective background and text color for an item's tag or priority accent
  */
 export const resolveEffectiveColors = (
-  item: { customTagBgColor?: string; customTagTextColor?: string; priority?: MonographPriority },
+  item: { customTagBgColor?: string; customTagTextColor?: string; customTagOpacity?: number; priority?: MonographPriority },
   fallbackPriority: MonographPriority = 'normal'
-): { bg: string; text: string } => {
+): { bg: string; text: string; opacity: number } => {
   const prio = item.priority || fallbackPriority;
   const defaultHex = PRIORITY_DARK_HEX_MAP[prio] || PRIORITY_DARK_HEX_MAP.normal;
-  const bg = (item.customTagBgColor && item.customTagBgColor.trim()) ? item.customTagBgColor.trim() : defaultHex;
+  const rawBg = (item.customTagBgColor && item.customTagBgColor.trim()) ? item.customTagBgColor.trim() : defaultHex;
+  const opacity = typeof item.customTagOpacity === 'number' ? item.customTagOpacity : 100;
+  const bg = opacity < 100 ? hexToRgba(rawBg, opacity) : rawBg;
   const text = (item.customTagTextColor && item.customTagTextColor.trim()) ? item.customTagTextColor.trim() : '#FFFFFF';
-  return { bg, text };
+  return { bg, text, opacity };
 };
 
 /**
@@ -463,4 +491,253 @@ export const getEffectiveMonographTabs = (product: HerbalProduct): ProductMonogr
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
   return buildDefaultMonographTabs(product);
+};
+
+/**
+ * Resolves inline CSS styles from BlockDesignSettings
+ */
+export const getBlockContainerStyles = (design?: BlockDesignSettings): React.CSSProperties => {
+  if (!design) return {};
+  const style: React.CSSProperties = {};
+  if (design.bgColor) {
+    const opacity = typeof design.bgOpacity === 'number' ? design.bgOpacity : 100;
+    style.backgroundColor = hexToRgba(design.bgColor, opacity);
+  }
+  if (design.textColor) {
+    style.color = design.textColor;
+  }
+  if (design.borderColor) {
+    style.borderColor = design.borderColor;
+  }
+  return style;
+};
+
+export const resolveBlockCustomStyle = getBlockContainerStyles;
+
+/**
+ * Resolves Tailwind utility classes from BlockDesignSettings
+ */
+export const getBlockContainerClasses = (design?: BlockDesignSettings): string => {
+  if (!design) return 'p-4 rounded-xl border border-[#E7DFD1] bg-white';
+  const classes: string[] = ['transition-all'];
+
+  // Padding
+  switch (design.padding) {
+    case 'none': classes.push('p-0'); break;
+    case 'sm': classes.push('p-2.5 sm:p-3'); break;
+    case 'md': classes.push('p-4 sm:p-5'); break;
+    case 'lg': classes.push('p-5 sm:p-6'); break;
+    case 'xl': classes.push('p-6 sm:p-8'); break;
+    default: classes.push('p-3.5 sm:p-4');
+  }
+
+  // Margin
+  switch (design.margin) {
+    case 'none': classes.push('my-0'); break;
+    case 'sm': classes.push('my-1.5'); break;
+    case 'md': classes.push('my-3'); break;
+    case 'lg': classes.push('my-5'); break;
+    default: classes.push('my-2');
+  }
+
+  // Border
+  switch (design.border) {
+    case 'none': classes.push('border-0'); break;
+    case 'solid': classes.push('border border-[#DDD5C5]'); break;
+    case 'dashed': classes.push('border border-dashed border-[#DDD5C5]'); break;
+    case 'subtle': classes.push('border border-stone-200/80'); break;
+    default: classes.push('border border-[#EAE3D4]');
+  }
+
+  // Border Radius
+  switch (design.borderRadius) {
+    case 'none': classes.push('rounded-none'); break;
+    case 'sm': classes.push('rounded-sm'); break;
+    case 'md': classes.push('rounded-md'); break;
+    case 'lg': classes.push('rounded-lg'); break;
+    case 'xl': classes.push('rounded-xl'); break;
+    case '2xl': classes.push('rounded-2xl'); break;
+    default: classes.push('rounded-xl');
+  }
+
+  // Alignment
+  switch (design.alignment) {
+    case 'center': classes.push('text-center'); break;
+    case 'right': classes.push('text-right'); break;
+    case 'justify': classes.push('text-justify'); break;
+    default: classes.push('text-left');
+  }
+
+  // Width
+  switch (design.width) {
+    case 'compact': classes.push('max-w-md mx-auto'); break;
+    case 'wide': classes.push('max-w-4xl'); break;
+    case 'auto': classes.push('w-fit'); break;
+    default: classes.push('w-full');
+  }
+
+  return classes.join(' ');
+};
+
+/**
+ * Converts legacy MonographDetailItem[] into modern MonographContentBlock[]
+ */
+export const convertTabItemsToBlocks = (tab: ProductMonographTab): MonographContentBlock[] => {
+  if (!tab.items || tab.items.length === 0) {
+    return [
+      {
+        id: `blk_${Date.now()}_intro`,
+        type: 'rich_text',
+        design: {
+          bgColor: '#FAF8F5',
+          textColor: '#14291D',
+          bgOpacity: 100,
+          padding: 'md',
+          margin: 'sm',
+          border: 'solid',
+          borderRadius: 'xl',
+          alignment: 'left',
+          width: 'full',
+        },
+        richTextData: {
+          content: tab.subtitle || 'Classical Ayurvedic monograph content verified by Rasashastra standards.',
+          secondaryContent: 'Formulated in accordance with Ayurvedic Pharmacopoeia of India (API) specifications.',
+          fontSize: 'sm',
+          lineHeight: 'relaxed',
+        },
+      },
+    ];
+  }
+
+  const blocks: MonographContentBlock[] = [];
+
+  tab.items.forEach((item, idx) => {
+    const parsedTags = parseItemTags(item);
+
+    // 1. Image + Text item (Botanical Herb with image)
+    if (item.imageUrl) {
+      blocks.push({
+        id: `blk_${item.id || idx}`,
+        type: 'image_text',
+        design: {
+          bgColor: '#FFFFFF',
+          textColor: '#14291D',
+          bgOpacity: 100,
+          padding: 'md',
+          margin: 'sm',
+          border: 'solid',
+          borderRadius: 'xl',
+          alignment: 'left',
+          width: 'full',
+        },
+        imageTextData: {
+          title: item.title,
+          text: item.text,
+          detailedContent: item.botanicalName ? `Botanical Species: ${item.botanicalName}${item.quantityOrPotency ? ` • Potency: ${item.quantityOrPotency}` : ''}${item.role ? ` • Role: ${item.role}` : ''}` : undefined,
+          imageUrl: item.imageUrl,
+          imageAlt: item.title,
+          imagePosition: 'left',
+          imageSize: 'small',
+          aspectRatio: 'square',
+          spacing: 'md',
+          alignment: 'center',
+        },
+      });
+      return;
+    }
+
+    // 2. Tags Block (Items with tags)
+    if (parsedTags.length > 0) {
+      blocks.push({
+        id: `blk_${item.id || idx}`,
+        type: 'tags',
+        design: {
+          bgColor: '#FAF8F5',
+          textColor: '#14291D',
+          bgOpacity: 100,
+          padding: 'md',
+          margin: 'sm',
+          border: 'solid',
+          borderRadius: 'xl',
+          alignment: 'left',
+          width: 'full',
+        },
+        tagsData: {
+          title: item.title,
+          tags: parsedTags.map((t, tIdx) => ({
+            id: `tag_${tIdx}`,
+            text: t,
+            bgColor: item.customTagBgColor || '#14291D',
+            textColor: item.customTagTextColor || '#FFFFFF',
+            bgOpacity: item.customTagOpacity ?? 100,
+            fontSize: 'xs',
+            style: 'rounded',
+          })),
+          detailedContent: item.text || undefined, // Detailed Content / Monograph Paragraph shown below tags
+        },
+      });
+      return;
+    }
+
+    // 3. Customer Review Item
+    if (item.isReview) {
+      blocks.push({
+        id: `blk_${item.id || idx}`,
+        type: 'rich_text',
+        design: {
+          bgColor: '#FFFFFF',
+          textColor: '#14291D',
+          bgOpacity: 100,
+          padding: 'md',
+          margin: 'sm',
+          border: 'solid',
+          borderRadius: 'xl',
+          alignment: 'left',
+          width: 'full',
+        },
+        richTextData: {
+          content: `"${item.text || item.title}"`,
+          secondaryContent: `— ${item.author || 'Verified Practitioner'}${item.date ? ` • ${item.date}` : ''} (${item.rating || 5} Stars Rating)`,
+          fontSize: 'sm',
+          lineHeight: 'relaxed',
+        },
+      });
+      return;
+    }
+
+    // 4. Default Item: Clean Header + Rich Text with Detailed Content
+    blocks.push({
+      id: `blk_${item.id || idx}`,
+      type: 'rich_text',
+      design: {
+        bgColor: '#FFFFFF',
+        textColor: '#14291D',
+        bgOpacity: 100,
+        padding: 'md',
+        margin: 'sm',
+        border: 'solid',
+        borderRadius: 'xl',
+        alignment: 'left',
+        width: 'full',
+      },
+      richTextData: {
+        content: `**${item.title}**\n${item.text}`,
+        secondaryContent: item.customTag ? `Standard Reference: ${item.customTag}` : undefined,
+        fontSize: 'sm',
+        lineHeight: 'relaxed',
+      },
+    });
+  });
+
+  return blocks;
+};
+
+/**
+ * Returns effective content blocks for a tab (prefers tab.blocks, falls back to converted tab.items)
+ */
+export const getEffectiveTabBlocks = (tab: ProductMonographTab): MonographContentBlock[] => {
+  if (tab.blocks && Array.isArray(tab.blocks) && tab.blocks.length > 0) {
+    return tab.blocks;
+  }
+  return convertTabItemsToBlocks(tab);
 };

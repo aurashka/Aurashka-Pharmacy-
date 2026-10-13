@@ -78,6 +78,7 @@ export interface MonographDetailItem {
   customTag?: string;            // Custom tag text badge e.g. "Strict Adherence", "100% Pure"
   customTagBgColor?: string;     // Custom background color for the tag
   customTagTextColor?: string;   // Custom text color for the tag
+  customTagOpacity?: number;     // Custom tag opacity (10 to 100, default 100)
   // Multiple tags support (displayed as separate badges with background colors):
   tags?: string[];               // e.g. ["Anidra", "Manodaurbalya", "Kshaya"] or ["Text1", "T2"]
   tagsBgColor?: string;          // Optional custom background color for the tags
@@ -99,6 +100,148 @@ export interface MonographDetailItem {
   date?: string;                 // Date / verification label
 }
 
+export type MonographBlockType = 
+  | 'card'
+  | 'header'
+  | 'rich_text'
+  | 'tags'
+  | 'image_text'
+  | 'image_only'
+  | 'divider';
+
+export interface BlockDesignSettings {
+  bgColor?: string;          // Hex e.g. #FAF7F2, #FFFFFF
+  textColor?: string;        // Hex e.g. #14291D, #2C5E43
+  bgOpacity?: number;        // 0 to 100
+  padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  margin?: 'none' | 'sm' | 'md' | 'lg';
+  border?: 'none' | 'solid' | 'dashed' | 'subtle';
+  borderColor?: string;
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  alignment?: 'left' | 'center' | 'right' | 'justify';
+  width?: 'full' | 'wide' | 'compact' | 'auto';
+}
+
+export interface HeaderBlockData {
+  text: string;
+  subtitle?: string;
+  level?: 'h2' | 'h3' | 'h4';
+  showAccentBorder?: boolean;
+}
+
+export interface RichTextBlockData {
+  content: string;
+  secondaryContent?: string; // Optional Monograph Paragraph / Clinical notes
+  fontSize?: 'xs' | 'sm' | 'base' | 'lg';
+  lineHeight?: 'normal' | 'relaxed' | 'loose';
+}
+
+export interface TagItem {
+  id: string;
+  text: string;
+  textColor?: string;
+  bgColor?: string;
+  bgOpacity?: number;
+  fontSize?: 'xs' | 'sm';
+  style?: 'rounded' | 'square' | 'pill';
+}
+
+export interface TagsBlockData {
+  title?: string;
+  tags: TagItem[];
+  detailedContent?: string; // Detailed Content / Monograph Paragraph shown below tags
+}
+
+export interface ImageTextBlockData {
+  title?: string;
+  text: string;
+  detailedContent?: string;
+  imageUrl: string;
+  imageAlt?: string;
+  imageLinkUrl?: string; // Optional clickable link on image
+  imagePosition: 'left' | 'right' | 'top' | 'bottom';
+  imageSize: 'small' | 'medium' | 'large';
+  aspectRatio: 'square' | '16:9' | '4:3' | 'natural';
+  spacing?: 'sm' | 'md' | 'lg';
+  alignment?: 'start' | 'center' | 'end';
+}
+
+export interface ImageOnlyBlockData {
+  imageUrl: string;
+  caption?: string;
+  imageLinkUrl?: string; // Optional clickable link on image
+  aspectRatio?: 'square' | '16:9' | '4:3' | '21:9' | 'natural';
+  imageSize?: 'small' | 'medium' | 'large' | 'full';
+  rounded?: 'none' | 'md' | 'lg' | 'xl' | '2xl';
+}
+
+export interface DividerBlockData {
+  style: 'line' | 'dashed' | 'dots' | 'spacing_only';
+  lineColor?: string;
+  thickness?: number;
+  heightPx?: number;
+}
+
+/**
+ * Unified Composed Card Block Data:
+ * Allows creating a single rich card containing any desired combination of:
+ * - Header (Title, Subtitle)
+ * - Image (Left / Right / Top / Bottom / Compact with optional link)
+ * - Rich text & List
+ * - Tags / badges (Placed where wanted: top, middle, or bottom)
+ * - Detailed Content / Monograph Paragraph
+ * - Optional link button
+ */
+export interface CardBlockData {
+  // 1. Header inside card
+  showHeader?: boolean;
+  title?: string;
+  subtitle?: string;
+  headerLevel?: 'h2' | 'h3' | 'h4';
+  showAccentBorder?: boolean;
+
+  // 2. Image inside card with link
+  showImage?: boolean;
+  imageUrl?: string;
+  imageAlt?: string;
+  imageLinkUrl?: string; // Clickable link on image
+  imagePosition?: 'left' | 'right' | 'top' | 'bottom';
+  imageSize?: 'compact' | 'small' | 'medium' | 'large' | 'full';
+  aspectRatio?: 'square' | '16:9' | '4:3' | 'natural';
+  imageRounded?: 'none' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+
+  // 3. Rich text / bullet list inside card
+  showRichText?: boolean;
+  content?: string; // Formatted content, bold, bullets
+  secondaryContent?: string; // Clinical notes / Monograph paragraph
+  fontSize?: 'xs' | 'sm' | 'base' | 'lg';
+  lineHeight?: 'normal' | 'relaxed' | 'loose';
+
+  // 4. Tags / badges inside card (Placed where user wants)
+  showTags?: boolean;
+  tagsTitle?: string;
+  tags?: TagItem[];
+  tagsPosition?: 'top' | 'middle' | 'bottom'; // Position of tags inside the card
+  detailedContent?: string; // Detailed Content / Monograph Paragraph below tags
+
+  // 5. Optional action link / button
+  actionLinkUrl?: string;
+  actionLinkLabel?: string;
+}
+
+export interface MonographContentBlock {
+  id: string;
+  type: MonographBlockType;
+  design: BlockDesignSettings;
+  cardData?: CardBlockData; // Unified / Composed Card Block
+  headerData?: HeaderBlockData;
+  richTextData?: RichTextBlockData;
+  tagsData?: TagsBlockData;
+  imageTextData?: ImageTextBlockData;
+  imageOnlyData?: ImageOnlyBlockData;
+  dividerData?: DividerBlockData;
+}
+
 export interface ProductMonographTab {
   id: string;                    // Tab identifier (overview, benefits, ingredients, dosage, specifications, faqs_reviews, or custom)
   title: string;                 // Display title: Tab 1: Overview, Tab 2: Benefits & Uses, etc.
@@ -108,6 +251,10 @@ export interface ProductMonographTab {
   isCustom?: boolean;
   enabled?: boolean;
   order?: number;
+  bgColor?: string;             // Custom tab background color (e.g. #FAF7F2, #14291D)
+  textColor?: string;           // Custom tab text color (e.g. #14291D, #FFFFFF)
+  bgOpacity?: number;           // Custom tab background opacity (10 to 100)
+  blocks?: MonographContentBlock[]; // Independent content blocks for collapsible accordion
 }
 
 export interface ProductCustomTag {
@@ -170,6 +317,19 @@ export interface HerbalProduct {
   primaryImageOverlayCoveragePercent?: number;
   primaryImageOverlayFadeSoftness?: number;
   monographTabs?: ProductMonographTab[]; // Horizontal tabs with customizable details, priorities, and cards
+  customDetails?: ProductCustomDetailItem[]; // Optional custom highlight details shown directly above monograph tabs in product view
+  isDraft?: boolean; // Draft mode: only visible to admin in catalog and admin panel
+}
+
+export interface ProductCustomDetailItem {
+  id: string;
+  title: string;
+  text?: string;
+  image?: string;
+  size?: 'small' | 'medium' | 'large';
+  bgColor?: string; // Hex color e.g. #FAF5EE, #14291D
+  textColor?: string; // Hex color e.g. #14291D, #FFFFFF
+  bgOpacity?: number; // Opacity percent: 10 to 100
 }
 
 export interface ProductAssuranceBadges {

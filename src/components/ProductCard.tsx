@@ -190,6 +190,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               Out of Stock
             </span>
           )}
+          {product.isDraft && (
+            <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-xs w-fit">
+              📝 Draft
+            </span>
+          )}
           {product.customTag?.text && (
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs w-fit flex items-center gap-1 tracking-wide"
