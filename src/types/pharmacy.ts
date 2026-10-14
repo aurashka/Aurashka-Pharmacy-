@@ -140,9 +140,12 @@ export interface TagItem {
   id: string;
   text: string;
   textColor?: string;
+  textColorOpacity?: number; // 0 to 100 opacity for text color
   bgColor?: string;
-  bgOpacity?: number;
-  fontSize?: 'xs' | 'sm';
+  bgOpacity?: number;        // 0 to 100 opacity for background color
+  fontSize?: 'xs' | 'sm' | 'base' | 'lg' | string;
+  customFontSize?: string;   // Custom typed font size e.g. "11px", "12px", "14px"
+  size?: 'compact' | 'normal' | 'spacious';
   style?: 'rounded' | 'square' | 'pill';
 }
 
@@ -182,25 +185,117 @@ export interface DividerBlockData {
   heightPx?: number;
 }
 
+export type CardElementType = 
+  | 'image'
+  | 'text'
+  | 'tag'
+  | 'image_text'
+  | 'rich_text_list'
+  | 'custom_table'
+  | 'divider';
+
+export interface CardElementItem {
+  id: string;
+  type: CardElementType;
+
+  // 1. Image
+  imageUrl?: string;
+  imageAlt?: string;
+  imageLinkUrl?: string; // Clickable link on image
+  imageSize?: string;    // Custom typed (e.g. "120px", "200px", "100%", "compact", "small", "medium", "large")
+  imageRounded?: string; // Card curve / border radius: "none" | "sm" | "md" | "lg" | "xl" | "2xl" | "full" | custom "16px"
+  imageAlignment?: 'left' | 'center' | 'right';
+  imageCaption?: string;
+
+  // 2. Text
+  text?: string;
+  textSize?: string;     // Custom typed (e.g. "14px", "16px", "18px", "20px", "24px")
+  textColor?: string;    // Custom text color hex
+  textStyle?: 'normal' | 'italic';
+  textBold?: boolean;
+  textUnderline?: boolean;
+  textAlignment?: 'left' | 'center' | 'right' | 'justify';
+
+  // 3. Tag
+  tags?: TagItem[];
+  tagsTitle?: string;
+  tagsAlignment?: 'left' | 'center' | 'right';
+
+  // 4. Image + Text (Horizontal line)
+  horizontalImageUrl?: string;
+  horizontalImagePosition?: 'left' | 'right'; // Image on left or right of text
+  horizontalImageSize?: string;              // Custom typed e.g. "80px", "100px", "120px"
+  horizontalImageRounded?: string;           // Image curve: "none" | "md" | "lg" | "xl" | "full"
+  horizontalImageLinkUrl?: string;           // Clickable link on image
+  horizontalText?: string;
+  horizontalTextSize?: string;               // Custom typed e.g. "14px", "16px"
+  horizontalTextColor?: string;              // Custom text color
+  horizontalTextBold?: boolean;
+  horizontalTextItalic?: boolean;
+  horizontalTextUnderline?: boolean;
+  horizontalLinkUrl?: string;                // Clickable link URL
+  horizontalLinkLabel?: string;              // Clickable link anchor text
+  horizontalAlignment?: 'start' | 'center' | 'end'; // Vertical alignment
+
+  // 5. Rich text list
+  listStyle?: 'bullet' | 'numbered' | 'check' | 'dash';
+  listItems?: string[];                      // List of items
+  listFontSize?: string;                     // Custom typed e.g. "14px"
+  listTextColor?: string;                    // Text color
+  listIconColor?: string;                    // Bullet or checkmark icon color
+  listSpacing?: 'compact' | 'normal' | 'relaxed';
+
+  // 6. Custom table
+  tableHeaders?: string[];                   // Column titles
+  tableRows?: string[][];                    // Row cell arrays
+  tableHeaderBgColor?: string;               // Header background color
+  tableHeaderTextColor?: string;             // Header text color
+  tableCellTextColor?: string;               // Cell text color
+  tableBorderColor?: string;                 // Table border color
+  tableFontSize?: string;                    // Custom typed e.g. "12px", "13px"
+  tableZebra?: boolean;                      // Alternating row background
+
+  // 7. Divider
+  dividerStyle?: 'line' | 'dashed' | 'dots' | 'spacing_only';
+  dividerColor?: string;                     // Line color
+  dividerThickness?: number;                 // Thickness in px (e.g. 1, 2, 3)
+  dividerHeightPx?: number;                  // Vertical spacing height in px (e.g. 12, 16, 24)
+}
+
 /**
  * Unified Composed Card Block Data:
- * Allows creating a single rich card containing any desired combination of:
- * - Header (Title, Subtitle)
- * - Image (Left / Right / Top / Bottom / Compact with optional link)
- * - Rich text & List
- * - Tags / badges (Placed where wanted: top, middle, or bottom)
- * - Detailed Content / Monograph Paragraph
- * - Optional link button
+ * Allows creating a single rich card containing multiple elements in custom order,
+ * with individual popup editing and up/down position sequence controls.
  */
 export interface CardBlockData {
-  // 1. Header inside card
+  // Elements list inside this card (reorderable via up/down arrows)
+  elements?: CardElementItem[];
+
+  // 1. Icon & Header inside card (Title & Description)
+  icon?: string;                 // Icon name: leaf, sparkles, shield, clock, info, heart, beaker, award, book, pill, check, star, feather
+  iconColor?: string;            // Custom icon color
   showHeader?: boolean;
+  showTitle?: boolean;
   title?: string;
-  subtitle?: string;
+  titleColor?: string;           // Custom title text color
   headerLevel?: 'h2' | 'h3' | 'h4';
   showAccentBorder?: boolean;
+  
+  showDescription?: boolean;
+  description?: string;          // Card description / subtitle
+  descriptionColor?: string;     // Custom description color
+  subtitle?: string;             // Alias for description
 
-  // 2. Image inside card with link
+  // 2. Horizontal row: (Image - Text) in a single horizontal line, or Only Image
+  showHorizontalRow?: boolean;
+  layoutMode?: 'horizontal' | 'image_only' | 'no_image'; // 'horizontal' (Image - Text in one line), 'image_only', or 'no_image'
+  rowText?: string;             // Text inside horizontal row
+  rowTextSize?: 'xs' | 'sm' | 'base' | 'lg'; // Text size
+  rowTextColor?: string;        // Text color
+  rowLinkUrl?: string;          // Clickable link URL
+  rowLinkLabel?: string;        // Clickable link anchor text/label
+
+  // Image inside card with link
   showImage?: boolean;
   imageUrl?: string;
   imageAlt?: string;
@@ -213,15 +308,16 @@ export interface CardBlockData {
   // 3. Rich text / bullet list inside card
   showRichText?: boolean;
   content?: string; // Formatted content, bold, bullets
+  contentColor?: string;
   secondaryContent?: string; // Clinical notes / Monograph paragraph
   fontSize?: 'xs' | 'sm' | 'base' | 'lg';
   lineHeight?: 'normal' | 'relaxed' | 'loose';
 
-  // 4. Tags / badges inside card (Placed where user wants)
+  // 4. Tags / badges inside card (Placed at top by default)
   showTags?: boolean;
   tagsTitle?: string;
   tags?: TagItem[];
-  tagsPosition?: 'top' | 'middle' | 'bottom'; // Position of tags inside the card
+  tagsPosition?: 'top' | 'middle' | 'bottom'; // Position of tags inside the card (default: top)
   detailedContent?: string; // Detailed Content / Monograph Paragraph below tags
 
   // 5. Optional action link / button
@@ -245,15 +341,26 @@ export interface MonographContentBlock {
 export interface ProductMonographTab {
   id: string;                    // Tab identifier (overview, benefits, ingredients, dosage, specifications, faqs_reviews, or custom)
   title: string;                 // Display title: Tab 1: Overview, Tab 2: Benefits & Uses, etc.
-  subtitle?: string;             // Subtitle description
-  icon?: string;                 // Icon name
+  subtitle?: string;             // Subtitle description below the title in collapsible accordion
+  icon?: string;                 // Icon name: leaf, sparkles, clock, shield, info, message, star, heart, beaker, pill, bookmark, check, award, feather, layers, book, package, none
+  iconColor?: string;            // Custom base icon color
   items: MonographDetailItem[];  // Detail cards inside this tab
   isCustom?: boolean;
   enabled?: boolean;
   order?: number;
-  bgColor?: string;             // Custom tab background color (e.g. #FAF7F2, #14291D)
-  textColor?: string;           // Custom tab text color (e.g. #14291D, #FFFFFF)
+  bgColor?: string;             // Custom tab base background color (e.g. #FAF7F2, #14291D)
+  textColor?: string;           // Custom tab base text color (e.g. #14291D, #FFFFFF)
   bgOpacity?: number;           // Custom tab background opacity (10 to 100)
+
+  // Collapsible Active / Expand Selection Appearance Controls:
+  activeColorMode?: 'color' | 'no_color' | 'theme'; // 'no_color' = clean neutral, no color shift when expanded; 'color' = custom active colors; 'theme' = default green & gold
+  activeBgColor?: string;       // Custom background color when expanded (e.g. #FAF6F0, #F0FDF4, #FFFFFF)
+  activeTextColor?: string;     // Custom title text color when expanded (e.g. #14291D, #FFFFFF)
+  activeSubtitleColor?: string; // Custom description/subtitle color when expanded (e.g. #6F6452, #166534)
+  activeIconBgColor?: string;   // Custom icon badge background when expanded (e.g. #14291D, #EAE3D5, transparent)
+  activeIconColor?: string;     // Custom icon tint color when expanded (e.g. #FCD34D, #166534)
+  activeBorderColor?: string;   // Custom border color when expanded (e.g. #C2B7A3, #166534)
+
   blocks?: MonographContentBlock[]; // Independent content blocks for collapsible accordion
 }
 

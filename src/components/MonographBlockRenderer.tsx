@@ -10,19 +10,76 @@ import {
   getBlockContainerClasses, 
   hexToRgba 
 } from '../utils/monographHelper';
-import { ExternalLink } from 'lucide-react';
+import { 
+  ExternalLink,
+  Sparkles,
+  Leaf,
+  Shield,
+  Clock,
+  Info,
+  Heart,
+  Beaker,
+  Award,
+  BookOpen,
+  Pill,
+  CheckCircle,
+  Star,
+  Feather,
+  Eye,
+  Tag as TagIcon
+} from 'lucide-react';
 
 interface MonographBlockRendererProps {
   block: MonographContentBlock;
   className?: string;
+  isProductView?: boolean;
 }
+
+export const renderCardIcon = (iconName?: string, customColor?: string) => {
+  if (!iconName) return null;
+  const props = { className: "w-4 h-4 shrink-0", style: customColor ? { color: customColor } : undefined };
+  switch (iconName.toLowerCase()) {
+    case 'leaf': return <Leaf {...props} />;
+    case 'sparkles': return <Sparkles {...props} />;
+    case 'shield': return <Shield {...props} />;
+    case 'clock': return <Clock {...props} />;
+    case 'info': return <Info {...props} />;
+    case 'heart': return <Heart {...props} />;
+    case 'beaker': return <Beaker {...props} />;
+    case 'award': return <Award {...props} />;
+    case 'book':
+    case 'bookopen': return <BookOpen {...props} />;
+    case 'pill': return <Pill {...props} />;
+    case 'check':
+    case 'checkcircle': return <CheckCircle {...props} />;
+    case 'star': return <Star {...props} />;
+    case 'feather': return <Feather {...props} />;
+    case 'eye': return <Eye {...props} />;
+    case 'tag': return <TagIcon {...props} />;
+    default: return <Sparkles {...props} />;
+  }
+};
 
 export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
   block,
   className = '',
+  isProductView = false,
 }) => {
-  const containerClasses = getBlockContainerClasses(block.design);
+  let containerClasses = getBlockContainerClasses(block.design);
   const containerStyle = resolveBlockCustomStyle(block.design);
+
+  if (isProductView) {
+    // Strip heavy borders and extra vertical margins for a compact, clean product view with dividers
+    containerClasses = containerClasses
+      .replace(/border\s+border-[^\s]+/g, 'border-0')
+      .replace(/border-dashed\s+border-[^\s]+/g, 'border-0')
+      .replace(/border-[^\s]+/g, 'border-0')
+      .replace(/my-[0-9\.]+/g, 'my-0')
+      .replace(/p-[0-9\.]+(\s+sm:p-[0-9\.]+)?/g, 'p-2 sm:p-2.5');
+    if (containerStyle.borderColor) {
+      delete containerStyle.borderColor;
+    }
+  }
 
   // Helper to render markdown bold and line breaks safely
   const formatRichText = (text: string) => {
@@ -71,22 +128,42 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
     if ((!tags || tags.length === 0) && !detailedContent) return null;
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {tags && tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {tags.map((tag: TagItem, idx: number) => {
-              const bg = tag.bgColor ? hexToRgba(tag.bgColor, tag.bgOpacity ?? 100) : '#14291D';
-              const textCol = tag.textColor || '#FFFFFF';
+              const bg = tag.bgColor ? hexToRgba(tag.bgColor, tag.bgOpacity ?? 100) : hexToRgba('#14291D', tag.bgOpacity ?? 100);
+              const textCol = tag.textColor ? hexToRgba(tag.textColor, tag.textColorOpacity ?? 100) : hexToRgba('#FFFFFF', tag.textColorOpacity ?? 100);
               const roundedClass = 
                 tag.style === 'square' ? 'rounded-xs' :
                 tag.style === 'pill' ? 'rounded-full' : 'rounded-md';
-              const textFontSize = tag.fontSize === 'sm' ? 'text-xs sm:text-[13px]' : 'text-[11px] sm:text-xs';
+
+              const customStyle: React.CSSProperties = {
+                backgroundColor: bg,
+                color: textCol,
+              };
+
+              if (tag.customFontSize) {
+                const fs = tag.customFontSize.trim();
+                customStyle.fontSize = fs.endsWith('px') || fs.endsWith('rem') || fs.endsWith('em') ? fs : `${fs}px`;
+              } else if (tag.fontSize && (tag.fontSize.endsWith('px') || tag.fontSize.endsWith('rem'))) {
+                customStyle.fontSize = tag.fontSize;
+              }
+
+              const paddingClass = 
+                tag.size === 'compact' ? 'px-2 py-0.5 text-[10.5px]' :
+                tag.size === 'spacious' ? 'px-3.5 py-1.5 text-xs sm:text-sm' :
+                'px-2.5 py-1 text-xs';
+
+              const textFontSize = (!tag.customFontSize && !tag.fontSize?.endsWith('px'))
+                ? (tag.fontSize === 'sm' ? 'text-xs sm:text-[13px]' : tag.fontSize === 'base' ? 'text-sm' : tag.fontSize === 'lg' ? 'text-sm sm:text-base' : 'text-[11px] sm:text-xs')
+                : '';
 
               return (
                 <span
                   key={tag.id || idx}
-                  style={{ backgroundColor: bg, color: textCol }}
-                  className={`inline-flex items-center font-semibold px-2.5 py-1 shadow-2xs transition-transform hover:scale-[1.02] ${roundedClass} ${textFontSize}`}
+                  style={customStyle}
+                  className={`inline-flex items-center font-semibold shadow-2xs transition-transform hover:scale-[1.02] ${roundedClass} ${paddingClass} ${textFontSize}`}
                 >
                   {tag.text}
                 </span>
@@ -111,26 +188,47 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
   if (block.type === 'card' && block.cardData) {
     const card = block.cardData;
 
-    // Header element
-    const headerElement = card.showHeader && card.title ? (
-      <div className="space-y-1">
-        {card.headerLevel === 'h2' ? (
-          <h2 className="font-serif font-bold text-lg sm:text-xl tracking-tight leading-snug">
-            {card.title}
-          </h2>
-        ) : card.headerLevel === 'h4' ? (
-          <h4 className="font-serif font-bold text-xs sm:text-sm tracking-tight leading-snug">
-            {card.title}
-          </h4>
-        ) : (
-          <h3 className="font-serif font-bold text-sm sm:text-base tracking-tight leading-snug">
-            {card.title}
-          </h3>
-        )}
+    // 1. Icon & Header (Title & Description)
+    const cardTitle = card.title;
+    const cardDescription = card.description || card.subtitle;
+    const hasHeader = card.showHeader !== false && !!(card.icon || cardTitle || cardDescription);
 
-        {card.subtitle && (
-          <p className="text-xs opacity-75 leading-relaxed font-sans">
-            {card.subtitle}
+    const iconNode = card.icon && card.icon !== 'none' ? (
+      <span 
+        className="p-1.5 rounded-lg shrink-0 inline-flex items-center justify-center bg-black/5"
+        style={card.iconColor ? { color: card.iconColor } : undefined}
+      >
+        {renderCardIcon(card.icon, card.iconColor)}
+      </span>
+    ) : null;
+
+    const titleStyle = card.titleColor ? { color: card.titleColor } : undefined;
+    const descriptionStyle = card.descriptionColor ? { color: card.descriptionColor } : undefined;
+
+    const headerElement = hasHeader ? (
+      <div className="space-y-1 mb-2">
+        <div className="flex items-center gap-2">
+          {iconNode}
+          {cardTitle && (
+            card.headerLevel === 'h2' ? (
+              <h2 style={titleStyle} className="font-serif font-bold text-lg sm:text-xl tracking-tight leading-snug">
+                {cardTitle}
+              </h2>
+            ) : card.headerLevel === 'h4' ? (
+              <h4 style={titleStyle} className="font-serif font-bold text-xs sm:text-sm tracking-tight leading-snug">
+                {cardTitle}
+              </h4>
+            ) : (
+              <h3 style={titleStyle} className="font-serif font-bold text-sm sm:text-base tracking-tight leading-snug">
+                {cardTitle}
+              </h3>
+            )
+          )}
+        </div>
+
+        {cardDescription && (
+          <p style={descriptionStyle} className="text-xs sm:text-[13px] opacity-80 leading-relaxed font-sans">
+            {cardDescription}
           </p>
         )}
 
@@ -138,21 +236,465 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
           <div className="pt-1">
             <div 
               className="h-0.5 w-10 rounded-full" 
-              style={{ backgroundColor: block.design?.textColor || '#B4741E' }} 
+              style={{ backgroundColor: card.titleColor || block.design?.textColor || '#B4741E' }} 
             />
           </div>
         )}
       </div>
     ) : null;
 
-    // Image element
+    // Helper to render individual CardElementItem
+    const renderElementItem = (item: any, idx: number) => {
+      switch (item.type) {
+        // 1) IMAGE
+        case 'image': {
+          if (!item.imageUrl) return null;
+          const sizeStyle: React.CSSProperties = {};
+          if (item.imageSize) {
+            const rawSize = String(item.imageSize).trim();
+            if (rawSize.endsWith('px') || rawSize.endsWith('%') || rawSize.endsWith('rem')) {
+              sizeStyle.width = rawSize;
+            } else if (rawSize === 'compact') sizeStyle.width = '80px';
+            else if (rawSize === 'small') sizeStyle.width = '120px';
+            else if (rawSize === 'medium') sizeStyle.width = '200px';
+            else if (rawSize === 'large') sizeStyle.width = '320px';
+            else if (rawSize === 'full') sizeStyle.width = '100%';
+            else if (!isNaN(Number(rawSize))) sizeStyle.width = `${rawSize}px`;
+            else sizeStyle.width = rawSize;
+          } else {
+            sizeStyle.width = '160px';
+          }
+          sizeStyle.maxWidth = '100%';
+
+          const roundedStyle: React.CSSProperties = {};
+          if (item.imageRounded) {
+            const r = String(item.imageRounded).trim();
+            if (r === 'none') roundedStyle.borderRadius = '0px';
+            else if (r === 'sm') roundedStyle.borderRadius = '4px';
+            else if (r === 'md') roundedStyle.borderRadius = '8px';
+            else if (r === 'lg') roundedStyle.borderRadius = '12px';
+            else if (r === 'xl') roundedStyle.borderRadius = '16px';
+            else if (r === '2xl') roundedStyle.borderRadius = '24px';
+            else if (r === 'full') roundedStyle.borderRadius = '9999px';
+            else if (r.endsWith('px') || r.endsWith('rem')) roundedStyle.borderRadius = r;
+            else if (!isNaN(Number(r))) roundedStyle.borderRadius = `${r}px`;
+            else roundedStyle.borderRadius = '12px';
+          } else {
+            roundedStyle.borderRadius = '12px';
+          }
+
+          const alignClass = 
+            item.imageAlignment === 'right' ? 'justify-end' :
+            item.imageAlignment === 'center' ? 'justify-center' : 'justify-start';
+
+          return (
+            <div key={item.id || idx} className={`flex flex-col ${item.imageAlignment === 'right' ? 'items-end' : item.imageAlignment === 'center' ? 'items-center' : 'items-start'} my-2`}>
+              <div 
+                style={{ ...sizeStyle, ...roundedStyle }} 
+                className="overflow-hidden border border-black/10 shadow-2xs bg-stone-100 shrink-0 relative group/img transition-all"
+              >
+                {item.imageLinkUrl ? (
+                  <a
+                    href={item.imageLinkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full h-full relative"
+                    title="Open link in new tab"
+                  >
+                    <img
+                      src={item.imageUrl}
+                      alt={item.imageAlt || 'Card image'}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=400&q=80';
+                      }}
+                    />
+                    <span className="absolute bottom-1 right-1 p-1 rounded-md bg-black/60 text-white opacity-0 group-hover/img:opacity-100 transition-opacity">
+                      <ExternalLink className="w-3 h-3" />
+                    </span>
+                  </a>
+                ) : (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.imageAlt || 'Card image'}
+                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=400&q=80';
+                    }}
+                  />
+                )}
+              </div>
+              {item.imageCaption && (
+                <p className="text-[11px] text-stone-500 mt-1 italic font-sans max-w-sm">
+                  {item.imageCaption}
+                </p>
+              )}
+            </div>
+          );
+        }
+
+        // 2) TEXT
+        case 'text': {
+          if (!item.text) return null;
+          const textStyleObj: React.CSSProperties = {};
+          if (item.textSize) {
+            const rawSize = String(item.textSize).trim();
+            textStyleObj.fontSize = rawSize.endsWith('px') || rawSize.endsWith('rem') || rawSize.endsWith('em') ? rawSize : `${rawSize}px`;
+          }
+          if (item.textColor) {
+            textStyleObj.color = item.textColor;
+          }
+
+          const textClasses = [
+            item.textBold ? 'font-bold' : 'font-normal',
+            item.textStyle === 'italic' ? 'italic' : '',
+            item.textUnderline ? 'underline' : '',
+            item.textAlignment === 'center' ? 'text-center' :
+            item.textAlignment === 'right' ? 'text-right' :
+            item.textAlignment === 'justify' ? 'text-justify' : 'text-left',
+            'leading-relaxed font-sans'
+          ].filter(Boolean).join(' ');
+
+          return (
+            <div key={item.id || idx} className="my-1.5">
+              <p style={textStyleObj} className={textClasses}>
+                {item.text}
+              </p>
+            </div>
+          );
+        }
+
+        // 3) TAG
+        case 'tag': {
+          if (!item.tags || item.tags.length === 0) return null;
+          const tagAlign = 
+            item.tagsAlignment === 'center' ? 'justify-center' :
+            item.tagsAlignment === 'right' ? 'justify-end' : 'justify-start';
+
+          return (
+            <div key={item.id || idx} className="my-1">
+              {item.tagsTitle && (
+                <h5 className="font-serif font-bold text-xs opacity-80 mb-1">{item.tagsTitle}</h5>
+              )}
+              <div className={`flex flex-wrap items-center gap-1.5 sm:gap-2 ${tagAlign}`}>
+                {item.tags.map((tag: TagItem, tIdx: number) => {
+                  const bg = tag.bgColor ? hexToRgba(tag.bgColor, tag.bgOpacity ?? 100) : hexToRgba('#14291D', tag.bgOpacity ?? 100);
+                  const textCol = tag.textColor ? hexToRgba(tag.textColor, tag.textColorOpacity ?? 100) : hexToRgba('#FFFFFF', tag.textColorOpacity ?? 100);
+                  const roundedClass = 
+                    tag.style === 'square' ? 'rounded-xs' :
+                    tag.style === 'pill' ? 'rounded-full' : 'rounded-md';
+
+                  const customStyle: React.CSSProperties = {
+                    backgroundColor: bg,
+                    color: textCol,
+                  };
+
+                  if (tag.customFontSize) {
+                    const fs = tag.customFontSize.trim();
+                    customStyle.fontSize = fs.endsWith('px') || fs.endsWith('rem') || fs.endsWith('em') ? fs : `${fs}px`;
+                  } else if (tag.fontSize && (tag.fontSize.endsWith('px') || tag.fontSize.endsWith('rem'))) {
+                    customStyle.fontSize = tag.fontSize;
+                  }
+
+                  const paddingClass = 
+                    tag.size === 'compact' ? 'px-2 py-0.5 text-[10.5px]' :
+                    tag.size === 'spacious' ? 'px-3.5 py-1.5 text-xs sm:text-sm' :
+                    'px-2.5 py-1 text-xs';
+
+                  const textFontSize = (!tag.customFontSize && !tag.fontSize?.endsWith('px'))
+                    ? (tag.fontSize === 'sm' ? 'text-xs sm:text-[13px]' : tag.fontSize === 'base' ? 'text-sm' : tag.fontSize === 'lg' ? 'text-sm sm:text-base' : 'text-[11px] sm:text-xs')
+                    : '';
+
+                  return (
+                    <span
+                      key={tag.id || tIdx}
+                      style={customStyle}
+                      className={`inline-flex items-center font-semibold shadow-2xs transition-transform hover:scale-[1.02] ${roundedClass} ${paddingClass} ${textFontSize}`}
+                    >
+                      {tag.text}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+
+        // 4) IMAGE + TEXT (IN A SINGLE HORIZONTAL LINE)
+        case 'image_text': {
+          const isRight = item.horizontalImagePosition === 'right';
+          const vAlign = 
+            item.horizontalAlignment === 'start' ? 'items-start' :
+            item.horizontalAlignment === 'end' ? 'items-end' : 'items-center';
+
+          const imgSizeStyle: React.CSSProperties = {};
+          if (item.horizontalImageSize) {
+            const rawSize = String(item.horizontalImageSize).trim();
+            imgSizeStyle.width = rawSize.endsWith('px') || rawSize.endsWith('rem') ? rawSize : `${rawSize}px`;
+            imgSizeStyle.height = imgSizeStyle.width;
+          } else {
+            imgSizeStyle.width = '72px';
+            imgSizeStyle.height = '72px';
+          }
+
+          const imgRoundedStyle: React.CSSProperties = {};
+          if (item.horizontalImageRounded) {
+            const r = String(item.horizontalImageRounded).trim();
+            if (r === 'none') imgRoundedStyle.borderRadius = '0px';
+            else if (r === 'sm') imgRoundedStyle.borderRadius = '4px';
+            else if (r === 'md') imgRoundedStyle.borderRadius = '8px';
+            else if (r === 'lg') imgRoundedStyle.borderRadius = '12px';
+            else if (r === 'xl') imgRoundedStyle.borderRadius = '16px';
+            else if (r === 'full') imgRoundedStyle.borderRadius = '9999px';
+            else if (r.endsWith('px')) imgRoundedStyle.borderRadius = r;
+            else imgRoundedStyle.borderRadius = '12px';
+          } else {
+            imgRoundedStyle.borderRadius = '12px';
+          }
+
+          const txtStyleObj: React.CSSProperties = {};
+          if (item.horizontalTextSize) {
+            const rawSize = String(item.horizontalTextSize).trim();
+            txtStyleObj.fontSize = rawSize.endsWith('px') || rawSize.endsWith('rem') ? rawSize : `${rawSize}px`;
+          }
+          if (item.horizontalTextColor) {
+            txtStyleObj.color = item.horizontalTextColor;
+          }
+
+          const txtClass = [
+            item.horizontalTextBold ? 'font-bold' : 'font-normal',
+            item.horizontalTextItalic ? 'italic' : '',
+            item.horizontalTextUnderline ? 'underline' : '',
+            'leading-relaxed font-sans'
+          ].filter(Boolean).join(' ');
+
+          const imgNode = item.horizontalImageUrl ? (
+            <div 
+              style={{ ...imgSizeStyle, ...imgRoundedStyle }} 
+              className="overflow-hidden border border-black/10 shadow-2xs bg-stone-100 shrink-0 relative group/himg"
+            >
+              {item.horizontalImageLinkUrl ? (
+                <a
+                  href={item.horizontalImageLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full h-full relative"
+                  title="Open link in new tab"
+                >
+                  <img
+                    src={item.horizontalImageUrl}
+                    alt="Herb imagery"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover/himg:scale-105"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=400&q=80';
+                    }}
+                  />
+                  <span className="absolute bottom-1 right-1 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover/himg:opacity-100 transition-opacity">
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </span>
+                </a>
+              ) : (
+                <img
+                  src={item.horizontalImageUrl}
+                  alt="Herb imagery"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=400&q=80';
+                  }}
+                />
+              )}
+            </div>
+          ) : null;
+
+          return (
+            <div key={item.id || idx} className={`flex flex-row ${vAlign} gap-3 sm:gap-4 my-2`}>
+              {!isRight && imgNode}
+              <div className="flex-1 min-w-0 space-y-1">
+                {item.horizontalText && (
+                  <p style={txtStyleObj} className={txtClass}>
+                    {item.horizontalText}
+                  </p>
+                )}
+                {item.horizontalLinkUrl && (
+                  <a
+                    href={item.horizontalLinkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#14291D] text-amber-300 hover:bg-[#203E2D] transition-colors w-fit shadow-2xs mt-1"
+                  >
+                    <span>{item.horizontalLinkLabel || 'View Link'}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+              {isRight && imgNode}
+            </div>
+          );
+        }
+
+        // 5) RICH TEXT LIST
+        case 'rich_text_list': {
+          if (!item.listItems || item.listItems.length === 0) return null;
+          const listFontObj: React.CSSProperties = {};
+          if (item.listFontSize) {
+            const rawSize = String(item.listFontSize).trim();
+            listFontObj.fontSize = rawSize.endsWith('px') || rawSize.endsWith('rem') ? rawSize : `${rawSize}px`;
+          }
+          if (item.listTextColor) {
+            listFontObj.color = item.listTextColor;
+          }
+
+          const spaceClass = 
+            item.listSpacing === 'compact' ? 'space-y-1' :
+            item.listSpacing === 'relaxed' ? 'space-y-2.5' : 'space-y-1.5';
+
+          return (
+            <ul key={item.id || idx} className={`${spaceClass} my-2 font-sans`} style={listFontObj}>
+              {item.listItems.map((li: string, lIdx: number) => (
+                <li key={lIdx} className="flex items-start gap-2">
+                  {item.listStyle === 'numbered' ? (
+                    <span 
+                      className="font-mono font-bold text-xs shrink-0 mt-0.5" 
+                      style={item.listIconColor ? { color: item.listIconColor } : undefined}
+                    >
+                      {lIdx + 1}.
+                    </span>
+                  ) : item.listStyle === 'check' ? (
+                    <span 
+                      className="shrink-0 mt-0.5 inline-flex items-center justify-center"
+                      style={item.listIconColor ? { color: item.listIconColor } : { color: '#16A34A' }}
+                    >
+                      ✓
+                    </span>
+                  ) : item.listStyle === 'dash' ? (
+                    <span 
+                      className="font-bold text-xs shrink-0 mt-0.5" 
+                      style={item.listIconColor ? { color: item.listIconColor } : undefined}
+                    >
+                      —
+                    </span>
+                  ) : (
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full shrink-0 mt-2" 
+                      style={item.listIconColor ? { backgroundColor: item.listIconColor } : { backgroundColor: 'currentColor' }} 
+                    />
+                  )}
+                  <span className="flex-1 leading-relaxed">{li}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        // 6) CUSTOM TABLE
+        case 'custom_table': {
+          const tableFontSizeObj: React.CSSProperties = {};
+          if (item.tableFontSize) {
+            const rawSize = String(item.tableFontSize).trim();
+            tableFontSizeObj.fontSize = rawSize.endsWith('px') || rawSize.endsWith('rem') ? rawSize : `${rawSize}px`;
+          }
+
+          return (
+            <div 
+              key={item.id || idx} 
+              className="overflow-x-auto my-2.5 rounded-lg border shadow-2xs" 
+              style={{ borderColor: item.tableBorderColor || '#DDD5C5' }}
+            >
+              <table className="w-full border-collapse font-sans text-xs" style={tableFontSizeObj}>
+                {item.tableHeaders && item.tableHeaders.length > 0 && (
+                  <thead>
+                    <tr style={{ backgroundColor: item.tableHeaderBgColor || '#FAF6F0', color: item.tableHeaderTextColor || '#14291D' }}>
+                      {item.tableHeaders.map((h: string, hIdx: number) => (
+                        <th key={hIdx} className="px-3 py-2 text-left font-bold border-b" style={{ borderColor: item.tableBorderColor || '#DDD5C5' }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {item.tableRows?.map((row: string[], rIdx: number) => (
+                    <tr
+                      key={rIdx}
+                      className={item.tableZebra && rIdx % 2 === 1 ? 'bg-black/[0.02]' : 'bg-transparent'}
+                      style={{ color: item.tableCellTextColor || '#2D261A' }}
+                    >
+                      {row.map((cell: string, cIdx: number) => (
+                        <td key={cIdx} className="px-3 py-2 border-b" style={{ borderColor: item.tableBorderColor || '#EAE3D4' }}>
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+
+        // 7) DIVIDER
+        case 'divider': {
+          const thickness = item.dividerThickness || 1;
+          const heightPx = item.dividerHeightPx || 16;
+          const divColor = item.dividerColor || '#E2D9CB';
+
+          if (item.dividerStyle === 'spacing_only') {
+            return <div key={item.id || idx} style={{ height: `${heightPx}px` }} />;
+          }
+
+          return (
+            <div 
+              key={item.id || idx} 
+              className="w-full flex items-center justify-center" 
+              style={{ height: `${heightPx}px` }}
+            >
+              <hr
+                className="w-full"
+                style={{
+                  borderTopWidth: `${thickness}px`,
+                  borderColor: divColor,
+                  borderStyle: item.dividerStyle === 'dashed' ? 'dashed' : item.dividerStyle === 'dots' ? 'dotted' : 'solid',
+                }}
+              />
+            </div>
+          );
+        }
+
+        default:
+          return null;
+      }
+    };
+
+    // If card has structured elements array, render header + elements
+    if (card.elements && card.elements.length > 0) {
+      return (
+        <div 
+          style={containerStyle} 
+          className={`${containerClasses} ${className}`}
+        >
+          {headerElement}
+          <div className="space-y-1">
+            {card.elements.map((el, i) => renderElementItem(el, i))}
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // BACKWARD COMPATIBLE FALLBACK (Legacy card format)
+    // ─────────────────────────────────────────────────────────────
+    // Image sizing & rendering
     const sizeClasses = {
-      compact: 'w-20 sm:w-24 shrink-0',
-      small: 'w-24 sm:w-28 shrink-0',
-      medium: 'w-32 sm:w-44 shrink-0',
-      large: 'w-full sm:w-56 shrink-0',
-      full: 'w-full',
-    }[card.imageSize || 'small'] || 'w-24 shrink-0';
+      compact: 'w-16 h-16 sm:w-20 sm:h-20 shrink-0',
+      small: 'w-20 h-20 sm:w-28 sm:h-28 shrink-0',
+      medium: 'w-28 h-28 sm:w-36 sm:h-36 shrink-0',
+      large: 'w-36 h-36 sm:w-48 sm:h-48 shrink-0',
+      full: 'w-full max-w-sm',
+    }[card.imageSize || 'small'] || 'w-20 h-20 sm:w-28 sm:h-28 shrink-0';
 
     const aspectClass = {
       square: 'aspect-square',
@@ -171,19 +713,19 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
     }[card.imageRounded || 'xl'] || 'rounded-xl';
 
     const imageElement = card.showImage && card.imageUrl ? (
-      <div className={`${card.imagePosition === 'top' || card.imagePosition === 'bottom' ? 'w-full max-w-md mx-auto' : sizeClasses} overflow-hidden ${roundedClass} border border-black/10 shadow-2xs bg-stone-100 shrink-0 relative group/img`}>
+      <div className={`${sizeClasses} overflow-hidden ${roundedClass} border border-black/10 shadow-2xs bg-stone-100 shrink-0 relative group/img`}>
         {card.imageLinkUrl ? (
           <a
             href={card.imageLinkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="block relative overflow-hidden"
+            className="block w-full h-full relative overflow-hidden"
             title="Open link in new tab"
           >
             <img
               src={card.imageUrl}
               alt={card.imageAlt || card.title || 'Card imagery'}
-              className={`w-full ${aspectClass} object-cover transition-transform duration-300 group-hover/img:scale-105`}
+              className={`w-full h-full ${aspectClass} object-cover transition-transform duration-300 group-hover/img:scale-105`}
               loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=400&q=80';
@@ -197,7 +739,7 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
           <img
             src={card.imageUrl}
             alt={card.imageAlt || card.title || 'Card imagery'}
-            className={`w-full ${aspectClass} object-cover transition-transform duration-300 hover:scale-105`}
+            className={`w-full h-full ${aspectClass} object-cover transition-transform duration-300 hover:scale-105`}
             loading="lazy"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=400&q=80';
@@ -238,7 +780,26 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
       </div>
     ) : null;
 
-    // Action button / link
+    // Text & Link inside horizontal row
+    const rowTextSizeClass = 
+      card.rowTextSize === 'xs' ? 'text-xs' :
+      card.rowTextSize === 'base' ? 'text-sm sm:text-base' :
+      card.rowTextSize === 'lg' ? 'text-base sm:text-lg' : 'text-xs sm:text-sm';
+
+    const rowTextColorStyle = card.rowTextColor ? { color: card.rowTextColor } : undefined;
+
+    const rowLinkElement = card.rowLinkUrl ? (
+      <a
+        href={card.rowLinkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-[#14291D] text-amber-300 hover:bg-[#203E2D] transition-colors w-fit shadow-2xs mt-1"
+      >
+        <span>{card.rowLinkLabel || 'View Link'}</span>
+        <ExternalLink className="w-3 h-3" />
+      </a>
+    ) : null;
+
     const actionElement = card.actionLinkUrl && card.actionLinkLabel ? (
       <div className="pt-2">
         <a
@@ -253,8 +814,45 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
       </div>
     ) : null;
 
-    const isHorizontal = imageElement && (card.imagePosition === 'left' || card.imagePosition === 'right' || !card.imagePosition);
-    const isImageLeft = card.imagePosition === 'left' || !card.imagePosition;
+    // Mode determination: "Only image" vs "( Image - Text ) in a single horizontal line"
+    const isImageOnly = card.layoutMode === 'image_only' || (!card.rowText && !card.rowLinkUrl && card.showImage && !!card.imageUrl);
+
+    // 1. Only Image block
+    const onlyImageElement = isImageOnly && card.showImage && card.imageUrl ? (
+      <div className={`py-1 flex ${card.imagePosition === 'right' ? 'justify-end' : card.imagePosition === 'top' || card.imagePosition === 'bottom' ? 'justify-center' : 'justify-start'}`}>
+        {imageElement}
+      </div>
+    ) : null;
+
+    // 2. Horizontal Row (Image & Text together in a SINGLE horizontal line)
+    const hasHorizontalRow = !isImageOnly && card.showHorizontalRow !== false && (
+      (card.showImage && card.imageUrl) || 
+      card.rowText || 
+      card.rowLinkUrl
+    );
+
+    const horizontalRowElement = hasHorizontalRow ? (
+      <div className="flex flex-row items-center gap-3 sm:gap-4 py-1">
+        {/* If image position is left (default) */}
+        {card.imagePosition !== 'right' && imageElement}
+
+        {/* Text and Clickable Link in the same horizontal line */}
+        <div className="flex-1 min-w-0 space-y-1">
+          {card.rowText && (
+            <p 
+              style={rowTextColorStyle} 
+              className={`font-sans font-medium leading-relaxed ${rowTextSizeClass}`}
+            >
+              {card.rowText}
+            </p>
+          )}
+          {rowLinkElement}
+        </div>
+
+        {/* If image position is right */}
+        {card.imagePosition === 'right' && imageElement}
+      </div>
+    ) : null;
 
     return (
       <div 
@@ -262,42 +860,32 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
         className={`${containerClasses} ${className}`}
       >
         <div className="space-y-3">
-          {/* Header at top if present */}
+          {/* 1. Tags at TOP of card */}
+          {card.tagsPosition !== 'bottom' && card.tagsPosition !== 'middle' && tagsElement}
+
+          {/* 2. Optional Card Header (Icon, Title & Description) */}
           {headerElement}
 
-          {/* Tags at top if positioned top */}
-          {card.tagsPosition === 'top' && tagsElement}
+          {/* 3. Horizontal Row (Image & Text in single line) OR Only Image */}
+          {isImageOnly ? onlyImageElement : horizontalRowElement}
 
-          {/* Middle Body: Image & Text layout */}
-          {imageElement ? (
-            <div className={`flex ${isHorizontal ? 'flex-col sm:flex-row' : 'flex-col'} gap-3.5 sm:gap-4 items-start`}>
-              {/* Image first if position is left or top */}
-              {(isImageLeft || card.imagePosition === 'top') && imageElement}
+          {/* Tags in middle if explicitly chosen */}
+          {card.tagsPosition === 'middle' && tagsElement}
 
-              {/* Text & internal tags */}
-              <div className="flex-1 min-w-0 space-y-2.5">
-                {card.tagsPosition === 'middle' && tagsElement}
-                {richTextElement}
-                {card.tagsPosition === 'bottom' && tagsElement}
-              </div>
+          {/* 4. Rich Text (if enabled) */}
+          {richTextElement}
 
-              {/* Image second if position is right or bottom */}
-              {(card.imagePosition === 'right' || card.imagePosition === 'bottom') && imageElement}
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {card.tagsPosition === 'middle' && tagsElement}
-              {richTextElement}
-              {card.tagsPosition === 'bottom' && tagsElement}
-            </div>
-          )}
+          {/* Tags at bottom if explicitly chosen */}
+          {card.tagsPosition === 'bottom' && tagsElement}
 
-          {/* Action button if present */}
+          {/* 5. Action button if present */}
           {actionElement}
         </div>
       </div>
     );
   }
+
+
 
   // ══════════════════════════════════════════════════════════════
   // 1. HEADER BLOCK
