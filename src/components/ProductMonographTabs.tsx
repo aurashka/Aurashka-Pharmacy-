@@ -7,8 +7,7 @@ import {
 import { 
   getEffectiveMonographTabs, 
   getEffectiveTabBlocks,
-  hexToRgba,
-  cleanMonographTabTitle
+  hexToRgba
 } from '../utils/monographHelper';
 import { MonographBlockRenderer } from './MonographBlockRenderer';
 import { 
@@ -127,52 +126,29 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
   }
 
   return (
-    <div className={`space-y-2.5 ${className}`}>
-      {/* Top Header / Bar - Compact & Sleek */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-0.5 py-0.5">
-        <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-[#14291D] text-amber-300 shadow-2xs">
-            <Bookmark className="w-3.5 h-3.5" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-serif text-sm sm:text-base font-bold text-[#14291D] tracking-tight">
-                Product Monograph & Formulation Details
-              </h3>
-              <span className="text-[9.5px] font-mono font-semibold px-2 py-0.2 rounded-full bg-[#EAE4D7] text-[#554C3E] border border-[#D5CCBC]">
-                {tabs.length} Sections
-              </span>
-            </div>
-            <p className="text-[11px] text-[#6B6150] mt-0.2 leading-tight">
-              Verified Ayurvedic Classical Pharmacopoeia Standards · Collapsible Sections
-            </p>
-          </div>
-        </div>
-
-        {/* Admin Quick Action Button */}
-        {isAdmin && onOpenAdminEdit && (
+    <div className={`space-y-2 ${className}`}>
+      {/* Admin Quick Action Button (Minimal, no noisy headers) */}
+      {isAdmin && onOpenAdminEdit && (
+        <div className="flex justify-end px-0.5 mb-1">
           <button
             type="button"
             onClick={onOpenAdminEdit}
-            className="self-start sm:self-auto px-2.5 py-1 rounded-lg bg-[#FAF4EA] hover:bg-[#F2E7D2] text-[#B4741E] font-semibold text-xs border border-[#DFCEB3] flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            className="px-2.5 py-1 rounded-lg bg-[#FAF4EA] hover:bg-[#F2E7D2] text-[#B4741E] font-medium text-xs border border-[#DFCEB3] flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Edit Monograph Accordions & Content Blocks"
           >
             <Edit3 className="w-3 h-3" />
-            <span>Customize Collapsible Blocks</span>
+            <span>Customize Monograph</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Accordion Container: Compact, minimal whitespace */}
+      {/* Minimal Accordion List: Preset Icon + Name + Arrow */}
       <div className="space-y-2">
         {tabs.map((tab: ProductMonographTab) => {
           const isExpanded = expandedTabId === tab.id;
           const blocks: MonographContentBlock[] = getEffectiveTabBlocks(tab);
           const iconElement = getTabIcon(tab.icon, tab.id);
 
-          // ─────────────────────────────────────────────────────────────
-          // Active / Expand Color Mode Resolution ("Color or No Color")
-          // ─────────────────────────────────────────────────────────────
           const colorMode = tab.activeColorMode || 'theme';
           const isNoColor = colorMode === 'no_color';
           const isCustomColor = colorMode === 'color';
@@ -197,22 +173,20 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
 
           if (isExpanded) {
             if (isNoColor) {
-              // ⚪ NO COLOR: Keep clean neutral without switching background or icon colors
               containerClass = 'border-[#DDD5C5] shadow-xs bg-white';
               headerBgClass = 'bg-white hover:bg-[#FAF8F5]';
-              titleClass = 'text-[#2D261A]';
+              titleClass = 'text-[#1E261F]';
               subtitleClass = 'text-[#6F6452]';
-              iconBadgeClass = 'bg-[#EAE3D5] text-[#4F4638]';
+              iconBadgeClass = 'bg-[#EFEAE0] text-[#3D3425]';
               if (tab.iconColor) {
                 iconBadgeStyle = { color: tab.iconColor };
               }
             } else if (isCustomColor) {
-              // 🎨 CUSTOM COLOR: User-specified expand background, text, icon, and border
               if (tab.activeBorderColor) {
                 containerBorderStyle = { borderColor: tab.activeBorderColor };
-                containerClass = 'shadow-xs bg-white ring-1 ring-black/5';
+                containerClass = 'shadow-xs bg-white';
               } else {
-                containerClass = 'border-[#C2B7A3] shadow-xs bg-white ring-1 ring-black/5';
+                containerClass = 'border-[#C2B7A3] shadow-xs bg-white';
               }
 
               if (tab.activeBgColor) {
@@ -233,19 +207,18 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
                 subtitleClass = 'text-[#6F6452]';
               }
 
-              // Custom icon badge
               iconBadgeStyle = {
                 backgroundColor: tab.activeIconBgColor || tab.activeBgColor || '#14291D',
                 color: tab.activeIconColor || '#FFFFFF',
               };
             } else {
-              // 🟢 THEME HIGHLIGHT (Classic Ayurvedic Green & Gold)
-              containerClass = 'border-[#C2B7A3] shadow-xs bg-white ring-1 ring-black/5';
+              // Theme Highlight
+              containerClass = 'border-[#C8BDAA] shadow-xs bg-white';
               if (tab.bgColor) {
                 headerBgStyle = hexToRgba(tab.bgColor, tab.bgOpacity ?? 100);
                 titleColorStyle = tab.textColor;
               } else {
-                headerBgClass = 'bg-[#FAF6F0]';
+                headerBgClass = 'bg-[#FAF7F2]';
                 titleClass = 'text-[#14291D]';
               }
               subtitleClass = 'text-[#6F6452]';
@@ -255,16 +228,16 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
               }
             }
           } else {
-            // Collapsed state
-            containerClass = 'border-[#E2D9CB] bg-[#FAF8F5] hover:border-[#D5CCBC] shadow-2xs';
+            // Collapsed state - minimal & clean
+            containerClass = 'border-[#E7DFD3] bg-[#FAF8F5]/90 hover:bg-[#F5F0E6] hover:border-[#D5C9B7]';
             if (tab.bgColor) {
-              headerBgStyle = hexToRgba(tab.bgColor, Math.min(tab.bgOpacity ?? 100, 20));
+              headerBgStyle = hexToRgba(tab.bgColor, Math.min(tab.bgOpacity ?? 100, 15));
             } else {
-              headerBgClass = 'hover:bg-[#F5F0E6]';
+              headerBgClass = '';
             }
             titleClass = 'text-[#2D261A]';
-            subtitleClass = 'text-[#6F6452]';
-            iconBadgeClass = 'bg-[#EAE3D5] text-[#4F4638]';
+            subtitleClass = 'text-[#7A705E]';
+            iconBadgeClass = 'bg-[#EFEAE0] text-[#4A4031]';
             if (tab.iconColor) {
               iconBadgeStyle = { color: tab.iconColor };
             }
@@ -276,40 +249,38 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
               style={containerBorderStyle}
               className={`rounded-xl border transition-all duration-150 overflow-hidden ${containerClass}`}
             >
-              {/* Accordion Header Bar - Compact padding */}
+              {/* Accordion Header Bar: Preset Icon + Name + Arrow (Minimal, Simple) */}
               <button
                 type="button"
                 onClick={() => toggleTab(tab.id)}
                 aria-expanded={isExpanded}
                 style={headerBgStyle ? { backgroundColor: headerBgStyle } : undefined}
-                className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2.5 text-left transition-colors cursor-pointer select-none ${headerBgClass}`}
+                className={`w-full px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer select-none ${headerBgClass}`}
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {/* Icon badge (if icon is set and not 'none') */}
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  {/* Preset Icon */}
                   {iconElement && (
                     <span
                       style={iconBadgeStyle}
-                      className={`p-1.5 rounded-lg shrink-0 transition-colors ${iconBadgeClass}`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg shrink-0 flex items-center justify-center transition-colors ${iconBadgeClass}`}
                     >
                       {iconElement}
                     </span>
                   )}
 
-                  {/* Title and Subtitle / Description below Title */}
+                  {/* Name (Title) + Subtitle */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 
-                        style={titleColorStyle ? { color: titleColorStyle } : undefined}
-                        className={`font-serif font-bold text-xs sm:text-sm tracking-tight leading-snug ${titleClass}`}
-                      >
-                        {cleanMonographTabTitle(tab.title)}
-                      </h4>
-                    </div>
+                    <h4
+                      style={titleColorStyle ? { color: titleColorStyle } : undefined}
+                      className={`font-serif font-semibold text-xs sm:text-sm tracking-tight leading-snug ${titleClass}`}
+                    >
+                      {tab.title}
+                    </h4>
 
                     {tab.subtitle && (
-                      <p 
+                      <p
                         style={subtitleColorStyle ? { color: subtitleColorStyle } : undefined}
-                        className={`text-[11px] mt-0.5 line-clamp-2 ${subtitleClass}`}
+                        className={`text-[11px] mt-0.5 line-clamp-1 ${subtitleClass}`}
                       >
                         {tab.subtitle}
                       </p>
@@ -317,27 +288,20 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
                   </div>
                 </div>
 
-                {/* Right side: Chevron Indicator */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span 
-                    className={`p-1 rounded-md border transition-transform duration-150 ${
-                      isExpanded 
-                        ? (isNoColor ? 'bg-[#FAF8F5] border-[#D5CCBC] text-[#4F4638] rotate-180' : 'bg-white border-[#D5CCBC] text-[#14291D] rotate-180')
-                        : 'bg-[#EFEAE0] border-[#DDD5C5] text-[#6F6452]'
-                    }`}
-                  >
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </span>
-                </div>
+                {/* Minimal Arrow */}
+                <ChevronDown
+                  className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+                    isExpanded ? 'rotate-180 text-[#14291D]' : 'text-[#8A7D6A]'
+                  }`}
+                />
               </button>
 
-              {/* Accordion Content Panel - Compact & Borderless Cards with Divides */}
+              {/* Accordion Content Panel: Content blocks rendered as created in admin */}
               {isExpanded && (
-                <div className="px-3 sm:px-4 py-3 sm:py-3.5 border-t border-[#EDE5D8] bg-[#FFFFFF] animate-in fade-in duration-150">
+                <div className="px-3.5 sm:px-5 py-3.5 sm:py-4 border-t border-[#EDE5D8] bg-[#FFFFFF] animate-in fade-in duration-150">
                   {blocks.length === 0 ? (
-                    <div className="py-5 text-center text-[#7A705E] space-y-1.5">
-                      <Layers className="w-5 h-5 mx-auto text-[#B5A893]" />
-                      <p className="text-xs font-semibold">No content blocks added to this section yet.</p>
+                    <div className="py-4 text-center text-[#7A705E] space-y-1">
+                      <p className="text-xs">No content added to this section yet.</p>
                       {isAdmin && onOpenAdminEdit && (
                         <button
                           type="button"
@@ -349,12 +313,11 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
                       )}
                     </div>
                   ) : (
-                    /* Simple cards with borders removed, separated cleanly by subtle divides */
-                    <div className="divide-y divide-[#EDE5D8]/80 space-y-2">
+                    <div className="space-y-3">
                       {blocks.map((block: MonographContentBlock) => (
-                        <div key={block.id} className="pt-2 first:pt-0">
-                          <MonographBlockRenderer 
-                            block={block} 
+                        <div key={block.id}>
+                          <MonographBlockRenderer
+                            block={block}
                             isProductView={true}
                           />
                         </div>

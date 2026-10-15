@@ -69,16 +69,8 @@ export const MonographBlockRenderer: React.FC<MonographBlockRendererProps> = ({
   const containerStyle = resolveBlockCustomStyle(block.design);
 
   if (isProductView) {
-    // Strip heavy borders and extra vertical margins for a compact, clean product view with dividers
-    containerClasses = containerClasses
-      .replace(/border\s+border-[^\s]+/g, 'border-0')
-      .replace(/border-dashed\s+border-[^\s]+/g, 'border-0')
-      .replace(/border-[^\s]+/g, 'border-0')
-      .replace(/my-[0-9\.]+/g, 'my-0')
-      .replace(/p-[0-9\.]+(\s+sm:p-[0-9\.]+)?/g, 'p-2 sm:p-2.5');
-    if (containerStyle.borderColor) {
-      delete containerStyle.borderColor;
-    }
+    // Keep margins clean without stripping custom borders, backgrounds, or styling created in admin
+    containerClasses = containerClasses.replace(/my-[0-9\.]+/g, 'my-1');
   }
 
   // Helper to render markdown bold and line breaks safely
