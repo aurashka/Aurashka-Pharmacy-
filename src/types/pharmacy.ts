@@ -425,6 +425,8 @@ export interface HerbalProduct {
   primaryImageOverlayFadeSoftness?: number;
   monographTabs?: ProductMonographTab[]; // Horizontal tabs with customizable details, priorities, and cards
   customDetails?: ProductCustomDetailItem[]; // Optional custom highlight details shown directly above monograph tabs in product view
+  brand?: string; // Brand / Manufacturer / Seller e.g. "Vaidya Shala Authentic"
+  sellerName?: string; // Seller / Dispenser
   isDraft?: boolean; // Draft mode: only visible to admin in catalog and admin panel
 }
 
@@ -605,6 +607,7 @@ export interface SiteSettings {
   productAssuranceBadges?: ProductAssuranceBadges;
   bannerSlider?: BannerSliderConfig;
   productHorizontalLists?: ProductHorizontalList[];
+  defaultHorizontalShelfCardStyle?: HorizontalShelfCardStyle;
   productImageGradient?: 'none' | 'black' | 'white' | 'emerald' | 'glass_dark' | 'glass_light';
   productImageOverlayOpacity?: number;
   productImageOverlayCoveragePercent?: number;
@@ -701,6 +704,8 @@ export interface BannerSliderConfig {
   items: BannerSlideItem[];
 }
 
+export type HorizontalShelfCardStyle = 'classic' | 'modern';
+
 export interface HorizontalListCardFields {
   showImage?: boolean;
   showName?: boolean;
@@ -712,6 +717,8 @@ export interface HorizontalListCardFields {
   showRating?: boolean;
   showAddToCart?: boolean;
   showQuickView?: boolean;
+  showSeller?: boolean;     // Seller / Brand / Manufacturer
+  showVolume?: boolean;     // Volume or Pack size (e.g. 100g, 60 caps)
 }
 
 export interface ProductHorizontalList {
@@ -725,6 +732,7 @@ export interface ProductHorizontalList {
   category?: string;
   maxProducts?: number;
   selectedProductIds?: string[];
+  cardStyle?: HorizontalShelfCardStyle; // 'classic' (normal image top) | 'modern' (left info, right full image)
   cardFields: HorizontalListCardFields;
 }
 

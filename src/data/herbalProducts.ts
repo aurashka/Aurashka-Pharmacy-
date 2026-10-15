@@ -887,6 +887,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
       sourceType: 'category',
       category: 'rasayana',
       maxProducts: 8,
+      cardStyle: 'modern',
       cardFields: {
         showImage: true,
         showName: true,
@@ -898,6 +899,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
         showRating: true,
         showAddToCart: true,
         showQuickView: true,
+        showSeller: true,
+        showVolume: true,
       }
     },
     {
@@ -910,6 +913,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
       sourceType: 'category',
       category: 'immunity',
       maxProducts: 8,
+      cardStyle: 'classic',
       cardFields: {
         showImage: true,
         showName: true,
@@ -921,9 +925,12 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
         showRating: true,
         showAddToCart: true,
         showQuickView: true,
+        showSeller: true,
+        showVolume: true,
       }
     }
   ],
+  defaultHorizontalShelfCardStyle: 'modern',
   productImageGradient: 'none',
   showStoreMap: true,
   storeMap: {

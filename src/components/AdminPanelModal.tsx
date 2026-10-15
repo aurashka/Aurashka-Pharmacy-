@@ -18,6 +18,7 @@ import {
   BannerSliderConfig,
   ProductHorizontalList,
   HorizontalListCardFields,
+  HorizontalShelfCardStyle,
   HeaderBannerConfig,
   CategoryAppearanceConfig,
   CategoryImagePosition,
@@ -58,6 +59,7 @@ import {
   Check, 
   Search, 
   Eye, 
+  ShoppingBag,
   CloudUpload, 
   Link as LinkIcon, 
   Phone, 
@@ -285,6 +287,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     customTagBgColor: '#14291D',
     customTagTextColor: '#FFFFFF',
     volumeOrWeight: '100g Pure Powder',
+    brand: '',
+    sellerName: '',
     inStock: true,
     displayOrder: 1,
     showAssuranceBadges: true,
@@ -952,6 +956,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     category: 'all',
     maxProducts: 8,
     selectedProductIds: [],
+    cardStyle: 'classic',
     cardFields: {
       showImage: true,
       showName: true,
@@ -963,6 +968,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       showRating: true,
       showAddToCart: true,
       showQuickView: true,
+      showSeller: true,
+      showVolume: true,
     },
   });
   const [productSearchInListForm, setProductSearchInListForm] = useState<string>('');
@@ -986,6 +993,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       category: 'immunity',
       maxProducts: 8,
       selectedProductIds: [],
+      cardStyle: siteForm.defaultHorizontalShelfCardStyle || 'classic',
       cardFields: {
         showImage: true,
         showName: true,
@@ -997,6 +1005,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         showRating: true,
         showAddToCart: true,
         showQuickView: true,
+        showSeller: true,
+        showVolume: true,
       },
     });
     setProductSearchInListForm('');
@@ -1007,6 +1017,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleStartEditHorizontalList = (list: ProductHorizontalList) => {
     setHorizontalListForm({
       ...list,
+      cardStyle: list.cardStyle || siteForm.defaultHorizontalShelfCardStyle || 'classic',
       cardFields: {
         showImage: list.cardFields?.showImage !== false,
         showName: list.cardFields?.showName !== false,
@@ -1018,6 +1029,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         showRating: list.cardFields?.showRating !== false,
         showAddToCart: list.cardFields?.showAddToCart !== false,
         showQuickView: list.cardFields?.showQuickView !== false,
+        showSeller: list.cardFields?.showSeller === true,
+        showVolume: list.cardFields?.showVolume === true,
       },
       selectedProductIds: Array.isArray(list.selectedProductIds) ? list.selectedProductIds : [],
     });
@@ -1195,6 +1208,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       customTagBgColor: '#14291D',
       customTagTextColor: '#FFFFFF',
       volumeOrWeight: '100g Pure Powder',
+      brand: '',
+      sellerName: '',
       inStock: true,
       displayOrder: products.length + 1,
       showAssuranceBadges: true,
@@ -1314,6 +1329,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       customTagBgColor: p.customTag?.bgColor || '#14291D',
       customTagTextColor: p.customTag?.textColor || '#FFFFFF',
       volumeOrWeight: p.volumeOrWeight,
+      brand: p.brand || '',
+      sellerName: p.sellerName || '',
       inStock: p.inStock !== false,
       displayOrder: p.displayOrder !== undefined ? p.displayOrder : (products.indexOf(p) + 1),
       showAssuranceBadges: p.assuranceBadges?.showBadges !== undefined ? p.assuranceBadges.showBadges : true,
@@ -1880,6 +1897,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         sortBadge: productForm.sortBadge || 'none',
         customTag,
         volumeOrWeight: productForm.volumeOrWeight.trim() || (validVariants.length > 0 ? `${validVariants[0].size} ${validVariants[0].unit}` : '100g'),
+        brand: productForm.brand?.trim() || undefined,
+        sellerName: productForm.sellerName?.trim() || productForm.brand?.trim() || undefined,
         inStock: Boolean(productForm.inStock),
         displayOrder: Number(productForm.displayOrder) || (products.length + 1),
         variants: validVariants,
@@ -1944,6 +1963,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         sortBadge: productForm.sortBadge || 'none',
         customTag,
         volumeOrWeight: productForm.volumeOrWeight.trim() || (validVariants.length > 0 ? `${validVariants[0].size} ${validVariants[0].unit}` : editingProduct.volumeOrWeight),
+        brand: productForm.brand?.trim() || undefined,
+        sellerName: productForm.sellerName?.trim() || productForm.brand?.trim() || undefined,
         inStock: Boolean(productForm.inStock),
         displayOrder: Number(productForm.displayOrder) || (editingProduct.displayOrder ?? 1),
         variants: validVariants,
@@ -2751,16 +2772,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
 
 
-                    {/* Net Volume / Weight (Classical Monograph Tabs are now managed in the dedicated Monograph Tabs section below) */}
-                    <div className="max-w-md">
-                      <label className="block font-medium text-[#2B251D] mb-1">Net Volume/Weight</label>
-                      <input
-                        type="text"
-                        value={productForm.volumeOrWeight}
-                        onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
-                        placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
-                        className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
-                      />
+                    {/* Net Volume / Weight & Brand / Seller Name */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1">Net Volume/Weight</label>
+                        <input
+                          type="text"
+                          value={productForm.volumeOrWeight}
+                          onChange={(e) => setProductForm({ ...productForm, volumeOrWeight: e.target.value })}
+                          placeholder="e.g. 100g Pure Powder / 60 Veg Capsules"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-medium text-[#2B251D] mb-1">Seller / Brand Name (Optional)</label>
+                        <input
+                          type="text"
+                          value={productForm.brand || ''}
+                          onChange={(e) => setProductForm({ ...productForm, brand: e.target.value, sellerName: e.target.value })}
+                          placeholder="e.g. Vaidya Shala Authentic / Ayur Herbals"
+                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg text-xs"
+                        />
+                        <span className="text-[10px] text-[#786D5C] mt-0.5 block">
+                          Displays on product cards and horizontal shelves when Seller element is enabled.
+                        </span>
+                      </div>
                     </div>
 
                           {/* Base Pricing Card */}
@@ -6899,44 +6935,143 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   )}
                 </div>
 
-                {/* 3. Detail Elements Customizer: Name, Image, Price, Reseller Price, Offer, Tag, etc. */}
+                {/* 3. Card Layout & Design Style: Normal / Classic vs Modern Showcase (Attached Design) */}
+                <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
+                  <div className="border-b border-[#EAE3D4] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-[#2C5E43]" />
+                      <h4 className="font-bold text-sm text-[#14291D]">
+                        3. Shelf Product Card Layout Style
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[#695F4F] mt-1">
+                      Choose whether products on this shelf display as standard vertical cards or the modern horizontal showcase design (with right-side full image & left-side rating, name, price, buy button).
+                    </p>
+                  </div>
+
+                  {/* Visual Style Selection Radio Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Option 1: Normal / Classic */}
+                    <label
+                      onClick={() => setHorizontalListForm({ ...horizontalListForm, cardStyle: 'classic' })}
+                      className={`p-4 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                        (horizontalListForm.cardStyle || 'classic') === 'classic'
+                          ? 'bg-emerald-50/80 border-[#2C5E43] ring-1 ring-[#2C5E43]'
+                          : 'bg-[#FAF8F5] border-[#DDD5C5] hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="shelfCardStyle"
+                            checked={(horizontalListForm.cardStyle || 'classic') === 'classic'}
+                            onChange={() => setHorizontalListForm({ ...horizontalListForm, cardStyle: 'classic' })}
+                            className="text-emerald-700 focus:ring-emerald-600"
+                          />
+                          <span className="font-bold text-xs text-[#14291D]">
+                            Normal / Classic Card
+                          </span>
+                        </div>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200 text-stone-700 font-medium">
+                          Vertical
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#594F40] mb-3">
+                        Standard vertical card with top square image and product details & action buttons arranged beneath it.
+                      </p>
+                      {/* Schematic Miniature */}
+                      <div className="w-20 mx-auto bg-white border border-[#DDD5C5] rounded-md p-1 space-y-1 shadow-2xs">
+                        <div className="w-full h-8 bg-stone-200 rounded-xs flex items-center justify-center text-[7px] text-stone-500 font-mono">Image</div>
+                        <div className="h-1 bg-stone-400 rounded-xs w-3/4"></div>
+                        <div className="h-1 bg-amber-400 rounded-xs w-1/2"></div>
+                        <div className="h-1.5 bg-[#14291D] rounded-xs w-full"></div>
+                      </div>
+                    </label>
+
+                    {/* Option 2: Modern Showcase (Attached Design) */}
+                    <label
+                      onClick={() => setHorizontalListForm({ ...horizontalListForm, cardStyle: 'modern' })}
+                      className={`p-4 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                        horizontalListForm.cardStyle === 'modern'
+                          ? 'bg-emerald-50/80 border-[#2C5E43] ring-1 ring-[#2C5E43]'
+                          : 'bg-[#FAF8F5] border-[#DDD5C5] hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="shelfCardStyle"
+                            checked={horizontalListForm.cardStyle === 'modern'}
+                            onChange={() => setHorizontalListForm({ ...horizontalListForm, cardStyle: 'modern' })}
+                            className="text-emerald-700 focus:ring-emerald-600"
+                          />
+                          <span className="font-bold text-xs text-[#14291D]">
+                            Modern Showcase Card
+                          </span>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold">
+                          Attached Design
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#594F40] mb-3">
+                        Horizontal split design: <strong>Right side full product image</strong> + <strong>Left side Top star rating, Name, Price and Buy button</strong>.
+                      </p>
+                      {/* Schematic Miniature */}
+                      <div className="w-28 mx-auto bg-white border border-[#DDD5C5] rounded-md p-1 flex items-stretch gap-1.5 shadow-2xs h-11">
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div className="h-1 bg-amber-400 rounded-xs w-2/3"></div>
+                          <div className="h-1 bg-stone-600 rounded-xs w-full"></div>
+                          <div className="h-1 bg-stone-400 rounded-xs w-3/4"></div>
+                          <div className="h-1.5 bg-[#14291D] rounded-xs w-full"></div>
+                        </div>
+                        <div className="w-9 bg-stone-200 rounded-xs flex items-center justify-center text-[7px] text-stone-500 font-mono text-center">Full Img</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 4. Detail Elements Customizer: Name, Image, Price, Reseller Price, Offer, Tag, Seller, Volume, etc. */}
                 <div className="bg-white p-5 rounded-xl border border-[#D5CCBC] shadow-xs space-y-4">
                   <div className="border-b border-[#EAE3D4] pb-2.5">
                     <div className="flex items-center gap-2">
                       <Eye className="w-4 h-4 text-[#2C5E43]" />
                       <h4 className="font-bold text-sm text-[#14291D]">
-                        3. List Detail Display Elements (Select What to Show on Cards)
+                        4. List Detail Display Elements (Select What to Show on Cards)
                       </h4>
                     </div>
                     <p className="text-xs text-[#695F4F] mt-1">
-                      Choose which elements appear inside each product card on this horizontal shelf: Name, Image, Retail Price, Reseller Price, Offer/Discount, Tag, etc.
+                      Choose which elements appear inside each product card on this horizontal shelf: Top Star Rating, Name, Price, Buy Button, Seller, Volume, Image, MRP/Offer, etc.
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 text-xs">
                     {[
-                      { key: 'showImage', label: 'Product Image', desc: 'Main photo / thumbnail' },
+                      { key: 'showRating', label: 'Top Rating Stars', desc: 'Star rating & review count' },
                       { key: 'showName', label: 'Product Name', desc: 'Primary formulation title' },
-                      { key: 'showSanskritName', label: 'Sanskrit Name', desc: 'Botanical Latin/Sanskrit' },
                       { key: 'showPrice', label: 'Retail Price (₹)', desc: 'Standard customer rate' },
-                      { key: 'showResellerPrice', label: 'Reseller Price', desc: 'Wholesale clinic margin' },
-                      { key: 'showMrpAndOffer', label: 'MRP & % Offer', desc: 'Strike-through & discount' },
+                      { key: 'showAddToCart', label: 'Buy Button', desc: 'Direct Buy / In Bag button' },
+                      { key: 'showSeller', label: 'Seller / Brand', desc: 'Dispenser / Brand name' },
+                      { key: 'showVolume', label: 'Volume / Pack', desc: 'Weight (e.g. 60 Caps, 100g)' },
+                      { key: 'showImage', label: 'Product Image', desc: 'Product photo / thumbnail' },
+                      { key: 'showSanskritName', label: 'Sanskrit Name', desc: 'Botanical Latin/Sanskrit' },
+                      { key: 'showMrpAndOffer', label: 'MRP & % Offer', desc: 'Strike-through & % discount' },
+                      { key: 'showResellerPrice', label: 'Reseller Margin', desc: 'Wholesale clinic margin' },
                       { key: 'showTag', label: 'Formulation Tag', desc: 'Trending/bestseller badge' },
-                      { key: 'showRating', label: 'Rating & Reviews', desc: 'Star rating & review count' },
-                      { key: 'showAddToCart', label: 'Add to Cart', desc: 'Direct inquiry action button' },
                       { key: 'showQuickView', label: 'Quick View', desc: 'Full monograph button' },
                     ].map((item) => {
                       const isChecked = horizontalListForm.cardFields[item.key as keyof HorizontalListCardFields] !== false;
                       return (
                         <label
                           key={item.key}
-                          className={`p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                          className={`p-2.5 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
                             isChecked
                               ? 'bg-emerald-50/80 border-[#A5D6B6] ring-1 ring-[#A5D6B6]'
                               : 'bg-[#FAF8F5] border-[#DDD5C5] text-[#8C8270] opacity-75'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center justify-between mb-1">
                             <span className="font-bold text-xs text-[#14291D]">
                               {item.label}
                             </span>
@@ -6955,7 +7090,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               className="rounded text-emerald-700 focus:ring-emerald-600 w-4 h-4 cursor-pointer"
                             />
                           </div>
-                          <p className="text-[10px] text-[#695F4F]">
+                          <p className="text-[10px] text-[#695F4F] line-clamp-1">
                             {item.desc}
                           </p>
                         </label>
@@ -6965,113 +7100,287 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   {/* Live Interactive Card Preview */}
                   <div className="pt-3 border-t border-[#F0EAE1]">
-                    <h5 className="font-bold text-xs text-[#14291D] mb-2 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Live Card Preview (How customers will see cards on this shelf):</span>
-                    </h5>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                      <h5 className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Live Card Preview (How customers will see cards on this shelf):</span>
+                      </h5>
 
-                    <div className="w-[220px] sm:w-[240px] bg-white rounded-xl border border-[#D5CCBC] shadow-sm flex flex-col justify-between overflow-hidden">
-                      <div>
+                      {/* Style Toggle for Preview */}
+                      <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-lg border border-[#DDD5C5] text-[11px]">
+                        <span className="text-stone-500 font-medium px-1.5">Layout:</span>
+                        <button
+                          type="button"
+                          onClick={() => setHorizontalListForm({ ...horizontalListForm, cardStyle: 'classic' })}
+                          className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-all ${
+                            (horizontalListForm.cardStyle || 'classic') === 'classic'
+                              ? 'bg-[#14291D] text-white shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900'
+                          }`}
+                        >
+                          Normal (Classic)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHorizontalListForm({ ...horizontalListForm, cardStyle: 'modern' })}
+                          className={`px-2 py-0.5 rounded font-bold cursor-pointer transition-all ${
+                            horizontalListForm.cardStyle === 'modern'
+                              ? 'bg-[#14291D] text-white shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900'
+                          }`}
+                        >
+                          Modern (Showcase)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* PREVIEW CONTAINER */}
+                    {horizontalListForm.cardStyle === 'modern' ? (
+                      /* MODERN SHOWCASE CARD PREVIEW (Left Details + Right Full Image) */
+                      <div className="w-[300px] sm:w-[340px] bg-white rounded-2xl border border-[#D5CCBC] shadow-sm flex flex-row overflow-hidden group/card relative">
+                        {/* Left Column: Details & Actions */}
+                        <div className="flex-1 p-3 sm:p-3.5 flex flex-col justify-between min-w-0 pr-2">
+                          <div className="space-y-1">
+                            {/* Top Row: Star Rating & Tag */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {horizontalListForm.cardFields.showRating !== false && (
+                                <div className="flex items-center text-amber-500">
+                                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                  <span className="font-bold text-xs text-[#14291D] ml-1">4.9</span>
+                                  <span className="text-stone-300 mx-0.5">·</span>
+                                  <span className="text-[10px] text-[#716858]">(312)</span>
+                                </div>
+                              )}
+                              {horizontalListForm.cardFields.showTag !== false && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#14291D]/10 text-[#14291D] capitalize shrink-0">
+                                  <Tag className="w-2.5 h-2.5 text-[#B4741E]" />
+                                  <span>Trending</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Product Name */}
+                            {horizontalListForm.cardFields.showName !== false && (
+                              <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] line-clamp-2 leading-tight">
+                                {products[0]?.name || 'Ashwagandha KSM-66 Gold Extract'}
+                              </h4>
+                            )}
+
+                            {/* Sanskrit Name */}
+                            {horizontalListForm.cardFields.showSanskritName !== false && (
+                              <p className="text-[10px] text-[#716858] italic line-clamp-1">
+                                {products[0]?.sanskritName || 'अश्वगंधा चूर्ण / घन सत्व'}
+                              </p>
+                            )}
+
+                            {/* Seller / Brand */}
+                            {horizontalListForm.cardFields.showSeller !== false && (
+                              <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
+                                <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                                <span className="font-semibold truncate">
+                                  {products[0]?.brand || siteForm.brandName || 'Shree Ayur Pharma'}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Volume / Pack Size */}
+                            {horizontalListForm.cardFields.showVolume !== false && (
+                              <div className="text-[9.5px] text-stone-500 font-medium truncate">
+                                {products[0]?.volumeOrWeight || '60 Veg Capsules (500mg each)'}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bottom Area: Price & Buy Button */}
+                          <div className="mt-2 space-y-1.5">
+                            {(horizontalListForm.cardFields.showPrice !== false || 
+                              horizontalListForm.cardFields.showMrpAndOffer !== false || 
+                              horizontalListForm.cardFields.showResellerPrice !== false) && (
+                              <div className="pt-1.5 border-t border-[#F2ECE1]">
+                                <div className="flex items-baseline gap-1.5 flex-wrap">
+                                  {horizontalListForm.cardFields.showPrice !== false && (
+                                    <span className="font-mono font-bold text-sm sm:text-base text-[#14291D]">
+                                      ₹649
+                                    </span>
+                                  )}
+                                  {horizontalListForm.cardFields.showMrpAndOffer !== false && (
+                                    <span className="font-mono text-[10.5px] text-[#8C8270] line-through">
+                                      ₹899
+                                    </span>
+                                  )}
+                                </div>
+                                {horizontalListForm.cardFields.showResellerPrice !== false && (
+                                  <div className="mt-0.5 text-[9.5px] bg-[#E7EFEA] text-[#183624] px-1.5 py-0.5 rounded font-mono font-semibold truncate border border-[#B5D6C4]/60">
+                                    Reseller: ₹480
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Buy Action Buttons */}
+                            {(horizontalListForm.cardFields.showAddToCart !== false || horizontalListForm.cardFields.showQuickView !== false) && (
+                              <div className="flex items-center gap-1.5">
+                                {horizontalListForm.cardFields.showAddToCart !== false && (
+                                  <button
+                                    type="button"
+                                    className="flex-1 py-1 px-2 rounded-lg text-xs font-bold bg-[#14291D] text-white shadow-2xs flex items-center justify-center gap-1"
+                                  >
+                                    <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                                    <span>Buy</span>
+                                  </button>
+                                )}
+                                {horizontalListForm.cardFields.showQuickView !== false && (
+                                  <button
+                                    type="button"
+                                    className="p-1 rounded-lg border border-[#DDD5C5] text-[#52493A]"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right Column: Full Image */}
                         {horizontalListForm.cardFields.showImage !== false && (
-                          <div className="relative aspect-square bg-[#FAF8F5] overflow-hidden border-b border-[#E8E2D5]">
+                          <div className="w-[115px] sm:w-[130px] shrink-0 relative bg-linear-to-b from-[#FAF8F5] via-[#F4EEE4] to-[#ECE5D8] overflow-hidden flex items-center justify-center border-l border-[#EDE6DA]">
                             <img
                               src={products[0]?.image || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80'}
                               alt="Preview"
                               className="w-full h-full object-cover"
                             />
-                            {horizontalListForm.cardFields.showTag !== false && (
-                              <div className="absolute top-2 left-2 z-10">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold bg-[#14291D] text-white shadow-xs">
-                                  <Tag className="w-2.5 h-2.5 text-amber-300" />
-                                  <span>Trending</span>
-                                </span>
-                              </div>
-                            )}
                             {horizontalListForm.cardFields.showMrpAndOffer !== false && (
                               <div className="absolute top-2 right-2 z-10">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
                                   28% OFF
                                 </span>
                               </div>
                             )}
                           </div>
                         )}
-
-                        <div className="p-3 space-y-1.5">
-                          {horizontalListForm.cardFields.showRating !== false && (
-                            <div className="flex items-center gap-1 text-[11px] text-[#716858]">
-                              <div className="flex items-center text-amber-500">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                <span className="font-bold text-[#14291D] ml-0.5">4.9</span>
-                              </div>
-                              <span className="text-stone-300">·</span>
-                              <span>(312)</span>
-                            </div>
-                          )}
-
-                          {horizontalListForm.cardFields.showName !== false && (
-                            <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] line-clamp-1">
-                              {products[0]?.name || 'Ashwagandha KSM-66 Gold Extract'}
-                            </h4>
-                          )}
-
-                          {horizontalListForm.cardFields.showSanskritName !== false && (
-                            <p className="text-[10.5px] text-[#716858] italic line-clamp-1">
-                              {products[0]?.sanskritName || 'अश्वगंधा चूर्ण / घन सत्व'}
-                            </p>
-                          )}
-
-                          {(horizontalListForm.cardFields.showPrice !== false || 
-                            horizontalListForm.cardFields.showMrpAndOffer !== false || 
-                            horizontalListForm.cardFields.showResellerPrice !== false) && (
-                            <div className="pt-1 border-t border-[#F2ECE1] space-y-1">
-                              <div className="flex items-baseline gap-2">
-                                {horizontalListForm.cardFields.showPrice !== false && (
-                                  <span className="font-mono font-bold text-sm text-[#14291D]">
-                                    ₹649
+                      </div>
+                    ) : (
+                      /* CLASSIC VERTICAL CARD PREVIEW */
+                      <div className="w-[220px] sm:w-[240px] bg-white rounded-xl border border-[#D5CCBC] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div>
+                          {horizontalListForm.cardFields.showImage !== false && (
+                            <div className="relative aspect-square bg-[#FAF8F5] overflow-hidden border-b border-[#E8E2D5]">
+                              <img
+                                src={products[0]?.image || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80'}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                              />
+                              {horizontalListForm.cardFields.showTag !== false && (
+                                <div className="absolute top-2 left-2 z-10">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold bg-[#14291D] text-white shadow-xs">
+                                    <Tag className="w-2.5 h-2.5 text-amber-300" />
+                                    <span>Trending</span>
                                   </span>
-                                )}
-                                {horizontalListForm.cardFields.showMrpAndOffer !== false && (
-                                  <span className="font-mono text-xs text-[#8C8270] line-through">
-                                    ₹899
-                                  </span>
-                                )}
-                              </div>
-
-                              {horizontalListForm.cardFields.showResellerPrice !== false && (
-                                <div className="flex items-center justify-between text-[10px] bg-[#E7EFEA]/80 px-1.5 py-0.5 rounded border border-[#B5D6C4]">
-                                  <span className="text-[#2C5E43] font-semibold">Reseller:</span>
-                                  <span className="font-mono font-bold text-[#183624]">
-                                    ₹480
+                                </div>
+                              )}
+                              {horizontalListForm.cardFields.showMrpAndOffer !== false && (
+                                <div className="absolute top-2 right-2 z-10">
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                                    28% OFF
                                   </span>
                                 </div>
                               )}
                             </div>
                           )}
-                        </div>
-                      </div>
 
-                      {(horizontalListForm.cardFields.showAddToCart !== false || horizontalListForm.cardFields.showQuickView !== false) && (
-                        <div className="p-3 pt-0 flex items-center gap-1.5">
-                          {horizontalListForm.cardFields.showAddToCart !== false && (
-                            <button
-                              type="button"
-                              className="flex-1 py-1 px-2 rounded-lg text-xs font-bold bg-[#14291D] text-white shadow-2xs text-center"
-                            >
-                              Add to Cart
-                            </button>
-                          )}
-                          {horizontalListForm.cardFields.showQuickView !== false && (
-                            <button
-                              type="button"
-                              className="p-1 rounded-lg border border-[#DDD5C5] text-[#52493A]"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="p-3 space-y-1.5">
+                            {horizontalListForm.cardFields.showRating !== false && (
+                              <div className="flex items-center gap-1 text-[11px] text-[#716858]">
+                                <div className="flex items-center text-amber-500">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  <span className="font-bold text-[#14291D] ml-0.5">4.9</span>
+                                </div>
+                                <span className="text-stone-300">·</span>
+                                <span>(312)</span>
+                              </div>
+                            )}
+
+                            {horizontalListForm.cardFields.showName !== false && (
+                              <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] line-clamp-1">
+                                {products[0]?.name || 'Ashwagandha KSM-66 Gold Extract'}
+                              </h4>
+                            )}
+
+                            {horizontalListForm.cardFields.showSanskritName !== false && (
+                              <p className="text-[10.5px] text-[#716858] italic line-clamp-1">
+                                {products[0]?.sanskritName || 'अश्वगंधा चूर्ण / घन सत्व'}
+                              </p>
+                            )}
+
+                            {horizontalListForm.cardFields.showSeller !== false && (
+                              <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
+                                <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                                <span className="font-semibold truncate">
+                                  {products[0]?.brand || siteForm.brandName || 'Shree Ayur Pharma'}
+                                </span>
+                              </div>
+                            )}
+
+                            {horizontalListForm.cardFields.showVolume !== false && (
+                              <div className="text-[10px] text-stone-500 font-medium truncate">
+                                {products[0]?.volumeOrWeight || '60 Veg Capsules'}
+                              </div>
+                            )}
+
+                            {(horizontalListForm.cardFields.showPrice !== false || 
+                              horizontalListForm.cardFields.showMrpAndOffer !== false || 
+                              horizontalListForm.cardFields.showResellerPrice !== false) && (
+                              <div className="pt-1 border-t border-[#F2ECE1] space-y-1">
+                                <div className="flex items-baseline gap-2">
+                                  {horizontalListForm.cardFields.showPrice !== false && (
+                                    <span className="font-mono font-bold text-sm text-[#14291D]">
+                                      ₹649
+                                    </span>
+                                  )}
+                                  {horizontalListForm.cardFields.showMrpAndOffer !== false && (
+                                    <span className="font-mono text-xs text-[#8C8270] line-through">
+                                      ₹899
+                                    </span>
+                                  )}
+                                </div>
+
+                                {horizontalListForm.cardFields.showResellerPrice !== false && (
+                                  <div className="flex items-center justify-between text-[10px] bg-[#E7EFEA]/80 px-1.5 py-0.5 rounded border border-[#B5D6C4]">
+                                    <span className="text-[#2C5E43] font-semibold">Reseller:</span>
+                                    <span className="font-mono font-bold text-[#183624]">
+                                      ₹480
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+
+                        {(horizontalListForm.cardFields.showAddToCart !== false || horizontalListForm.cardFields.showQuickView !== false) && (
+                          <div className="p-3 pt-0 flex items-center gap-1.5">
+                            {horizontalListForm.cardFields.showAddToCart !== false && (
+                              <button
+                                type="button"
+                                className="flex-1 py-1 px-2 rounded-lg text-xs font-bold bg-[#14291D] text-white shadow-2xs text-center flex items-center justify-center gap-1"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                                <span>Add to Cart</span>
+                              </button>
+                            )}
+                            {horizontalListForm.cardFields.showQuickView !== false && (
+                              <button
+                                type="button"
+                                className="p-1 rounded-lg border border-[#DDD5C5] text-[#52493A]"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -7118,6 +7427,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      {/* Default Card Style Picker for Horizontal Shelves */}
+                      <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-[#CFC5B4] text-xs shadow-2xs">
+                        <span className="font-semibold text-[#594F40]">Default Shelf Card:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updatedSiteSettings: SiteSettings = {
+                              ...siteForm,
+                              defaultHorizontalShelfCardStyle: 'classic',
+                            };
+                            setSiteForm(updatedSiteSettings);
+                            onUpdateSiteSettings(updatedSiteSettings);
+                            backupSiteSettingsToFirebase(updatedSiteSettings);
+                            setSaveSuccessMsg('Set default shelf layout to Normal (Classic)!');
+                            setTimeout(() => setSaveSuccessMsg(null), 2000);
+                          }}
+                          className={`px-2 py-0.5 rounded font-bold text-xs cursor-pointer transition-all ${
+                            (siteForm.defaultHorizontalShelfCardStyle || 'classic') === 'classic'
+                              ? 'bg-[#14291D] text-white shadow-2xs'
+                              : 'text-[#594F40] hover:text-[#14291D]'
+                          }`}
+                        >
+                          Normal (Classic)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updatedSiteSettings: SiteSettings = {
+                              ...siteForm,
+                              defaultHorizontalShelfCardStyle: 'modern',
+                            };
+                            setSiteForm(updatedSiteSettings);
+                            onUpdateSiteSettings(updatedSiteSettings);
+                            backupSiteSettingsToFirebase(updatedSiteSettings);
+                            setSaveSuccessMsg('Set default shelf layout to Modern Showcase (Attached Design)!');
+                            setTimeout(() => setSaveSuccessMsg(null), 2000);
+                          }}
+                          className={`px-2 py-0.5 rounded font-bold text-xs cursor-pointer transition-all ${
+                            siteForm.defaultHorizontalShelfCardStyle === 'modern'
+                              ? 'bg-[#14291D] text-white shadow-2xs'
+                              : 'text-[#594F40] hover:text-[#14291D]'
+                          }`}
+                        >
+                          Modern (Showcase)
+                        </button>
+                      </div>
+
                       <button
                         type="button"
                         onClick={handleStartCreateHorizontalList}
@@ -7202,6 +7558,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     : 'bg-stone-200 text-stone-700'
                                 }`}>
                                   {shelf.enabled ? 'Visible' : 'Hidden'}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  (shelf.cardStyle || siteForm.defaultHorizontalShelfCardStyle || 'classic') === 'modern'
+                                    ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                    : 'bg-stone-100 text-stone-700 border-stone-300'
+                                }`}>
+                                  {(shelf.cardStyle || siteForm.defaultHorizontalShelfCardStyle || 'classic') === 'modern'
+                                    ? 'Modern Showcase'
+                                    : 'Normal Classic'}
                                 </span>
                               </div>
                               {shelf.subtitle && (

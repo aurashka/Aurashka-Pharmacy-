@@ -128,6 +128,9 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
   const showRating = fields.showRating !== false;
   const showAddToCart = fields.showAddToCart !== false;
   const showQuickView = fields.showQuickView !== false;
+  const showSeller = fields.showSeller === true;
+  const showVolume = fields.showVolume === true;
+  const cardStyle = list.cardStyle || siteSettings?.defaultHorizontalShelfCardStyle || 'classic';
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 relative">
@@ -187,6 +190,177 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
               ? Math.round(((prod.mrp - prod.price) / prod.mrp) * 100)
               : 0;
 
+            {/* MODERN SHOWCASE CARD (Left Details: Top Rating Star, Name, Price, Buy + Right Full Image) */}
+            if (cardStyle === 'modern') {
+              return (
+                <div
+                  key={prod.id}
+                  onClick={() => onSelectProduct(prod)}
+                  className="w-[285px] sm:w-[320px] md:w-[345px] shrink-0 snap-start bg-white rounded-2xl border border-[#D5CCBC] hover:border-[#2C5E43] shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-row overflow-hidden group/card relative"
+                >
+                  {/* Left Column: Details & Actions */}
+                  <div className="flex-1 p-3 sm:p-3.5 flex flex-col justify-between min-w-0 pr-2">
+                    <div className="space-y-1">
+                      {/* Top Row: Star Rating & Optional Tag */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {showRating && (
+                          <div className="flex items-center text-amber-500">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                            <span className="font-bold text-xs text-[#14291D] ml-1">
+                              {prod.rating ? prod.rating.toFixed(1) : '4.9'}
+                            </span>
+                            <span className="text-stone-300 mx-0.5">·</span>
+                            <span className="text-[10px] text-[#716858]">
+                              ({formatCompactNumber(prod.reviewsCount || 100)})
+                            </span>
+                          </div>
+                        )}
+
+                        {showTag && prod.sortBadge && prod.sortBadge !== 'none' && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#14291D]/10 text-[#14291D] capitalize shrink-0">
+                            <Tag className="w-2.5 h-2.5 text-[#B4741E]" />
+                            <span>{prod.sortBadge.replace('_', ' ')}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Product Name */}
+                      {showName && (
+                        <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] group-hover/card:text-[#2C5E43] transition-colors line-clamp-2 leading-tight">
+                          {prod.name}
+                        </h4>
+                      )}
+
+                      {/* Sanskrit Name */}
+                      {showSanskritName && prod.sanskritName && (
+                        <p className="text-[10px] text-[#716858] italic line-clamp-1">
+                          {prod.sanskritName}
+                        </p>
+                      )}
+
+                      {/* Seller / Brand */}
+                      {showSeller && (
+                        <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
+                          <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                          <span className="font-semibold truncate">
+                            {prod.brand || prod.sellerName || siteSettings?.brandName || 'Shree Ayur Pharma'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Volume / Pack Size */}
+                      {showVolume && prod.volumeOrWeight && (
+                        <div className="text-[9.5px] text-stone-500 font-medium truncate">
+                          {prod.volumeOrWeight}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Area: Price & Buy Button */}
+                    <div className="mt-2 space-y-1.5">
+                      {(showPrice || showMrpAndOffer || showResellerPrice) && (
+                        <div className="pt-1.5 border-t border-[#F2ECE1]">
+                          <div className="flex items-baseline gap-1.5 flex-wrap">
+                            {showPrice && (
+                              <span className="font-mono font-bold text-sm sm:text-base text-[#14291D]">
+                                {formatPrice(prod.price)}
+                              </span>
+                            )}
+                            {showMrpAndOffer && prod.mrp && prod.mrp > prod.price && (
+                              <span className="font-mono text-[10.5px] text-[#8C8270] line-through">
+                                {formatPrice(prod.mrp)}
+                              </span>
+                            )}
+                          </div>
+
+                          {showResellerPrice && prod.resellerPrice && prod.resellerPrice > 0 && (
+                            <div className="mt-0.5 text-[9.5px] bg-[#E7EFEA] text-[#183624] px-1.5 py-0.5 rounded font-mono font-semibold truncate border border-[#B5D6C4]/60">
+                              Reseller: {formatPrice(prod.resellerPrice)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Buy Action Buttons */}
+                      {(showAddToCart || showQuickView) && (
+                        <div className="flex items-center gap-1.5">
+                          {showAddToCart && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAddToCart(prod);
+                              }}
+                              className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                isInCart
+                                  ? 'bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6]'
+                                  : 'bg-[#14291D] hover:bg-[#203E2D] text-white shadow-2xs'
+                              }`}
+                            >
+                              {isInCart ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-[#2C5E43]" />
+                                  <span>In Bag</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Buy</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          {showQuickView && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectProduct(prod);
+                              }}
+                              className="p-1 rounded-lg border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] hover:bg-stone-50 cursor-pointer"
+                              title="View Monograph"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Full Image */}
+                  {showImage && (
+                    <div className="w-[110px] sm:w-[125px] md:w-[135px] shrink-0 relative bg-linear-to-b from-[#FAF8F5] via-[#F4EEE4] to-[#ECE5D8] overflow-hidden flex items-center justify-center border-l border-[#EDE6DA]">
+                      <img
+                        src={prod.image || (prod.images && prod.images[0]) || ''}
+                        alt={prod.name}
+                        className="w-full h-full object-cover group-hover/card:scale-106 transition-transform duration-500"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+
+                      {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
+                      {getProductBottomOverlayClasses(prod.primaryImageGradient, siteSettings?.productImageGradient) && (
+                        <div className={getProductBottomOverlayClasses(prod.primaryImageGradient, siteSettings?.productImageGradient)!} />
+                      )}
+
+                      {/* Offer Discount Badge on Image */}
+                      {showMrpAndOffer && discountPercent > 0 && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                            {discountPercent}% OFF
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            {/* CLASSIC / NORMAL CARD (Vertical Image on Top, Details Below) */}
             return (
               <div
                 key={prod.id}
@@ -258,6 +432,23 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                       <p className="text-[10.5px] text-[#716858] italic line-clamp-1">
                         {prod.sanskritName}
                       </p>
+                    )}
+
+                    {/* Seller / Brand */}
+                    {showSeller && (
+                      <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
+                        <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                        <span className="font-semibold truncate">
+                          {prod.brand || prod.sellerName || siteSettings?.brandName || 'Shree Ayur Pharma'}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Volume / Pack Size */}
+                    {showVolume && prod.volumeOrWeight && (
+                      <div className="text-[10px] text-stone-500 font-medium truncate">
+                        {prod.volumeOrWeight}
+                      </div>
                     )}
 
                     {/* Price and Reseller Section */}
