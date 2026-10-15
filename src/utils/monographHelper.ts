@@ -415,10 +415,18 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
   ];
 
+export const cleanMonographTabTitle = (title: string): string => {
+  if (!title) return '';
+  return title
+    .replace(/^(?:Default\s*)?Tab\s*\d+\s*:\s*/i, '')
+    .replace(/^(?:Default\s*)?Tab\s*#?\d+\s*[-–—:]\s*/i, '')
+    .trim();
+};
+
   return [
     {
       id: 'overview',
-      title: 'Tab 1: Overview',
+      title: 'Overview',
       subtitle: 'Product introduction, price & classical features',
       icon: 'info',
       items: overviewItems,
@@ -428,7 +436,7 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
     {
       id: 'benefits',
-      title: 'Tab 2: Benefits & Uses',
+      title: 'Benefits & Uses',
       subtitle: 'Clinical benefits, therapeutic uses & indications',
       icon: 'leaf',
       items: benefitsItems,
@@ -438,7 +446,7 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
     {
       id: 'ingredients',
-      title: 'Tab 3: Ingredients & Composition',
+      title: 'Ingredients & Composition',
       subtitle: 'Botanical composition, herb imagery, potency & role',
       icon: 'sparkles',
       items: ingredientsItems,
@@ -448,7 +456,7 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
     {
       id: 'dosage',
-      title: 'Tab 4: Dosage & Safety',
+      title: 'Dosage & Safety',
       subtitle: 'Prescribed dosage, timing, anupana carrier & precautions',
       icon: 'clock',
       items: dosageItems,
@@ -458,7 +466,7 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
     {
       id: 'specifications',
-      title: 'Tab 5: Specifications & Quality',
+      title: 'Specifications & Quality',
       subtitle: 'Packaging, shelf life, storage & Ayush quality certs',
       icon: 'shield',
       items: specificationsItems,
@@ -468,7 +476,7 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
     {
       id: 'faqs_reviews',
-      title: 'Tab 6: FAQs & Reviews',
+      title: 'FAQs & Reviews',
       subtitle: 'Frequently asked questions & verified customer reviews',
       icon: 'star',
       items: faqsAndReviewsItems,
@@ -488,7 +496,12 @@ export const getEffectiveMonographTabs = (product: HerbalProduct): ProductMonogr
   if (product.monographTabs && Array.isArray(product.monographTabs) && product.monographTabs.length > 0) {
     return product.monographTabs
       .filter((tab) => tab.enabled !== false)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      .map((tab, idx) => ({
+        ...tab,
+        title: cleanMonographTabTitle(tab.title),
+        order: tab.order !== undefined && tab.order > 0 ? tab.order : idx + 1,
+      }))
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }
   return buildDefaultMonographTabs(product);
 };

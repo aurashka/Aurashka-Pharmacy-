@@ -20,6 +20,7 @@ import { InquiryCartDrawer, CartItem } from './components/InquiryCartDrawer';
 import { FloatingContactWidget } from './components/FloatingContactWidget';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
+import { FullPageSearchModal } from './components/FullPageSearchModal';
 import { Footer } from './components/Footer';
 import { firebaseConfig } from './firebase';
 import { 
@@ -251,6 +252,8 @@ function PharmacyApp() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [productToEditInAdmin, setProductToEditInAdmin] = useState<HerbalProduct | null>(null);
+  const [isFullSearchOpen, setIsFullSearchOpen] = useState(false);
+  const [searchInitialQuery, setSearchInitialQuery] = useState('');
   
   // Inquiry / Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -529,6 +532,11 @@ function PharmacyApp() {
     }, 100);
   };
 
+  const handleOpenSearchModal = (initialQuery = '') => {
+    setSearchInitialQuery(initialQuery);
+    setIsFullSearchOpen(true);
+  };
+
   const renderMarquee = (position: MarqueePlacement) => {
     if (!siteSettings.marquee || !siteSettings.marquee.enabled) return null;
     if (siteSettings.marquee.placement !== position) return null;
@@ -567,6 +575,7 @@ function PharmacyApp() {
           setProductToEditInAdmin(null);
           setIsAdminPanelOpen(true);
         }}
+        onOpenSearch={() => handleOpenSearchModal(searchQuery)}
         siteSettings={siteSettings}
         categories={categories}
         forms={forms}
@@ -723,6 +732,7 @@ function PharmacyApp() {
               categories={categories}
               forms={forms}
               siteSettings={siteSettings}
+              onOpenFullSearch={() => handleOpenSearchModal(searchQuery)}
             />
 
             {/* Doctors & Key People Section with Round Images and Text */}
@@ -788,6 +798,22 @@ function PharmacyApp() {
           onUpdateForms={handleUpdateForms}
         />
       )}
+
+      {/* Full Page Product Search Modal */}
+      <FullPageSearchModal
+        isOpen={isFullSearchOpen}
+        onClose={() => setIsFullSearchOpen(false)}
+        products={visibleProducts}
+        categories={categories}
+        forms={forms}
+        onSelectProduct={handleSelectProduct}
+        onAddToCart={handleAddToCart}
+        cartProductIds={cartProductIds}
+        siteSettings={siteSettings}
+        initialQuery={searchInitialQuery}
+        cartCount={totalCartCount}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
 
       {/* Authentication Modal (Login & Signup with auto-close and immediate feedback) */}
       <AuthModal

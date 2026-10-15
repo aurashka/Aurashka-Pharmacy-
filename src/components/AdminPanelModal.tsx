@@ -119,6 +119,7 @@ import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalog
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS, DEFAULT_MARQUEE_CONFIG } from '../data/herbalProducts';
 import { detectVideoType, getYouTubeEmbedUrl, getYouTubeThumbnail, isValidVideoUrl } from '../utils/videoHelper';
 import { GRADIENT_OVERLAY_OPTIONS, GradientOverlayStyle, getProductBottomOverlayClasses } from '../utils/gradientHelper';
+import { CustomDetailsBuilder } from './CustomDetailsBuilder';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -2412,136 +2413,80 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         {/* Tab 1: Products */}
         {activeTab === 'products' && (
           <>
-            {/* Products Sub-Bar with Filter Tabs (All / Published / Drafts) */}
-            {!isCreatingNew && !editingProduct && (
-              <div className="p-3 sm:p-4 sm:px-6 bg-[#FAF8F5] border-b border-[#E7DFD1] flex flex-col gap-2.5 shrink-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-                  <div className="relative w-full sm:flex-1 sm:max-w-md">
-                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#887E6D]" />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search formulation title, herb, or category..."
-                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43]"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={onResetProductsToDefault}
-                      className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer text-center"
-                    >
-                      Reset Defaults
-                    </button>
-
-                    <button
-                      onClick={startCreate}
-                      className="flex-1 sm:flex-none px-3.5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-amber-300" />
-                      <span>+ Add Product</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Filter Pills: All Formulations, Published, Drafts */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setProductFilterMode('all')}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                      productFilterMode === 'all'
-                        ? 'bg-[#183624] text-white shadow-2xs'
-                        : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
-                    }`}
-                  >
-                    <span>All Formulations</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      productFilterMode === 'all' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
-                    }`}>
-                      {products.length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setProductFilterMode('published')}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                      productFilterMode === 'published'
-                        ? 'bg-[#183624] text-white shadow-2xs'
-                        : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
-                    }`}
-                  >
-                    <span>✅ Published</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      productFilterMode === 'published' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
-                    }`}>
-                      {products.filter(p => !p.isDraft).length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setProductFilterMode('drafts')}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                      productFilterMode === 'drafts'
-                        ? 'bg-amber-800 text-white shadow-2xs'
-                        : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300'
-                    }`}
-                  >
-                    <span>📝 Drafts (Admin Only)</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      productFilterMode === 'drafts' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'
-                    }`}>
-                      {products.filter(p => p.isDraft).length}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Products Content Body */}
             <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8">
               {(isCreatingNew || editingProduct) ? (
-                /* Step-by-Step Multi-Tab Wizard Product Form (Fullscreen Expandable) */
-                <div className={`bg-white rounded-xl border border-[#D5CCBC] shadow-xs flex flex-col transition-all ${
-                  isFormFullScreen 
-                    ? "fixed inset-2 sm:inset-4 z-50 rounded-2xl shadow-2xl overflow-hidden" 
-                    : "overflow-hidden"
-                }`}>
-                  {/* Wizard Top Header */}
-                  <div className="px-5 py-3.5 bg-[#FAF8F5] border-b border-[#EAE3D4] flex items-center justify-between shrink-0">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-wider text-[#2C5E43] font-bold px-2 py-0.5 rounded bg-[#EBF5EF]">
-                          {isCreatingNew ? "Create New Formulation Wizard" : `Editing: ${editingProduct?.name}`}
-                        </span>
-                        {productForm.isDraft && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                            📝 Draft Mode (Admin Only)
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="font-serif text-base sm:text-lg font-bold text-[#14291D] mt-0.5">
-                        {productFormStep === "basic" && "Step 1: Commercial Titles, Formulation Form & Pricing"}
-                        {productFormStep === "media" && "Step 2: High-Resolution Photos, Media & Card Gradient"}
-                        {productFormStep === "variants" && "Step 3: Size & Packaging Variants (100ml, 500gm, 1kg...)"}
-                        {productFormStep === "badges" && "Step 4: Star Ratings, Focus Badge & Ayush Trust Ribbons"}
-                        {productFormStep === "monograph" && "Step 5: Product Monograph Tabs & Clinical Formulation (Integrated)"}
-                        {productFormStep === "custom_details" && "Step 6: Custom Detail Highlights (Optional — Displays Above Monograph Tabs)"}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center gap-2">
+                /* Full Page Dedicated Formulation Editor (Replaces popup modal completely) */
+                <div className="fixed inset-0 z-[60] bg-[#FBF9F5] text-[#1E2922] flex flex-col w-screen h-[100dvh] overflow-hidden">
+                  {/* Full Page Product Editor Top Header */}
+                  <div className="px-4 sm:px-8 py-3 bg-[#14291D] text-white flex items-center justify-between shrink-0 shadow-md border-b border-[#21432E]">
+                    <div className="flex items-center gap-3 min-w-0">
                       <button
                         type="button"
-                        onClick={() => setIsFormFullScreen(!isFormFullScreen)}
-                        className="p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium text-[#4A4133] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] flex items-center gap-1 cursor-pointer transition-colors"
-                        title={isFormFullScreen ? "Exit Fullscreen" : "Expand Full Screen (Expentable page)"}
+                        onClick={() => {
+                          setIsCreatingNew(false);
+                          setEditingProduct(null);
+                        }}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                        title="Return to Admin Products & Rates"
                       >
-                        {isFormFullScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                        <span className="hidden sm:inline">{isFormFullScreen ? "Standard Card" : "Full Screen"}</span>
+                        <ArrowLeft className="w-4 h-4 text-amber-300" />
+                        <span>← Back to Products List</span>
+                      </button>
+
+                      <div className="h-5 w-px bg-white/20 hidden sm:block shrink-0" />
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase tracking-wider text-amber-300 font-bold px-2 py-0.5 rounded bg-white/10">
+                            {isCreatingNew ? "Create Formulation Page" : "Edit Formulation Page"}
+                          </span>
+                          {productForm.isDraft && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400 text-amber-950">
+                              📝 Draft Mode
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate mt-0.5">
+                          {productForm.name || (editingProduct?.name || 'New Formulation')}
+                          {productForm.sanskritName && (
+                            <span className="font-normal opacity-75 ml-2 text-xs hidden md:inline">
+                              ({productForm.sanskritName})
+                            </span>
+                          )}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {editingProduct && onPreviewProduct && (
+                        <button
+                          type="button"
+                          onClick={() => onPreviewProduct(editingProduct)}
+                          className="hidden sm:flex px-3 py-1.5 text-xs font-medium text-white/90 hover:text-white bg-white/10 hover:bg-white/15 rounded-lg items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-300" />
+                          <span>Preview</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleSaveAsDraft}
+                        className="px-3 py-1.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                        title="Save as Draft: only visible to admins"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Save Draft</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleSaveProduct(e)}
+                        className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-colors"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{isCreatingNew ? "Publish Product" : "Save Changes"}</span>
                       </button>
 
                       <button
@@ -2549,17 +2494,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         onClick={() => {
                           setIsCreatingNew(false);
                           setEditingProduct(null);
-                          setIsFormFullScreen(false);
                         }}
-                        className="px-3 py-1.5 text-xs font-medium text-[#645A4B] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] cursor-pointer"
+                        className="p-1.5 text-white/70 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer ml-1"
+                        title="Close Page"
                       >
-                        Cancel
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Wizard Step Navigation Bar */}
-                  <div className="px-3 sm:px-5 py-2.5 bg-[#FDFCFB] border-b border-[#EAE3D4] overflow-x-auto shrink-0 flex items-center gap-1.5 sm:gap-2">
+                  {/* Wizard Step Navigation Bar (Full Width Stepper) */}
+                  <div className="px-4 sm:px-8 py-2.5 bg-[#FDFCFB] border-b border-[#EAE3D4] overflow-x-auto shrink-0 flex items-center gap-1.5 sm:gap-2">
                     {[
                       { id: "basic", num: "1", title: "Basic Info & Rates", icon: FileText },
                       { id: "media", num: "2", title: "Photos & Media", icon: ImageIcon },
@@ -2575,7 +2520,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           key={step.id}
                           type="button"
                           onClick={() => setProductFormStep(step.id as any)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                             isActive
                               ? "bg-[#14291D] text-white shadow-xs"
                               : "bg-white text-[#554B3B] hover:bg-[#F2ECE1] border border-[#E0D7C6]"
@@ -2593,9 +2538,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     })}
                   </div>
 
-                  {/* Form Step Body */}
-                  <form onSubmit={(e) => handleSaveProduct(e)} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs flex flex-col justify-between">
-                    <div className="space-y-6">
+                  {/* Form Step Body (Full Screen Page Layout) */}
+                  <form onSubmit={(e) => handleSaveProduct(e)} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 text-xs flex flex-col justify-between">
+                    <div className="max-w-6xl mx-auto w-full space-y-6">
                       {/* STEP 1: BASIC INFO & PRICING */}
                       {productFormStep === "basic" && (
                         <div className="space-y-5 animate-in fade-in duration-150">
@@ -4008,261 +3953,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </div>
                       )}
 
-                      {/* STEP 6: CUSTOM DETAIL HIGHLIGHTS (OPTIONAL - DISPLAYS ABOVE MONOGRAPH TABS) */}
+                      {/* STEP 6: CUSTOM DETAIL ELEMENTS BUILDER (DISPLAYS ABOVE MONOGRAPH TABS) */}
                       {productFormStep === "custom_details" && (
                         <div className="space-y-5 animate-in fade-in duration-150">
-                          <div className="p-4 sm:p-5 bg-[#FAF8F5] rounded-xl border border-[#D5CCBC] space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E0D7C6] pb-3">
-                              <div className="flex items-center gap-2">
-                                <Sparkles className="w-4 h-4 text-[#2C5E43]" />
-                                <div>
-                                  <h5 className="font-serif text-sm font-bold text-[#14291D]">
-                                    Step 6: Custom Detail Highlights (Optional — Displays Above Monograph Tabs)
-                                  </h5>
-                                  <p className="text-[11px] text-[#716858]">
-                                    Product view me Monograph Tabs ke theek upar custom cards/details add karein. Har card ka Title, Text, Size, Bg Color, Text Color, Bg Opacity, aur Image manage karein.
-                                  </p>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={handleAddCustomDetail}
-                                className="px-3 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
-                              >
-                                <Plus className="w-3.5 h-3.5 text-amber-300" />
-                                <span>+ Add Custom Detail Card</span>
-                              </button>
-                            </div>
-
-                            {customDetailsList.length === 0 ? (
-                              <div className="p-8 text-center border-2 border-dashed border-[#DDD5C5] rounded-xl bg-white space-y-2">
-                                <Sparkles className="w-8 h-8 text-[#8C806D] mx-auto opacity-70" />
-                                <h6 className="font-serif text-sm font-bold text-[#14291D]">
-                                  No Custom Detail Cards Added (Optional)
-                                </h6>
-                                <p className="text-xs text-[#6B6150] max-w-md mx-auto">
-                                  Yeh step bilkul optional hai. Agar aap product page par Monograph Tabs ke upar special highlights (e.g. Guarantee, Extraction Protocol, Testing Badge) dikhana chahte hain, toh card add karein.
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={handleAddCustomDetail}
-                                  className="mt-2 px-4 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-                                >
-                                  <Plus className="w-3.5 h-3.5 text-amber-300" />
-                                  <span>Add First Custom Detail</span>
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {customDetailsList.map((detail, idx) => (
-                                  <div
-                                    key={detail.id || idx}
-                                    className="p-4 bg-white rounded-xl border border-[#DDD5C5] shadow-2xs space-y-3 transition-all hover:border-[#2C5E43]"
-                                  >
-                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EFEAE0] pb-2">
-                                      <div className="flex items-center gap-2">
-                                        <span className="w-5 h-5 rounded-full bg-[#14291D] text-white text-[10px] font-bold flex items-center justify-center">
-                                          {idx + 1}
-                                        </span>
-                                        <span className="font-serif font-bold text-xs text-[#14291D]">
-                                          Card #{idx + 1}: {detail.title || 'Untitled Detail'}
-                                        </span>
-                                      </div>
-
-                                      <div className="flex items-center gap-1.5">
-                                        <button
-                                          type="button"
-                                          disabled={idx === 0}
-                                          onClick={() => handleMoveCustomDetail(idx, 'up')}
-                                          className="p-1 rounded bg-[#FAF8F5] border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
-                                          title="Move Up"
-                                        >
-                                          <ArrowUp className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          disabled={idx === customDetailsList.length - 1}
-                                          onClick={() => handleMoveCustomDetail(idx, 'down')}
-                                          className="p-1 rounded bg-[#FAF8F5] border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] disabled:opacity-30 cursor-pointer"
-                                          title="Move Down"
-                                        >
-                                          <ArrowDown className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveCustomDetail(idx)}
-                                          className="p-1 rounded bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 cursor-pointer ml-1"
-                                          title="Delete Card"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Card Form Grid */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                                      {/* Title */}
-                                      <div className="sm:col-span-2">
-                                        <label className="block font-semibold text-[#14291D] mb-1">
-                                          Title <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={detail.title}
-                                          onChange={(e) => handleUpdateCustomDetail(idx, 'title', e.target.value)}
-                                          placeholder="e.g. Apothecary Purity Guarantee"
-                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-bold text-xs"
-                                        />
-                                      </div>
-
-                                      {/* Size Selector */}
-                                      <div>
-                                        <label className="block font-semibold text-[#14291D] mb-1">
-                                          Card Size
-                                        </label>
-                                        <select
-                                          value={detail.size || 'medium'}
-                                          onChange={(e) => handleUpdateCustomDetail(idx, 'size', e.target.value as any)}
-                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs cursor-pointer font-medium"
-                                        >
-                                          <option value="small">Small (Compact single line)</option>
-                                          <option value="medium">Medium (Standard Card)</option>
-                                          <option value="large">Large (Wide Hero Feature)</option>
-                                        </select>
-                                      </div>
-
-                                      {/* Image URL */}
-                                      <div>
-                                        <label className="block font-semibold text-[#14291D] mb-1">
-                                          Icon / Photo URL (Optional)
-                                        </label>
-                                        <input
-                                          type="url"
-                                          value={detail.image || ''}
-                                          onChange={(e) => handleUpdateCustomDetail(idx, 'image', e.target.value)}
-                                          placeholder="https://... or unsplash"
-                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
-                                        />
-                                      </div>
-
-                                      {/* Text / Subtitle */}
-                                      <div className="sm:col-span-2 md:col-span-4">
-                                        <label className="block font-semibold text-[#14291D] mb-1">
-                                          Card Description / Details (Optional)
-                                        </label>
-                                        <textarea
-                                          rows={2}
-                                          value={detail.text || ''}
-                                          onChange={(e) => handleUpdateCustomDetail(idx, 'text', e.target.value)}
-                                          placeholder="e.g. Standardized extraction protocol verified for active chemical bio-markers."
-                                          className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
-                                        />
-                                      </div>
-
-                                      {/* Background Color */}
-                                      <div>
-                                        <label className="block font-semibold text-[#14291D] mb-1">
-                                          Background Color
-                                        </label>
-                                        <div className="flex items-center gap-1.5">
-                                          <input
-                                            type="color"
-                                            value={detail.bgColor || '#FAF5EE'}
-                                            onChange={(e) => handleUpdateCustomDetail(idx, 'bgColor', e.target.value)}
-                                            className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white shrink-0"
-                                          />
-                                          <input
-                                            type="text"
-                                            value={detail.bgColor || '#FAF5EE'}
-                                            onChange={(e) => handleUpdateCustomDetail(idx, 'bgColor', e.target.value)}
-                                            className="w-full px-2 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-mono text-xs"
-                                          />
-                                        </div>
-                                      </div>
-
-                                      {/* Text Color */}
-                                      <div>
-                                        <label className="block font-semibold text-[#14291D] mb-1">
-                                          Text Color
-                                        </label>
-                                        <div className="flex items-center gap-1.5">
-                                          <input
-                                            type="color"
-                                            value={detail.textColor || '#14291D'}
-                                            onChange={(e) => handleUpdateCustomDetail(idx, 'textColor', e.target.value)}
-                                            className="w-8 h-8 rounded border border-[#DDD5C5] cursor-pointer p-0.5 bg-white shrink-0"
-                                          />
-                                          <input
-                                            type="text"
-                                            value={detail.textColor || '#14291D'}
-                                            onChange={(e) => handleUpdateCustomDetail(idx, 'textColor', e.target.value)}
-                                            className="w-full px-2 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg font-mono text-xs"
-                                          />
-                                        </div>
-                                      </div>
-
-                                      {/* Background Opacity */}
-                                      <div className="sm:col-span-2">
-                                        <label className="block font-semibold text-[#14291D] mb-1 flex items-center justify-between">
-                                          <span>Background Opacity:</span>
-                                          <span className="font-mono font-bold text-[#2C5E43]">{detail.bgOpacity ?? 100}%</span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="range"
-                                            min="10"
-                                            max="100"
-                                            step="5"
-                                            value={detail.bgOpacity ?? 100}
-                                            onChange={(e) => handleUpdateCustomDetail(idx, 'bgOpacity', Number(e.target.value))}
-                                            className="w-full accent-[#2C5E43] cursor-pointer"
-                                          />
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Real-time Preview Pill */}
-                                    <div className="pt-2 border-t border-[#F2EDE1]">
-                                      <span className="text-[10px] font-bold text-[#7A705E] uppercase tracking-wider block mb-1">
-                                        Live Storefront Preview:
-                                      </span>
-                                      <div
-                                        style={{
-                                          backgroundColor: hexToRgba(detail.bgColor || '#FAF5EE', detail.bgOpacity ?? 100),
-                                          color: detail.textColor || '#14291D',
-                                        }}
-                                        className={`rounded-xl border border-black/10 p-3 flex items-center gap-3 ${
-                                          detail.size === 'large' ? 'p-4' : detail.size === 'small' ? 'p-2' : 'p-3'
-                                        }`}
-                                      >
-                                        {detail.image && (
-                                          <img
-                                            src={detail.image}
-                                            alt={detail.title}
-                                            className={`rounded-lg object-cover shrink-0 border border-black/10 bg-white ${
-                                              detail.size === 'large' ? 'w-12 h-12' : detail.size === 'small' ? 'w-7 h-7' : 'w-10 h-10'
-                                            }`}
-                                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                                          />
-                                        )}
-                                        <div className="min-w-0">
-                                          <div className={`font-serif font-bold ${detail.size === 'large' ? 'text-sm' : 'text-xs'}`}>
-                                            {detail.title || 'Untitled Detail'}
-                                          </div>
-                                          {detail.text && (
-                                            <div className="text-[11px] opacity-85 mt-0.5">
-                                              {detail.text}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          <CustomDetailsBuilder
+                            items={customDetailsList}
+                            onChange={setCustomDetailsList}
+                          />
                         </div>
                       )}
                     </div>
@@ -4317,15 +4014,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             setEditingProduct(null);
                             setIsFormFullScreen(false);
                           }}
-                          className="px-3.5 py-1.5 border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded-lg font-medium cursor-pointer text-xs"
+                          className="px-4 py-2 border border-[#DDD5C5] hover:bg-[#EFEAE0] rounded-lg font-medium cursor-pointer text-xs"
                         >
-                          Cancel
+                          ← Back to Products List
                         </button>
 
                         <button
                           type="button"
                           onClick={handleSaveAsDraft}
-                          className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                          className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                           title="Save as Draft: only visible to admins"
                         >
                           <FileText className="w-3.5 h-3.5 text-amber-700" />
@@ -4334,10 +4031,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                         <button
                           type="submit"
-                          className="px-5 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-colors"
+                          className="px-6 py-2 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-colors"
                         >
                           <Save className="w-4 h-4 text-amber-300" />
-                          <span>{isCreatingNew ? "Publish / Save Formulation" : "Update Formulation"}</span>
+                          <span>{isCreatingNew ? "Publish Formulation" : "Update Formulation"}</span>
                         </button>
                       </div>
                     </div>
@@ -4346,6 +4043,93 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               ) : (
                 /* Products View (Desktop Table + Mobile Cards) */
                 <div className="space-y-4">
+                  {/* Products Search & Action Sub-Bar (INSIDE Scroller so it scrolls with content!) */}
+                  <div className="p-3.5 sm:p-4 bg-[#FAF8F5] rounded-xl border border-[#E7DFD1] flex flex-col gap-2.5 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                      <div className="relative w-full sm:flex-1 sm:max-w-md">
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#887E6D]" />
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Search formulation title, herb, or category..."
+                          className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43]"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                        <button
+                          onClick={onResetProductsToDefault}
+                          className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer text-center"
+                        >
+                          Reset Defaults
+                        </button>
+
+                        <button
+                          onClick={startCreate}
+                          className="flex-1 sm:flex-none px-4 py-1.5 bg-[#14291D] hover:bg-[#203E2D] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-amber-300" />
+                          <span>+ Add Product</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Filter Pills: All Formulations, Published, Drafts */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setProductFilterMode('all')}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                          productFilterMode === 'all'
+                            ? 'bg-[#183624] text-white shadow-2xs'
+                            : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+                        }`}
+                      >
+                        <span>All Formulations</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          productFilterMode === 'all' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
+                        }`}>
+                          {products.length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setProductFilterMode('published')}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                          productFilterMode === 'published'
+                            ? 'bg-[#183624] text-white shadow-2xs'
+                            : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+                        }`}
+                      >
+                        <span>✅ Published</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          productFilterMode === 'published' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
+                        }`}>
+                          {products.filter(p => !p.isDraft).length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setProductFilterMode('drafts')}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                          productFilterMode === 'drafts'
+                            ? 'bg-amber-800 text-white shadow-2xs'
+                            : 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300'
+                        }`}
+                      >
+                        <span>📝 Drafts (Admin Only)</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          productFilterMode === 'drafts' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'
+                        }`}>
+                          {products.filter(p => p.isDraft).length}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Store-Wide Product Primary Image Bottom Gradient Control */}
                   <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#EAE3D4] space-y-2.5 shadow-2xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">

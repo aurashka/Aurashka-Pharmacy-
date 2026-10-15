@@ -10,7 +10,8 @@ import {
   ChevronRight, 
   Package, 
   Stethoscope, 
-  Phone 
+  Phone,
+  Search
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SiteSettings, CategoryItem } from '../types/pharmacy';
@@ -23,6 +24,7 @@ interface HeaderProps {
   onNavigateSection: (sectionId: string) => void;
   onOpenAuthModal: () => void;
   onOpenAdminPanel: () => void;
+  onOpenSearch?: () => void;
   siteSettings: SiteSettings;
   categories?: CategoryItem[];
   forms?: string[];
@@ -37,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateSection,
   onOpenAuthModal,
   onOpenAdminPanel,
+  onOpenSearch,
   siteSettings,
 }) => {
   const { currentUser, isAdmin, logout } = useAuth();
@@ -328,6 +331,20 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Search Button (Next to Cart Bag) */}
+          {onOpenSearch && (
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              aria-label="Search Formulations"
+              className="p-2 sm:px-3 sm:py-1.5 text-xs font-semibold text-[#14291D] hover:text-white bg-[#FAF8F5] hover:bg-[#14291D] border border-[#DDD5C5] hover:border-[#14291D] rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs group"
+              title="Search all formulations (Opens full search with random discovery)"
+            >
+              <Search className="w-4 h-4 text-[#14291D] group-hover:text-amber-300 transition-colors" />
+              <span className="hidden sm:inline">Search</span>
+            </button>
+          )}
+
           {/* Cart Bag */}
           <button
             onClick={onOpenCart}
@@ -374,6 +391,33 @@ export const Header: React.FC<HeaderProps> = ({
               Tap to view
             </span>
           </div>
+
+          {/* Search Formulations in Mobile Menu */}
+          {onOpenSearch && (
+            <button
+              type="button"
+              onClick={() => handleNavAction(onOpenSearch)}
+              className="w-full flex items-center justify-between p-3 rounded-2xl bg-amber-50/70 hover:bg-amber-100 border border-amber-300/80 text-left transition-all cursor-pointer shadow-2xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-[#14291D] text-amber-300 flex items-center justify-center shrink-0">
+                  <Search className="w-4 h-4 text-amber-300" />
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                    <span>Search Formulations</span>
+                    <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-[#14291D] text-amber-300 leading-tight">
+                      Smart & Random
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-[#716858]">
+                    Explore classical herbs, Sanskrit names & clinical details
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-800 shrink-0" />
+            </button>
+          )}
 
           {/* 1. Products & Prices */}
           <button

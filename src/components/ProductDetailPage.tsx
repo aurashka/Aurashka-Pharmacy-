@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem, ProductVariant } from '../types/pharmacy';
 import { ImageLightboxModal } from './ImageLightboxModal';
 import { ProductMonographTabs } from './ProductMonographTabs';
+import { CustomDetailsRenderer } from './CustomDetailsRenderer';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   ArrowLeft, 
@@ -905,64 +906,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {product.customDetails.map((detail) => {
-                const bg = hexToRgba(detail.bgColor || '#FAF5EE', detail.bgOpacity ?? 100);
-                const textColor = detail.textColor || '#14291D';
-                const isLarge = detail.size === 'large';
-                const isSmall = detail.size === 'small';
-
-                return (
-                  <div
-                    key={detail.id}
-                    style={{ backgroundColor: bg, color: textColor }}
-                    className={`rounded-2xl border border-black/10 shadow-xs transition-all flex ${
-                      isLarge ? 'sm:col-span-2 lg:col-span-3 p-4 sm:p-5 flex-col sm:flex-row items-start sm:items-center gap-4' :
-                      isSmall ? 'p-3 items-center gap-3' :
-                      'p-4 flex-col justify-between gap-3'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {detail.image && (
-                        <div className={`overflow-hidden rounded-xl shrink-0 border border-black/10 bg-white/50 shadow-2xs ${
-                          isLarge ? 'w-16 h-16 sm:w-20 sm:h-20' :
-                          isSmall ? 'w-9 h-9' :
-                          'w-12 h-12'
-                        }`}>
-                          <img
-                            src={detail.image}
-                            alt={detail.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <h4 className={`font-serif font-bold leading-snug ${
-                          isLarge ? 'text-base sm:text-lg' :
-                          isSmall ? 'text-xs sm:text-sm' :
-                          'text-sm sm:text-base'
-                        }`}>
-                          {detail.title}
-                        </h4>
-                        {detail.text && (
-                          <p className={`mt-0.5 opacity-90 leading-relaxed ${
-                            isLarge ? 'text-xs sm:text-sm' :
-                            isSmall ? 'text-[11px] line-clamp-1' :
-                            'text-xs'
-                          }`}>
-                            {detail.text}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <CustomDetailsRenderer items={product.customDetails} />
           </div>
         )}
 

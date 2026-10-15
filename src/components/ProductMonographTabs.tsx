@@ -7,7 +7,8 @@ import {
 import { 
   getEffectiveMonographTabs, 
   getEffectiveTabBlocks,
-  hexToRgba
+  hexToRgba,
+  cleanMonographTabTitle
 } from '../utils/monographHelper';
 import { MonographBlockRenderer } from './MonographBlockRenderer';
 import { 
@@ -301,7 +302,7 @@ export const ProductMonographTabs: React.FC<ProductMonographTabsProps> = ({
                         style={titleColorStyle ? { color: titleColorStyle } : undefined}
                         className={`font-serif font-bold text-xs sm:text-sm tracking-tight leading-snug ${titleClass}`}
                       >
-                        {tab.title}
+                        {cleanMonographTabTitle(tab.title)}
                       </h4>
                     </div>
 

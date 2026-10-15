@@ -428,15 +428,65 @@ export interface HerbalProduct {
   isDraft?: boolean; // Draft mode: only visible to admin in catalog and admin panel
 }
 
+export type CustomDetailElementType = 
+  | 'image_text'      // Image + text (color, size, position)
+  | 'text'            // Text (color, size)
+  | 'image'           // Image (size)
+  | 'rich_text_list'  // Rich text List (size, color, type)
+  | 'table'           // Table (size, style, color)
+  | 'card';           // Legacy Card
+
 export interface ProductCustomDetailItem {
   id: string;
-  title: string;
+  type?: CustomDetailElementType;
+  title?: string;
   text?: string;
+
+  // 1. Image + Text properties (color, size, position)
   image?: string;
-  size?: 'small' | 'medium' | 'large';
+  imagePosition?: 'left' | 'right' | 'top' | 'bottom';
+  imageSize?: 'small' | 'medium' | 'large' | string;
+  customImageSizePx?: number;
+  imageRounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  imageLinkUrl?: string;
+  imageTextInline?: boolean; // Single continuous horizontal line layout (Image Text in 1 line)
+
+  // 2. Text properties (color, size)
+  textSize?: string;
+  textColor?: string;
+  textAlignment?: 'left' | 'center' | 'right' | 'justify';
+  textBold?: boolean;
+  textItalic?: boolean;
+
+  // 3. Image properties (size)
+  imageAlignment?: 'left' | 'center' | 'right';
+  imageCaption?: string;
+
+  // 4. Rich text List properties (size, color, type)
+  listType?: 'bullet' | 'numbered' | 'check' | 'dash';
+  listItems?: string[];
+  listFontSize?: string;
+  listTextColor?: string;
+  listIconColor?: string;
+  listTitle?: string;
+  listSpacing?: 'compact' | 'normal' | 'relaxed';
+
+  // 5. Table properties (size, style, color)
+  tableHeaders?: string[];
+  tableRows?: string[][];
+  tableHeaderBgColor?: string;
+  tableHeaderTextColor?: string;
+  tableCellTextColor?: string;
+  tableBorderColor?: string;
+  tableFontSize?: string;
+  tableStyle?: 'bordered' | 'striped' | 'minimal' | 'cards';
+  tableTitle?: string;
+
+  // Common background, opacity & sizing
   bgColor?: string; // Hex color e.g. #FAF5EE, #14291D
-  textColor?: string; // Hex color e.g. #14291D, #FFFFFF
-  bgOpacity?: number; // Opacity percent: 10 to 100
+  bgOpacity?: number; // Opacity percent: 0 to 100
+  borderColor?: string;
+  size?: 'small' | 'medium' | 'large';
 }
 
 export interface ProductAssuranceBadges {

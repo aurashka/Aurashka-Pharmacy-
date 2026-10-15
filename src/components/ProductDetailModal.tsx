@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { HerbalProduct, SiteSettings, ProductVariant } from '../types/pharmacy';
 import { ProductMonographTabs } from "./ProductMonographTabs";
+import { CustomDetailsRenderer } from './CustomDetailsRenderer';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
@@ -719,6 +720,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Custom Detail Elements (Configured in Product Add, shown above Monograph Tabs) */}
+            {product.customDetails && product.customDetails.length > 0 && (
+              <div className="pt-2">
+                <CustomDetailsRenderer items={product.customDetails} />
+              </div>
+            )}
 
             {/* Official Ayurvedic Monograph Tabs (Horizontal scrollable, priority colored cards & admin customizable) */}
             <ProductMonographTabs product={product} />

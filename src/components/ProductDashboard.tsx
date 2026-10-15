@@ -138,6 +138,7 @@ interface ProductDashboardProps {
   siteSettings?: SiteSettings;
   selectedForm?: string;
   onSelectForm?: (form: string) => void;
+  onOpenFullSearch?: () => void;
 }
 
 export const ProductDashboard: React.FC<ProductDashboardProps> = ({
@@ -157,6 +158,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   siteSettings,
   selectedForm: externalSelectedForm,
   onSelectForm: externalOnSelectForm,
+  onOpenFullSearch,
 }) => {
   const [internalSelectedForm, setInternalSelectedForm] = useState<string>('all');
   const selectedForm = externalSelectedForm !== undefined ? externalSelectedForm : internalSelectedForm;
@@ -390,22 +392,30 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
         </div>
       </div>
 
-      {/* Streamlined Search & Filter Controls */}
-      <div className="bg-white p-4 rounded-xl border border-[#E4DDD0] shadow-xs space-y-3">
+      {/* Simple Search Bar (Clicking opens Full Screen Search) */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E4DDD0] shadow-2xs">
         <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-[#8A8070]" />
+          <div
+            onClick={() => onOpenFullSearch && onOpenFullSearch()}
+            className="relative flex-1 cursor-pointer"
+          >
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#8A8070]" />
             <input
               type="text"
+              readOnly
               value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search by product, herb (e.g. Ashwagandha, Shilajit), or therapeutic indication..."
-              className="w-full pl-9 pr-8 py-2 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs text-[#1E2922] placeholder:text-[#8A8070] focus:outline-hidden focus:border-[#2C5E43] focus:bg-white transition-all"
+              onClick={() => onOpenFullSearch && onOpenFullSearch()}
+              placeholder="Search formulations, herbs, Sanskrit, monograph, dosage or price..."
+              className="w-full pl-10 pr-10 py-2 bg-[#FAF8F5] hover:bg-[#F3EFE7] border border-[#DDD5C5] hover:border-[#14291D]/40 rounded-xl text-xs text-[#1E2922] placeholder:text-[#8A8070] focus:outline-hidden transition-all cursor-pointer"
             />
             {searchQuery && (
               <button
-                onClick={() => onSearchChange('')}
-                className="absolute right-2.5 top-2.5 text-[#887E6D] hover:text-[#14291D] cursor-pointer"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSearchChange('');
+                }}
+                className="absolute right-2.5 top-2.5 text-[#887E6D] hover:text-[#14291D] cursor-pointer p-0.5"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -612,117 +622,6 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
             </div>
           </div>
         )}
-
-        {/* Dynamic Categories Strip (Admin can add/edit/delete categories & set custom images) */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {categories.map((cat) => {
-              const active = selectedCategory === cat.id;
-              const isAll = cat.id === 'all';
-              const rawImgUrl = isAll ? (cat.imageUrl || categoryAppearance.allProductsImageUrl) : cat.imageUrl;
-              const isItemShow = isAll
-                ? (cat.showImage !== false && (categoryAppearance.showAllProductsImage ?? true))
-                : (cat.showImage !== false);
-              const shouldShowImage = showImagesGlobally && isItemShow && Boolean(rawImgUrl);
-              const layoutClasses = getPillLayoutClass(Boolean(shouldShowImage));
-
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => onSelectCategory(cat.id)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer ${layoutClasses} ${
-                    active
-                      ? 'bg-[#14291D] text-white shadow-xs ring-1 ring-[#14291D]'
-                      : 'bg-[#FAF8F5] text-[#554C3E] hover:bg-[#EFEAE0] border border-[#E7DFD1]'
-                  }`}
-                >
-                  {shouldShowImage && (
-                    <img
-                      src={rawImgUrl}
-                      alt={cat.label}
-                      style={{ width: `${imageSizePx}px`, height: `${imageSizePx}px` }}
-                      className={`${shapeClass} object-cover shrink-0 shadow-2xs border border-white/20`}
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <span className="leading-tight">{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Dynamic Formulation Forms Strip */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pt-1.5 border-t border-[#F2ECE1] scrollbar-none text-[11px]">
-            <span className="text-[#887E6D] font-medium shrink-0">Form:</span>
-            {(() => {
-              const isAllActive = selectedForm === 'all';
-              const allImgUrl = categoryAppearance.allFormsImageUrl;
-              const shouldShowAllImg = showImagesGlobally && (categoryAppearance.showAllFormsImage !== false) && Boolean(allImgUrl);
-              const allFormLayout = getPillLayoutClass(Boolean(shouldShowAllImg));
-              const formImgSizePx = Math.max(16, Math.round(imageSizePx * 0.85));
-
-              return (
-                <button
-                  onClick={() => setSelectedForm('all')}
-                  className={`px-2.5 py-0.5 rounded-md font-medium whitespace-nowrap transition-all cursor-pointer ${allFormLayout} ${
-                    isAllActive
-                      ? 'bg-[#2C5E43] text-white shadow-xs'
-                      : 'bg-white text-[#554C3E] border border-[#DDD5C5] hover:bg-[#F2ECE1]'
-                  }`}
-                >
-                  {shouldShowAllImg && (
-                    <img
-                      src={allImgUrl}
-                      alt="All Forms"
-                      style={{ width: `${formImgSizePx}px`, height: `${formImgSizePx}px` }}
-                      className={`${shapeClass} object-cover shrink-0 shadow-2xs`}
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <span>All Forms</span>
-                </button>
-              );
-            })()}
-
-            {forms.map((f) => {
-              const active = selectedForm === f;
-              const formConfig = categoryAppearance.formImages?.[f];
-              const fImgUrl = formConfig?.imageUrl;
-              const shouldShowFImg = showImagesGlobally && (formConfig?.showImage !== false) && Boolean(fImgUrl);
-              const fLayout = getPillLayoutClass(Boolean(shouldShowFImg));
-              const formImgSizePx = Math.max(16, Math.round(imageSizePx * 0.85));
-
-              return (
-                <button
-                  key={f}
-                  onClick={() => setSelectedForm(f)}
-                  className={`px-2.5 py-0.5 rounded-md font-medium whitespace-nowrap transition-all cursor-pointer ${fLayout} ${
-                    active
-                      ? 'bg-[#2C5E43] text-white shadow-xs'
-                      : 'bg-white text-[#554C3E] border border-[#DDD5C5] hover:bg-[#F2ECE1]'
-                  }`}
-                >
-                  {shouldShowFImg && (
-                    <img
-                      src={fImgUrl}
-                      alt={f}
-                      style={{ width: `${formImgSizePx}px`, height: `${formImgSizePx}px` }}
-                      className={`${shapeClass} object-cover shrink-0 shadow-2xs`}
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <span>{f}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* Product Cards Grid */}

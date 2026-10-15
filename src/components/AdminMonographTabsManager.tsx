@@ -321,6 +321,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
   const [newTabSubtitle, setNewTabSubtitle] = useState('');
   const [newTabIcon, setNewTabIcon] = useState('sparkles');
   const [newTabActiveColorMode, setNewTabActiveColorMode] = useState<'color' | 'no_color' | 'theme'>('theme');
+  const [newTabPosition, setNewTabPosition] = useState<number>(() => (monographTabs.length > 0 ? monographTabs.length + 1 : 1));
 
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editTabTitle, setEditTabTitle] = useState('');
@@ -341,6 +342,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
   const [tabHeaderSubtitle, setTabHeaderSubtitle] = useState('');
   const [tabHeaderIcon, setTabHeaderIcon] = useState('leaf');
   const [tabHeaderIconColor, setTabHeaderIconColor] = useState('');
+  const [tabHeaderPosition, setTabHeaderPosition] = useState<number>(1);
   const [tabActiveColorMode, setTabActiveColorMode] = useState<'color' | 'no_color' | 'theme'>('theme');
   const [tabActiveBgColor, setTabActiveBgColor] = useState('#FAF6F0');
   const [tabActiveTextColor, setTabActiveTextColor] = useState('#14291D');
@@ -351,6 +353,11 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
 
   const [headerPreviewExpanded, setHeaderPreviewExpanded] = useState(true);
 
+  // Keep new tab position synced to end of list
+  useEffect(() => {
+    setNewTabPosition(monographTabs.length + 1);
+  }, [monographTabs.length]);
+
   // Synchronize header state when active tab changes
   useEffect(() => {
     if (activeTab) {
@@ -358,6 +365,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
       setTabHeaderSubtitle(activeTab.subtitle || '');
       setTabHeaderIcon(activeTab.icon || 'leaf');
       setTabHeaderIconColor(activeTab.iconColor || '');
+      setTabHeaderPosition(activeTabIdx >= 0 ? activeTabIdx + 1 : 1);
       setTabActiveColorMode(activeTab.activeColorMode || 'theme');
       setTabActiveBgColor(activeTab.activeBgColor || '#FAF6F0');
       setTabActiveTextColor(activeTab.activeTextColor || '#14291D');
@@ -366,7 +374,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
       setTabActiveIconColor(activeTab.activeIconColor || '#FCD34D');
       setTabActiveBorderColor(activeTab.activeBorderColor || '#C2B7A3');
     }
-  }, [activeTabId, activeTab]);
+  }, [activeTabId, activeTab, activeTabIdx]);
 
   // Card style accordion toggle per card id
   const [cardStylingExpanded, setCardStylingExpanded] = useState<Record<string, boolean>>({});
@@ -380,15 +388,19 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
     element: CardElementItem;
   } | null>(null);
 
-  // Helper to save tabs
+  // Helper to save tabs with guaranteed sequential order numbers
   const saveUpdatedTabs = (newTabs: ProductMonographTab[], notifyMsg?: string) => {
+    const reindexedTabs = newTabs.map((t, idx) => ({
+      ...t,
+      order: idx + 1,
+    }));
     if (onTabsChange) {
-      onTabsChange(newTabs);
+      onTabsChange(reindexedTabs);
     }
     if (currentProduct && onUpdateProduct) {
       const updatedProduct: HerbalProduct = {
         ...currentProduct,
-        monographTabs: newTabs,
+        monographTabs: reindexedTabs,
       };
       onUpdateProduct(updatedProduct);
       backupProductToFirebase(updatedProduct);
@@ -404,7 +416,8 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
   const handleCreateNewTab = () => {
     if (!newTabTitle.trim()) return;
     const tabId = `tab_${Date.now()}`;
-    const newTab: ProductMonographTab = {
+    const targetPos = Math.max(1, Math.min(Number(newTabPosition) || (monographTabs.length + 1), monographTabs.length + 1));
+    const newTab: ProductMonographTab & { blocks: MonographContentBlock[] } = {
       id: tabId,
       title: newTabTitle.trim(),
       subtitle: newTabSubtitle.trim() || undefined,
@@ -412,6 +425,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
       activeColorMode: newTabActiveColorMode,
       isCustom: true,
       enabled: true,
+      order: targetPos,
       items: [],
       blocks: [
         {
@@ -445,8 +459,10 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
       ],
     };
 
-    const updated = [...monographTabs, newTab];
-    saveUpdatedTabs(updated, `Created tab "${newTab.title}"`);
+    const copy = [...monographTabs];
+    copy.splice(targetPos - 1, 0, newTab);
+    const reindexed = copy.map((t, i) => ({ ...t, order: i + 1 }));
+    saveUpdatedTabs(reindexed, `Created tab "${newTab.title}" at position #${targetPos}`);
     setActiveTabId(tabId);
     setNewTabTitle('');
     setNewTabSubtitle('');
@@ -458,7 +474,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
       if (onNotify) onNotify('Tab title cannot be empty.');
       return;
     }
-    const updated = monographTabs.map((t) => {
+    let updated = monographTabs.map((t) => {
       if (t.id === activeTabId) {
         return {
           ...t,
@@ -477,7 +493,19 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
       }
       return t;
     });
-    saveUpdatedTabs(updated, `Saved collapsible tab header "${tabHeaderTitle}"`);
+
+    // Check if position was changed in header settings
+    if (tabHeaderPosition && tabHeaderPosition !== (activeTabIdx + 1)) {
+      const curIdx = updated.findIndex((t) => t.id === activeTabId);
+      if (curIdx !== -1) {
+        const destIdx = Math.max(0, Math.min(tabHeaderPosition - 1, updated.length - 1));
+        const [movedTab] = updated.splice(curIdx, 1);
+        updated.splice(destIdx, 0, movedTab);
+      }
+    }
+
+    const reindexed = updated.map((t, i) => ({ ...t, order: i + 1 }));
+    saveUpdatedTabs(reindexed, `Saved collapsible tab header "${tabHeaderTitle}"`);
     setIsEditingTabHeader(false);
   };
 
@@ -521,7 +549,21 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
     const copy = [...monographTabs];
     const [moved] = copy.splice(idx, 1);
     copy.splice(targetIdx, 0, moved);
-    saveUpdatedTabs(copy, `Moved tab "${moved.title}" to position ${targetIdx + 1}`);
+    const reindexed = copy.map((t, i) => ({ ...t, order: i + 1 }));
+    saveUpdatedTabs(reindexed, `Moved tab "${moved.title}" to position #${targetIdx + 1}`);
+  };
+
+  const handleMoveTabToPosition = (tabId: string, newPosition: number) => {
+    const currentIdx = monographTabs.findIndex((t) => t.id === tabId);
+    if (currentIdx === -1) return;
+    const targetIdx = Math.max(0, Math.min(newPosition - 1, monographTabs.length - 1));
+    if (currentIdx === targetIdx) return;
+
+    const copy = [...monographTabs];
+    const [moved] = copy.splice(currentIdx, 1);
+    copy.splice(targetIdx, 0, moved);
+    const reindexed = copy.map((t, i) => ({ ...t, order: i + 1 }));
+    saveUpdatedTabs(reindexed, `Moved tab "${moved.title}" to position #${targetIdx + 1}`);
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -996,8 +1038,8 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
               <span>Create New Collapsible Tab</span>
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div className="sm:col-span-1">
                 <label className="block text-[11px] font-semibold text-[#14291D] mb-1">
                   Tab Title *
                 </label>
@@ -1010,7 +1052,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-1">
                 <label className="block text-[11px] font-semibold text-[#14291D] mb-1">
                   Description below Title (Subtitle)
                 </label>
@@ -1021,6 +1063,24 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
                   onChange={(e) => setNewTabSubtitle(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs"
                 />
+              </div>
+
+              <div className="sm:col-span-1">
+                <label className="block text-[11px] font-semibold text-[#14291D] mb-1 flex items-center justify-between">
+                  <span>Tab Position Number *</span>
+                  <span className="text-[10px] text-emerald-800 font-bold">Next: #{monographTabs.length + 1}</span>
+                </label>
+                <select
+                  value={newTabPosition}
+                  onChange={(e) => setNewTabPosition(Number(e.target.value))}
+                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD5C5] rounded-lg text-xs font-bold font-mono text-[#14291D]"
+                >
+                  {Array.from({ length: monographTabs.length + 1 }).map((_, pIdx) => (
+                    <option key={pIdx} value={pIdx + 1}>
+                      #{pIdx + 1} {pIdx + 1 === monographTabs.length + 1 ? '(Next at End)' : `(Before "${monographTabs[pIdx]?.title}")`}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -1136,7 +1196,28 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
                       </span>
                     </button>
 
-                    <div className="flex items-center pr-1.5 gap-0.5 border-l border-black/10 pl-1">
+                    <div className="flex items-center pr-1.5 gap-1 border-l border-black/10 pl-1.5">
+                      {/* Direct Tab Position Number Selector */}
+                      <div className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-bold ${
+                        isActive ? 'bg-white/15 text-amber-200' : 'bg-stone-100 text-stone-800'
+                      }`} title="Change Tab Position Number for this product">
+                        <span className="opacity-60 text-[9px]">#</span>
+                        <select
+                          value={idx + 1}
+                          onChange={(e) => handleMoveTabToPosition(tab.id, Number(e.target.value))}
+                          className={`text-[11px] font-bold font-mono bg-transparent cursor-pointer outline-hidden ${
+                            isActive ? 'text-amber-200' : 'text-stone-900'
+                          }`}
+                          title={`Move tab to slot #${idx + 1} of ${monographTabs.length}`}
+                        >
+                          {monographTabs.map((_, pIdx) => (
+                            <option key={pIdx} value={pIdx + 1} className="text-[#14291D] bg-white">
+                              {pIdx + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <button
                         type="button"
                         disabled={idx === 0}
@@ -1225,7 +1306,7 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
 
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
               {/* Tab Position Order Control */}
-              <div className="flex items-center rounded-lg border border-[#DDD5C5] bg-[#FAF8F5] p-0.5 text-xs shadow-2xs" title="Tab Position Sequence">
+              <div className="flex items-center rounded-lg border border-[#DDD5C5] bg-[#FAF8F5] p-1 text-xs shadow-2xs gap-1" title="Tab Position Sequence">
                 <button
                   type="button"
                   disabled={activeTabIdx <= 0}
@@ -1235,9 +1316,20 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <span className="px-2 text-[11px] font-mono font-bold text-[#14291D]">
-                  Tab #{activeTabIdx + 1} of {monographTabs.length}
-                </span>
+                <div className="flex items-center gap-1.5 px-1">
+                  <span className="text-[11px] font-semibold text-[#6F6452]">Tab #</span>
+                  <select
+                    value={activeTabIdx + 1}
+                    onChange={(e) => handleMoveTabToPosition(activeTab.id, Number(e.target.value))}
+                    className="font-mono font-bold text-xs bg-white border border-[#DDD5C5] rounded px-2 py-0.5 text-[#14291D] cursor-pointer"
+                  >
+                    {monographTabs.map((_, pIdx) => (
+                      <option key={pIdx} value={pIdx + 1}>
+                        #{pIdx + 1} of {monographTabs.length}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="button"
                   disabled={activeTabIdx >= monographTabs.length - 1}
@@ -1302,18 +1394,36 @@ export const AdminMonographTabsManager: React.FC<AdminMonographTabsManagerProps>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left side: Title, Subtitle, Icon */}
+                {/* Left side: Title, Subtitle, Position, Icon */}
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#14291D] mb-1">
-                      Tab Title (Accordion Header)
-                    </label>
-                    <input
-                      type="text"
-                      value={tabHeaderTitle}
-                      onChange={(e) => setTabHeaderTitle(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-medium text-[#14291D]"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-[#14291D] mb-1">
+                        Tab Title (Accordion Header)
+                      </label>
+                      <input
+                        type="text"
+                        value={tabHeaderTitle}
+                        onChange={(e) => setTabHeaderTitle(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-medium text-[#14291D]"
+                      />
+                    </div>
+                    <div className="sm:col-span-1">
+                      <label className="block text-xs font-semibold text-[#14291D] mb-1">
+                        Position #
+                      </label>
+                      <select
+                        value={tabHeaderPosition}
+                        onChange={(e) => setTabHeaderPosition(Number(e.target.value))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-bold font-mono text-[#14291D]"
+                      >
+                        {monographTabs.map((_, pIdx) => (
+                          <option key={pIdx} value={pIdx + 1}>
+                            #{pIdx + 1} of {monographTabs.length}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div>
