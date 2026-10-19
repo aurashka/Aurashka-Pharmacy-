@@ -1,4 +1,4 @@
-import { HerbalProduct, SiteSettings, BannerSliderConfig, ProductHorizontalList, MarqueeConfig, MarqueeItem } from '../types/pharmacy';
+import { HerbalProduct, SiteSettings, BannerSliderConfig, ProductHorizontalList, MarqueeConfig, MarqueeItem, ProductCardDisplaySettings } from '../types/pharmacy';
 
 export const HERBAL_PRODUCTS: HerbalProduct[] = [
   {
@@ -1067,11 +1067,30 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
       },
     ],
   },
+  productCardDisplay: {
+    searchCardStyle: 'classic',
+    catalogCardStyle: 'classic',
+    showImage: true,
+    showName: true,
+    showSanskritName: true,
+    showPrice: true,
+    showResellerPrice: true,
+    showMrpAndOffer: true,
+    showTag: true,
+    showRating: true,
+    showAddToCart: true,
+    showQuickView: true,
+    showSeller: true,
+    showVolume: true,
+    showTagline: true,
+    showWhatsApp: true,
+  },
 };
 
 export const DEFAULT_MARQUEE_CONFIG: MarqueeConfig = DEFAULT_SITE_SETTINGS.marquee!;
 export const DEFAULT_BANNER_SLIDER: BannerSliderConfig = DEFAULT_SITE_SETTINGS.bannerSlider!;
 export const DEFAULT_PRODUCT_HORIZONTAL_LISTS: ProductHorizontalList[] = DEFAULT_SITE_SETTINGS.productHorizontalLists!;
+export const DEFAULT_PRODUCT_CARD_DISPLAY: ProductCardDisplaySettings = DEFAULT_SITE_SETTINGS.productCardDisplay!;
 
 export const COMMON_AILMENT_TAGS = [
   { label: 'All Ailments', value: 'all' },

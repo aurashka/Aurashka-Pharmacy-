@@ -283,11 +283,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       style={bgStyle}
       className={`relative ${isDarkText ? 'text-[#14291D]' : 'text-white'} pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-6 border-b border-[#234D34]/40 overflow-hidden scroll-mt-20 transition-colors duration-300`}
     >
-      {/* Decorative Atmosphere Watermarks (Disabled if user chooses No Fade / Blur) */}
+      {/* Decorative Atmosphere Aurora Lights with Soft Blur (Matching Reference Image) */}
       {showBlur && (
         <>
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2C5E43]/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-[#B4741E]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-10 -mt-10 w-96 h-96 bg-[#288457]/25 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-10 -mb-10 w-96 h-96 bg-[#D49B37]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-[#A3D9C0]/15 rounded-full blur-2xl pointer-events-none" />
         </>
       )}
 
@@ -314,33 +315,33 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             ((siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0) || (isDealsSectionEnabled && dealItems.length > 0))
               ? 'lg:col-span-7'
               : 'lg:col-span-12 max-w-3xl'
-          } space-y-3.5`}>
+          } space-y-4`}>
             {siteSettings.showHeroBadge !== false && (siteSettings.heroBadgeText ?? 'Registered Ayurvedic Formulations & Classical Rasayanas').trim() !== '' && (
-              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-medium tracking-wide shadow-2xs ${
+              <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-bold tracking-wide shadow-xs ${
                 isDarkText
-                  ? 'bg-white/80 border-[#14291D]/20 text-[#14291D]'
-                  : 'bg-[#1C3A27] border-[#2D5A3D] text-[#A5D6B6]'
+                  ? 'bg-white/85 border-[#143B25]/20 text-[#143B25]'
+                  : 'bg-[#18452D]/80 backdrop-blur-md border-[#2D6C48] text-[#A3D9C0]'
               }`}>
-                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isDarkText ? 'bg-[#14291D]' : 'bg-[#A5D6B6]'}`} />
+                <span className={`w-2 h-2 rounded-full animate-pulse ${isDarkText ? 'bg-[#143B25]' : 'bg-[#4ADE80]'}`} />
                 <span>{siteSettings.heroBadgeText || 'Registered Ayurvedic Formulations & Classical Rasayanas'}</span>
               </div>
             )}
 
             <h1 className={`font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight ${
-              isDarkText ? 'text-[#14291D]' : 'text-white'
+              isDarkText ? 'text-[#143B25]' : 'text-white'
             }`}>
               {siteSettings.heroTitle}
             </h1>
 
             <p className={`text-xs sm:text-sm max-w-2xl leading-relaxed ${
-              isDarkText ? 'text-[#284132] font-medium' : 'text-[#C2D6C9]'
+              isDarkText ? 'text-[#204E33] font-medium' : 'text-[#C9DFD2]'
             }`}>
               {siteSettings.heroSubtitle}
             </p>
 
             {/* Admin Launch app banner */}
             {isAdmin && onOpenAdminPanel && (
-              <div className="p-2.5 bg-amber-500/15 border border-amber-400/40 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-900 sm:text-amber-200">
+              <div className="p-3 bg-amber-500/15 border border-amber-400/40 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-900 sm:text-amber-200 backdrop-blur-xs">
                 <div className="flex items-center gap-2">
                   <Settings className="w-4 h-4 text-amber-500 sm:text-amber-300 shrink-0" />
                   <span className={isDarkText ? 'text-amber-950 font-semibold' : 'text-amber-200'}>
@@ -349,7 +350,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 </div>
                 <button
                   onClick={onOpenAdminPanel}
-                  className="px-3.5 py-1.5 font-bold bg-[#B4741E] hover:bg-[#975f15] text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
+                  className="px-3.5 py-1.5 font-bold bg-[#B4741E] hover:bg-[#975f15] text-white rounded-full transition-colors flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
                 >
                   <Settings className="w-3.5 h-3.5" />
                   <span>Launch Admin App</span>
@@ -357,47 +358,48 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               </div>
             )}
 
-            {/* Call to action buttons */}
-            <div className="pt-1 flex flex-wrap items-center gap-2.5">
+            {/* Call to action buttons Styled from Reference Image */}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              {/* Primary Button -> */}
               <button
                 onClick={onExploreProducts}
-                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-xs cursor-pointer ${
-                  isDarkText
-                    ? 'bg-[#14291D] text-white hover:bg-[#234D34]'
-                    : 'bg-[#E7EFEA] text-[#14291D] hover:bg-white'
-                }`}
+                className="px-5 py-2.5 text-xs sm:text-sm font-bold rounded-full transition-all flex items-center gap-2 shadow-lg shadow-emerald-950/30 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 cursor-pointer bg-gradient-to-r from-[#1E6B47] to-[#2DA670] hover:from-[#237c53] hover:to-[#33ba7e] text-white"
               >
                 <span>Browse Products & Deals</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
+              {/* Secondary Button -> */}
               <button
                 onClick={handleWhatsAppClick}
-                className="px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg bg-[#25D366] text-white hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-full bg-[#DCF3E7] hover:bg-[#cbf0dc] text-[#0E3A24] transition-all flex items-center gap-2 shadow-xs hover:-translate-y-0.5 cursor-pointer"
                 title="Chat on WhatsApp"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp</span>
+                <MessageCircle className="w-4 h-4 text-[#1E6B47]" />
+                <span>WhatsApp Consult</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#1E6B47]" />
               </button>
 
+              {/* Outline Button -> */}
               <a
                 href={`tel:${primaryPhone.replace(/\s+/g, '')}`}
-                className={`px-3 py-2 text-xs sm:text-sm transition-colors flex items-center gap-1.5 ${
+                className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-full border transition-all flex items-center gap-2 ${
                   isDarkText
-                    ? 'text-[#234D34] hover:text-[#14291D] font-semibold'
-                    : 'text-white/80 hover:text-white'
+                    ? 'border-[#143B25]/30 text-[#143B25] hover:bg-[#143B25]/5'
+                    : 'border-white/30 text-white/90 hover:text-white hover:bg-white/10 hover:border-white/60'
                 }`}
                 title="Call Helpline"
               >
-                <Phone className={`w-3.5 h-3.5 ${isDarkText ? 'text-[#234D34]' : 'text-[#A5D6B6]'}`} />
-                <span>Call Helpline</span>
+                <Phone className="w-3.5 h-3.5" />
+                <span>Helpline</span>
+                <ArrowRight className="w-3.5 h-3.5 opacity-70" />
               </a>
             </div>
           </div>
 
           {/* Right Column: Image Banner Auto-Scroller & Custom Added Deal of the Week */}
           {((siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0) || (isDealsSectionEnabled && dealItems.length > 0)) && (
-            <div className="lg:col-span-5 space-y-2.5">
+            <div className="lg:col-span-5 space-y-3">
               {/* Horizontal Image auto Scroller / Swip slider (above Weekly Deal) */}
               {siteSettings.bannerSlider?.enabled !== false && (siteSettings.bannerSlider?.items?.length ?? 0) > 0 && (
                 <ImageBannerScroller
@@ -408,10 +410,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 />
               )}
 
-              {/* Deal of the Week Carousel Card */}
+              {/* Deal of the Week Carousel Card (Clean card with soft shadow & rounded corners) */}
               {isDealsSectionEnabled && dealItems.length > 0 && (
                 <div 
-                  className="bg-white/95 backdrop-blur-md rounded-xl border border-white/20 shadow-xl text-[#1E2922] relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                  className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/50 shadow-2xl shadow-emerald-950/20 text-[#142B1F] relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
                   onMouseEnter={() => setIsPaused(true)}
                   onMouseLeave={() => {
                     setIsPaused(false);

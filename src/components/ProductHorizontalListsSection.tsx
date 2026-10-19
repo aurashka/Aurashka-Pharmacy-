@@ -196,29 +196,29 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                 <div
                   key={prod.id}
                   onClick={() => onSelectProduct(prod)}
-                  className="w-[285px] sm:w-[320px] md:w-[345px] shrink-0 snap-start bg-white rounded-2xl border border-[#D5CCBC] hover:border-[#2C5E43] shadow-xs hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-row overflow-hidden group/card relative"
+                  className="w-[285px] sm:w-[320px] md:w-[345px] shrink-0 snap-start bg-white rounded-3xl border border-[#DCEFE3] hover:border-[#1E6B47] shadow-[0_4px_20px_rgba(20,50,30,0.04)] hover:shadow-[0_12px_32px_rgba(20,50,30,0.1)] transition-all duration-300 cursor-pointer flex flex-row overflow-hidden group/card relative z-10"
                 >
                   {/* Left Column: Details & Actions */}
-                  <div className="flex-1 p-3 sm:p-3.5 flex flex-col justify-between min-w-0 pr-2">
+                  <div className="flex-1 p-3.5 sm:p-4 flex flex-col justify-between min-w-0 pr-2 bg-white">
                     <div className="space-y-1">
                       {/* Top Row: Star Rating & Optional Tag */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {showRating && (
-                          <div className="flex items-center text-amber-500">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                            <span className="font-bold text-xs text-[#14291D] ml-1">
+                          <div className="flex items-center text-amber-500 bg-[#FEF9EE] px-2 py-0.5 rounded-full border border-[#FDE68A]">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                            <span className="font-bold text-[11px] text-[#142B1F] ml-1">
                               {prod.rating ? prod.rating.toFixed(1) : '4.9'}
                             </span>
-                            <span className="text-stone-300 mx-0.5">·</span>
-                            <span className="text-[10px] text-[#716858]">
+                            <span className="text-[#A4B5AC] mx-0.5">·</span>
+                            <span className="text-[10px] text-[#526B5C]">
                               ({formatCompactNumber(prod.reviewsCount || 100)})
                             </span>
                           </div>
                         )}
 
                         {showTag && prod.sortBadge && prod.sortBadge !== 'none' && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#14291D]/10 text-[#14291D] capitalize shrink-0">
-                            <Tag className="w-2.5 h-2.5 text-[#B4741E]" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1] capitalize shrink-0">
+                            <Tag className="w-2.5 h-2.5 text-[#1E6B47]" />
                             <span>{prod.sortBadge.replace('_', ' ')}</span>
                           </span>
                         )}
@@ -226,22 +226,22 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                       {/* Product Name */}
                       {showName && (
-                        <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] group-hover/card:text-[#2C5E43] transition-colors line-clamp-2 leading-tight">
+                        <h4 className="font-serif text-xs sm:text-sm font-bold text-[#142B1F] group-hover/card:text-[#1E6B47] transition-colors line-clamp-2 leading-tight">
                           {prod.name}
                         </h4>
                       )}
 
                       {/* Sanskrit Name */}
                       {showSanskritName && prod.sanskritName && (
-                        <p className="text-[10px] text-[#716858] italic line-clamp-1">
+                        <p className="text-[10px] text-[#6B8576] italic line-clamp-1">
                           {prod.sanskritName}
                         </p>
                       )}
 
                       {/* Seller / Brand */}
                       {showSeller && (
-                        <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
-                          <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                        <div className="flex items-center gap-1 text-[10px] text-[#1E6B47] font-medium truncate">
+                          <span className="text-[#8EA396] text-[9.5px]">Seller:</span>
                           <span className="font-semibold truncate">
                             {prod.brand || prod.sellerName || siteSettings?.brandName || 'Shree Ayur Pharma'}
                           </span>
@@ -250,38 +250,38 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                       {/* Volume / Pack Size */}
                       {showVolume && prod.volumeOrWeight && (
-                        <div className="text-[9.5px] text-stone-500 font-medium truncate">
+                        <div className="text-[9.5px] text-[#6B8576] font-medium truncate">
                           {prod.volumeOrWeight}
                         </div>
                       )}
                     </div>
 
                     {/* Bottom Area: Price & Buy Button */}
-                    <div className="mt-2 space-y-1.5">
+                    <div className="mt-2.5 space-y-2">
                       {(showPrice || showMrpAndOffer || showResellerPrice) && (
-                        <div className="pt-1.5 border-t border-[#F2ECE1]">
+                        <div className="pt-1.5 border-t border-[#EDF5F0]">
                           <div className="flex items-baseline gap-1.5 flex-wrap">
                             {showPrice && (
-                              <span className="font-mono font-bold text-sm sm:text-base text-[#14291D]">
+                              <span className="font-bold text-sm sm:text-base text-[#142B1F]">
                                 {formatPrice(prod.price)}
                               </span>
                             )}
                             {showMrpAndOffer && prod.mrp && prod.mrp > prod.price && (
-                              <span className="font-mono text-[10.5px] text-[#8C8270] line-through">
+                              <span className="text-[10.5px] text-[#8EA396] line-through">
                                 {formatPrice(prod.mrp)}
                               </span>
                             )}
                           </div>
 
                           {showResellerPrice && prod.resellerPrice && prod.resellerPrice > 0 && (
-                            <div className="mt-0.5 text-[9.5px] bg-[#E7EFEA] text-[#183624] px-1.5 py-0.5 rounded font-mono font-semibold truncate border border-[#B5D6C4]/60">
+                            <div className="mt-0.5 text-[9.5px] bg-[#EAF5EE] text-[#12452B] px-2 py-0.5 rounded-full font-semibold truncate border border-[#DCEFE3]">
                               Reseller: {formatPrice(prod.resellerPrice)}
                             </div>
                           )}
                         </div>
                       )}
 
-                      {/* Buy Action Buttons */}
+                      {/* Buy Action Buttons with Reference Styling */}
                       {(showAddToCart || showQuickView) && (
                         <div className="flex items-center gap-1.5">
                           {showAddToCart && (
@@ -291,20 +291,20 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                                 e.stopPropagation();
                                 onAddToCart(prod);
                               }}
-                              className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              className={`flex-1 py-1.5 px-3 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs ${
                                 isInCart
-                                  ? 'bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6]'
-                                  : 'bg-[#14291D] hover:bg-[#203E2D] text-white shadow-2xs'
+                                  ? 'bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
+                                  : 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white hover:shadow-md'
                               }`}
                             >
                               {isInCart ? (
                                 <>
-                                  <Check className="w-3.5 h-3.5 text-[#2C5E43]" />
-                                  <span>In Bag</span>
+                                  <Check className="w-3.5 h-3.5 text-[#1E6B47]" />
+                                  <span>In Cart</span>
                                 </>
                               ) : (
                                 <>
-                                  <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                                  <ShoppingBag className="w-3.5 h-3.5" />
                                   <span>Buy</span>
                                 </>
                               )}
@@ -318,7 +318,7 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                                 e.stopPropagation();
                                 onSelectProduct(prod);
                               }}
-                              className="p-1 rounded-lg border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] hover:bg-stone-50 cursor-pointer"
+                              className="w-8 h-8 rounded-full border border-[#DCEFE3] bg-white text-[#143B25] hover:bg-[#DCF3E7] flex items-center justify-center cursor-pointer shadow-2xs"
                               title="View Monograph"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -329,9 +329,9 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                     </div>
                   </div>
 
-                  {/* Right Column: Full Image */}
+                  {/* Right Column: Full Image (Neutral background, no green tint) */}
                   {showImage && (
-                    <div className="w-[110px] sm:w-[125px] md:w-[135px] shrink-0 relative bg-linear-to-b from-[#FAF8F5] via-[#F4EEE4] to-[#ECE5D8] overflow-hidden flex items-center justify-center border-l border-[#EDE6DA]">
+                    <div className="w-[110px] sm:w-[125px] md:w-[135px] shrink-0 relative bg-[#F8FAF9] overflow-hidden flex items-center justify-center border-l border-[#E6F0EB]">
                       <img
                         src={prod.image || (prod.images && prod.images[0]) || ''}
                         alt={prod.name}
@@ -349,7 +349,7 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                       {/* Offer Discount Badge on Image */}
                       {showMrpAndOffer && discountPercent > 0 && (
                         <div className="absolute top-2 right-2 z-10">
-                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                          <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#143B25] text-white shadow-xs border border-white/20">
                             {discountPercent}% OFF
                           </span>
                         </div>
@@ -365,16 +365,16 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
               <div
                 key={prod.id}
                 onClick={() => onSelectProduct(prod)}
-                className="w-[200px] sm:w-[220px] md:w-[240px] shrink-0 snap-start bg-white rounded-xl border border-[#D5CCBC] hover:border-[#2C5E43] shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between overflow-hidden group/card"
+                className="w-[200px] sm:w-[220px] md:w-[240px] shrink-0 snap-start bg-white/95 backdrop-blur-xs rounded-3xl border border-[#DCEFE3] hover:border-[#1E6B47] shadow-[0_4px_20px_rgba(20,50,30,0.04)] hover:shadow-[0_12px_32px_rgba(20,50,30,0.1)] transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden group/card"
               >
                 <div>
                   {/* Image Container */}
                   {showImage && (
-                    <div className="relative aspect-4/3 sm:aspect-square bg-transparent overflow-hidden rounded-none border-0">
+                    <div className="relative aspect-4/3 sm:aspect-square bg-gradient-to-b from-[#F4FAF6] to-[#EAF5EE] overflow-hidden rounded-t-3xl border-0">
                       <img
                         src={prod.image || (prod.images && prod.images[0]) || ''}
                         alt={prod.name}
-                        className="w-full h-full object-cover group-hover/card:scale-104 transition-transform duration-300 bg-transparent"
+                        className="w-full h-full object-cover group-hover/card:scale-106 transition-transform duration-500 bg-transparent"
                         onError={(e) => {
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}
@@ -387,9 +387,9 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                       {/* Tag / Badge */}
                       {showTag && prod.sortBadge && prod.sortBadge !== 'none' && (
-                        <div className="absolute top-2 left-2 z-10">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold bg-[#14291D] text-white shadow-xs capitalize">
-                            <Tag className="w-2.5 h-2.5 text-amber-300" />
+                        <div className="absolute top-2.5 left-2.5 z-10">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-bold bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1] shadow-xs capitalize">
+                            <Tag className="w-2.5 h-2.5 text-[#1E6B47]" />
                             <span>{prod.sortBadge.replace('_', ' ')}</span>
                           </span>
                         </div>
@@ -397,8 +397,8 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                       {/* Offer Discount Badge */}
                       {showMrpAndOffer && discountPercent > 0 && (
-                        <div className="absolute top-2 right-2 z-10">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                        <div className="absolute top-2.5 right-2.5 z-10">
+                          <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#143B25] text-white shadow-xs border border-white/20">
                             {discountPercent}% OFF
                           </span>
                         </div>
@@ -407,37 +407,37 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                   )}
 
                   {/* Card Content Details */}
-                  <div className="p-3 space-y-1.5">
+                  <div className="p-3.5 space-y-1.5">
                     {/* Rating & Review */}
                     {showRating && (
-                      <div className="flex items-center gap-1 text-[11px] text-[#716858]">
+                      <div className="flex items-center gap-1 text-[11px] text-[#526B5C]">
                         <div className="flex items-center text-amber-500">
                           <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                          <span className="font-bold text-[#14291D] ml-0.5">{prod.rating}</span>
+                          <span className="font-bold text-[#142B1F] ml-0.5">{prod.rating}</span>
                         </div>
-                        <span className="text-stone-300">·</span>
+                        <span className="text-[#A4B5AC]">·</span>
                         <span>({formatCompactNumber(prod.reviewsCount)})</span>
                       </div>
                     )}
 
                     {/* Product Name */}
                     {showName && (
-                      <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] group-hover/card:text-[#2C5E43] transition-colors line-clamp-1">
+                      <h4 className="font-serif text-xs sm:text-sm font-bold text-[#142B1F] group-hover/card:text-[#1E6B47] transition-colors line-clamp-1">
                         {prod.name}
                       </h4>
                     )}
 
                     {/* Sanskrit / Botanical Name */}
                     {showSanskritName && prod.sanskritName && (
-                      <p className="text-[10.5px] text-[#716858] italic line-clamp-1">
+                      <p className="text-[10.5px] text-[#6B8576] italic line-clamp-1">
                         {prod.sanskritName}
                       </p>
                     )}
 
                     {/* Seller / Brand */}
                     {showSeller && (
-                      <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
-                        <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                      <div className="flex items-center gap-1 text-[10px] text-[#1E6B47] font-medium truncate">
+                        <span className="text-[#8EA396] text-[9.5px]">Seller:</span>
                         <span className="font-semibold truncate">
                           {prod.brand || prod.sellerName || siteSettings?.brandName || 'Shree Ayur Pharma'}
                         </span>
@@ -446,23 +446,23 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                     {/* Volume / Pack Size */}
                     {showVolume && prod.volumeOrWeight && (
-                      <div className="text-[10px] text-stone-500 font-medium truncate">
+                      <div className="text-[10px] text-[#6B8576] font-medium truncate">
                         {prod.volumeOrWeight}
                       </div>
                     )}
 
                     {/* Price and Reseller Section */}
                     {(showPrice || showMrpAndOffer || showResellerPrice) && (
-                      <div className="pt-1 border-t border-[#F2ECE1] space-y-1">
+                      <div className="pt-1.5 border-t border-[#EDF5F0] space-y-1">
                         <div className="flex items-baseline gap-2 flex-wrap">
                           {showPrice && (
-                            <span className="font-mono font-bold text-sm sm:text-base text-[#14291D]">
+                            <span className="font-bold text-sm sm:text-base text-[#142B1F]">
                               {formatPrice(prod.price)}
                             </span>
                           )}
 
                           {showMrpAndOffer && prod.mrp && prod.mrp > prod.price && (
-                            <span className="font-mono text-xs text-[#8C8270] line-through">
+                            <span className="text-xs text-[#8EA396] line-through">
                               {formatPrice(prod.mrp)}
                             </span>
                           )}
@@ -470,9 +470,9 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                         {/* Reseller Wholesale Price */}
                         {showResellerPrice && prod.resellerPrice && prod.resellerPrice > 0 && (
-                          <div className="flex items-center justify-between text-[10px] bg-[#E7EFEA]/80 px-1.5 py-0.5 rounded border border-[#B5D6C4]">
-                            <span className="text-[#2C5E43] font-semibold">Reseller:</span>
-                            <span className="font-mono font-bold text-[#183624]">
+                          <div className="flex items-center justify-between text-[10px] bg-[#EAF5EE] px-2 py-0.5 rounded-full border border-[#DCEFE3]">
+                            <span className="text-[#1E6B47] font-semibold">Reseller:</span>
+                            <span className="font-bold text-[#12452B]">
                               {formatPrice(prod.resellerPrice)}
                             </span>
                           </div>
@@ -484,7 +484,7 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                 {/* Bottom Action Buttons */}
                 {(showAddToCart || showQuickView) && (
-                  <div className="p-3 pt-0 flex items-center gap-1.5">
+                  <div className="p-3.5 pt-0 flex items-center gap-1.5">
                     {showAddToCart && (
                       <button
                         type="button"
@@ -492,20 +492,20 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                           e.stopPropagation();
                           onAddToCart(prod);
                         }}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`flex-1 py-1.5 px-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs ${
                           isInCart
-                            ? 'bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6]'
-                            : 'bg-[#14291D] hover:bg-[#203E2D] text-white shadow-2xs'
+                            ? 'bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
+                            : 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white hover:shadow-md'
                         }`}
                       >
                         {isInCart ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-[#2C5E43]" />
-                            <span>In Bag</span>
+                            <Check className="w-3.5 h-3.5 text-[#1E6B47]" />
+                            <span>In Cart</span>
                           </>
                         ) : (
                           <>
-                            <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                            <ShoppingBag className="w-3.5 h-3.5" />
                             <span>Add</span>
                           </>
                         )}
@@ -519,7 +519,7 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                           e.stopPropagation();
                           onSelectProduct(prod);
                         }}
-                        className="p-1.5 rounded-lg border border-[#DDD5C5] text-[#554B3B] hover:text-[#14291D] hover:bg-stone-50 cursor-pointer"
+                        className="w-8 h-8 rounded-full border border-[#DCEFE3] text-[#143B25] hover:bg-[#DCF3E7] flex items-center justify-center cursor-pointer shadow-2xs"
                         title="View Full Monograph & Formulation Details"
                       >
                         <Eye className="w-3.5 h-3.5" />

@@ -82,45 +82,47 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-md bg-[#FBF9F5] h-full shadow-2xl flex flex-col border-l border-[#DCD5C5] text-[#1E2922]"
+        className="w-full max-w-md bg-[#F6FAF7] h-full shadow-[0_0_50px_rgba(20,50,30,0.2)] flex flex-col border-l border-[#DCEFE3] text-[#142B1F] sm:rounded-l-3xl overflow-hidden animate-in slide-in-from-right duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD1] bg-[#FAF8F5]">
-          <div className="flex items-center gap-2.5">
-            <ShoppingBag className="w-5 h-5 text-[#2C5E43]" />
+        {/* Drawer Header with Aurora glassmorphism */}
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-[#DCEFE3] bg-white/90 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#DCF3E7] text-[#143B25] flex items-center justify-center shadow-xs">
+              <ShoppingBag className="w-4.5 h-4.5 text-[#1E6B47]" />
+            </div>
             <div>
-              <h3 className="font-serif text-lg font-bold text-[#14291D]">
-                Apothecary Dispensary List
+              <h3 className="font-serif text-lg font-bold text-[#142B1F]">
+                Dispensary Order Bag
               </h3>
-              <p className="text-[11px] text-[#696051]">
+              <p className="text-[11px] text-[#526B5C]">
                 {cartItems.length} {cartItems.length === 1 ? 'Formulation' : 'Formulations'} selected
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#5F5647] hover:text-[#1E2922] hover:bg-[#EFEAE0] rounded-lg transition-colors"
+            className="w-8 h-8 rounded-full border border-transparent hover:border-[#DCEFE3] hover:bg-[#DCF3E7] text-[#6B8576] hover:text-[#142B1F] flex items-center justify-center transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Items List */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-3.5 scrollbar-thin">
           {cartItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
-              <div className="w-12 h-12 rounded-full bg-[#EFEAE0] text-[#7A705E] flex items-center justify-center">
-                <ShoppingBag className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-full bg-[#DCF3E7] text-[#143B25] flex items-center justify-center shadow-inner">
+                <ShoppingBag className="w-6 h-6 text-[#1E6B47]" />
               </div>
-              <h4 className="font-serif text-lg font-semibold text-[#14291D]">
+              <h4 className="font-serif text-lg font-semibold text-[#142B1F]">
                 Your Dispensary List is Empty
               </h4>
-              <p className="text-xs text-[#635A4B] max-w-xs">
+              <p className="text-xs text-[#526B5C] max-w-xs leading-relaxed">
                 Explore our classical Ayurvedic formulations, view detailed therapeutic uses, and add medicines to consult with our Doctor.
               </p>
             </div>
@@ -129,12 +131,12 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
               {cartItems.map(({ product, quantity }) => (
                 <div 
                   key={product.id}
-                  className="bg-white p-3.5 rounded-lg border border-[#E7DFD1] flex gap-3 items-center"
+                  className="bg-white/95 backdrop-blur-xs p-3.5 rounded-2xl border border-[#DCEFE3] shadow-xs flex gap-3 items-center group hover:border-[#1E6B47]/40 transition-colors"
                 >
                   <img
                     src={product.image}
                     alt={product.name}
-                    className="w-16 h-16 rounded object-cover border border-[#E6E0D4] shrink-0"
+                    className="w-16 h-16 rounded-xl object-cover border border-[#DCEFE3] shrink-0 group-hover:scale-102 transition-transform"
                     onError={(e) => {
                       (e.currentTarget as HTMLElement).style.display = 'none';
                     }}
@@ -142,38 +144,38 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
                   <div className="flex-1 min-w-0">
                     <button
                       onClick={() => onOpenProductDetail(product)}
-                      className="text-left font-serif text-sm font-semibold text-[#14291D] hover:text-[#2C5E43] truncate block w-full"
+                      className="text-left font-serif text-sm font-semibold text-[#142B1F] hover:text-[#1E6B47] truncate block w-full transition-colors cursor-pointer"
                     >
                       {product.name}
                     </button>
-                    <div className="text-[11px] text-[#696051] truncate">
+                    <div className="text-[11px] text-[#6B8576] truncate">
                       {product.volumeOrWeight} · {product.form}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-bold text-[#14291D] tabular-nums" title={`₹${product.price * quantity}`}>
+                      <span className="text-xs font-bold text-[#142B1F] tabular-nums" title={`₹${product.price * quantity}`}>
                         {formatPrice(product.price * quantity)}
                       </span>
-                      <span className="text-[11px] text-[#8C8271] line-through tabular-nums" title={`₹${product.mrp * quantity}`}>
+                      <span className="text-[11px] text-[#8EA396] line-through tabular-nums" title={`₹${product.mrp * quantity}`}>
                         {formatPrice(product.mrp * quantity)}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <div className="flex items-center border border-[#D5CCBC] rounded bg-[#FAF8F5]">
+                    <div className="flex items-center border border-[#DCEFE3] rounded-full bg-[#F4FAF6] p-0.5">
                       <button
                         onClick={() => onUpdateQuantity(product.id, -1)}
-                        className="p-1 hover:bg-[#EAE4D7] text-[#4A4234] transition-colors"
+                        className="w-6 h-6 rounded-full hover:bg-white text-[#142B1F] flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
                         aria-label="Decrease quantity"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="px-2 text-xs font-semibold tabular-nums text-[#14291D]">
+                      <span className="px-2 text-xs font-bold tabular-nums text-[#142B1F]">
                         {quantity}
                       </span>
                       <button
                         onClick={() => onUpdateQuantity(product.id, 1)}
-                        className="p-1 hover:bg-[#EAE4D7] text-[#4A4234] transition-colors"
+                        className="w-6 h-6 rounded-full hover:bg-white text-[#142B1F] flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
                         aria-label="Increase quantity"
                       >
                         <Plus className="w-3 h-3" />
@@ -182,7 +184,7 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
 
                     <button
                       onClick={() => onRemoveItem(product.id)}
-                      className="text-red-700/80 hover:text-red-700 p-1"
+                      className="text-[#991B1B]/70 hover:text-[#991B1B] p-1 cursor-pointer transition-colors"
                       title="Remove"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -194,7 +196,7 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
               <div className="pt-2 text-right">
                 <button
                   onClick={onClearCart}
-                  className="text-xs text-[#7B715F] hover:text-red-700 transition-colors"
+                  className="text-xs text-[#6B8576] hover:text-[#991B1B] transition-colors cursor-pointer"
                 >
                   Clear all items
                 </button>
@@ -205,38 +207,38 @@ export const InquiryCartDrawer: React.FC<InquiryCartDrawerProps> = ({
 
         {/* Footer Summary & WhatsApp Order CTA */}
         {cartItems.length > 0 && (
-          <div className="p-6 border-t border-[#E7DFD1] bg-[#FAF8F5] space-y-4">
+          <div className="p-6 border-t border-[#DCEFE3] bg-white/90 backdrop-blur-md space-y-4">
             <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between text-[#5B5243]">
+              <div className="flex justify-between text-[#526B5C]">
                 <span>Total Formulation MRP:</span>
-                <span className="tabular-nums" title={`₹${totalMrp}`}>{formatPrice(totalMrp)}</span>
+                <span className="tabular-nums font-medium" title={`₹${totalMrp}`}>{formatPrice(totalMrp)}</span>
               </div>
               {totalSavings > 0 && (
-                <div className="flex justify-between text-[#2C5E43] font-medium">
+                <div className="flex justify-between text-[#1E6B47] font-semibold">
                   <span>Botanical Savings:</span>
                   <span className="tabular-nums">-{formatPrice(totalSavings)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-bold text-[#14291D] pt-2 border-t border-[#E7DFD1]">
+              <div className="flex justify-between text-base font-bold text-[#142B1F] pt-2 border-t border-[#DCEFE3]">
                 <span>Estimated Total:</span>
-                <span className="tabular-nums text-lg text-[#2C5E43]" title={`₹${totalAmount}`}>{formatPrice(totalAmount)}</span>
+                <span className="tabular-nums text-lg text-[#1E6B47]" title={`₹${totalAmount}`}>{formatPrice(totalAmount)}</span>
               </div>
-              <p className="text-[11px] text-[#786F5F] text-center pt-0.5">
+              <p className="text-[11px] text-[#6B8576] text-center pt-0.5">
                 Free shipping & free practitioner dosage schedule included
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <button
                 onClick={handleCheckoutViaWhatsApp}
-                className="w-full py-3 px-4 rounded-lg bg-[#25D366] text-white font-semibold text-xs hover:bg-[#20bd5a] transition-colors flex items-center justify-center gap-2 shadow-xs"
+                className="aurora-btn-primary w-full py-3 px-5 text-xs inline-flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <MessageSquare className="w-4 h-4" />
-                Dispatch Order & Consult via WhatsApp
+                <span>Dispatch Order & Consult via WhatsApp</span>
               </button>
 
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#696051]">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#2C5E43]" />
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#526B5C]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#1E6B47]" />
                 <span>100% Genuine Certified Ayush Formulations</span>
               </div>
             </div>

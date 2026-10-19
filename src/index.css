@@ -1,16 +1,325 @@
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Cormorant Garamond", Georgia, serif;
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-primary: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-accent: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Playfair Display", Georgia, serif;
+  --font-hero: "Playfair Display", Georgia, serif;
+  --font-banner: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Plus Jakarta Sans", monospace;
 }
 
+:root {
+  --font-primary: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-accent: "Playfair Display", Georgia, serif;
+}
+
+/* =========================================================================
+   AURORA DYNAMIC BACKGROUND & COLOR SYSTEM (Reference Image Inspired)
+   Palette:
+     - Forest Green: #143B25, #0E291A
+     - Botanical Emerald: #1E6B47, #268558
+     - Sage / Soft Mint: #A3D9C0, #DCF3E7, #F0FAF4
+     - Warm Cream / Light: #F8FBF8, #FFFFFF
+     - Golden Amber Accent: #D49B37, #C48722
+   ========================================================================= */
+
+@keyframes aurora-shift-1 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(45px, -35px) scale(1.08) rotate(4deg);
+  }
+  66% {
+    transform: translate(-30px, 40px) scale(0.95) rotate(-3deg);
+  }
+}
+
+@keyframes aurora-shift-2 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(-50px, 35px) scale(1.06) rotate(-4deg);
+  }
+  66% {
+    transform: translate(35px, -45px) scale(0.94) rotate(3deg);
+  }
+}
+
+@keyframes aurora-shift-3 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(50px, -30px) scale(1.12);
+  }
+}
+
+.aurora-bg-container {
+  position: relative;
+  background-color: #F6FAF7;
+  overflow-x: hidden;
+}
+
+.aurora-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.aurora-orb-1 {
+  position: absolute;
+  top: -4%;
+  left: 2%;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(163, 217, 192, 0.16) 0%, rgba(220, 243, 231, 0.06) 55%, transparent 70%);
+  filter: blur(75px);
+  animation: aurora-shift-1 22s ease-in-out infinite;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.aurora-orb-2 {
+  position: absolute;
+  top: 22%;
+  right: -2%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(163, 217, 192, 0.15) 0%, rgba(210, 240, 225, 0.05) 55%, transparent 70%);
+  filter: blur(75px);
+  animation: aurora-shift-2 26s ease-in-out infinite;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.aurora-orb-3 {
+  position: absolute;
+  bottom: 8%;
+  left: 8%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(185, 230, 208, 0.12) 0%, rgba(235, 247, 241, 0.04) 50%, transparent 70%);
+  filter: blur(80px);
+  animation: aurora-shift-3 30s ease-in-out infinite;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+/* Glassmorphism navbar */
+.aurora-glass-nav {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(220, 235, 226, 0.8);
+  box-shadow: 0 4px 20px -2px rgba(20, 50, 30, 0.04);
+}
+
+/* Aurora Card styling */
+.aurora-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(220, 235, 226, 0.85);
+  box-shadow: 0 8px 30px -4px rgba(20, 50, 30, 0.04);
+  border-radius: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aurora-card:hover {
+  border-color: rgba(30, 107, 71, 0.4);
+  box-shadow: 0 16px 40px -4px rgba(20, 60, 35, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Aurora Buttons */
+.aurora-btn-primary {
+  background: linear-gradient(135deg, #143B25 0%, #1E6B47 100%);
+  color: #FFFFFF;
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(20, 59, 37, 0.18);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aurora-btn-primary:hover {
+  background: linear-gradient(135deg, #19482E 0%, #258257 100%);
+  box-shadow: 0 6px 20px rgba(20, 59, 37, 0.28);
+  transform: translateY(-1px);
+}
+
+.aurora-btn-secondary {
+  background-color: #DCF3E7;
+  color: #12452B;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.aurora-btn-secondary:hover {
+  background-color: #CBF0DC;
+  color: #0E3622;
+}
+
+.aurora-btn-outline {
+  background-color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(30, 107, 71, 0.3);
+  color: #143B25;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.aurora-btn-outline:hover {
+  background-color: rgba(220, 243, 231, 0.5);
+  border-color: #1E6B47;
+}
+
+/* Badges */
+.aurora-badge-new {
+  background-color: #DCF3E7;
+  color: #12452B;
+  border: 1px solid rgba(163, 217, 192, 0.6);
+  border-radius: 9999px;
+}
+
+.aurora-badge-bestseller {
+  background-color: #FEF3C7;
+  color: #92400E;
+  border: 1px solid rgba(253, 230, 138, 0.7);
+  border-radius: 9999px;
+}
+
+.aurora-badge-outofstock {
+  background-color: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid rgba(254, 202, 202, 0.7);
+  border-radius: 9999px;
+}
+
+/* Base Body: Primary Font (Inter), 400-500 weight, modern line-height & clean spacing */
+html,
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-primary);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: -0.011em;
+  color: #1E2922;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-.font-serif {
-  font-family: var(--font-serif);
+/* Accent Font (Manrope) - Hero headings, section headings, product titles, promotional banners & highlights */
+h1,
+.hero-heading,
+.font-hero,
+#deal-spotlight h1 {
+  font-family: var(--font-accent) !important;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+h2,
+.section-heading,
+.font-section-heading {
+  font-family: var(--font-accent) !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+/* Promotional banners, Hero Highlights, and elements with .font-accent / .font-serif */
+.font-serif,
+.font-accent,
+.font-hero,
+.font-highlight,
+.font-banner,
+.promo-banner,
+.banner-heading {
+  font-family: var(--font-accent) !important;
+}
+
+/* General Headings (Inter): 600–700 weight */
+h3 {
+  font-family: var(--font-primary);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-primary);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+/* Body Text & Paragraphs: Primary Font (Inter), 400–500 weight */
+p, li, dd, dt, blockquote, label, span, div {
+  font-family: inherit;
+}
+
+p {
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Product names in cards/lists: Inter, 600 weight */
+.product-name,
+.product-title-card {
+  font-family: var(--font-primary) !important;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Buttons: Primary Font (Inter), 500–600 weight */
+button, input[type="button"], input[type="submit"], input[type="reset"], .btn {
+  font-family: var(--font-primary);
+  font-weight: 550;
+  letter-spacing: -0.01em;
+}
+
+/* Navigation: Primary Font (Inter), 500 weight */
+nav, nav a, nav button, header a, header button, .nav-item {
+  font-family: var(--font-primary);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Forms: Primary Font (Inter), 400–500 weight */
+input, textarea, select {
+  font-family: var(--font-primary);
+  font-weight: 400;
+  letter-spacing: -0.008em;
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-weight: 400;
+}
+
+/* Explicit Utility Classes */
+.font-primary,
+.font-sans,
+.font-body {
+  font-family: var(--font-primary) !important;
+}
+
+.font-accent {
+  font-family: var(--font-accent) !important;
+}
+
+/* Tabular numbers for price badges using Inter tabular figures */
+.font-tabular,
+.tabular-nums {
+  font-family: var(--font-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Custom smooth scrollbar for apothecary drawer & lists */

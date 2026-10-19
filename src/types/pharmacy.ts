@@ -618,6 +618,7 @@ export interface SiteSettings {
   topNav?: TopNavConfig;
   categoryAppearance?: CategoryAppearanceConfig;
   marquee?: MarqueeConfig;
+  productCardDisplay?: ProductCardDisplaySettings;
 }
 
 export type MarqueePlacement = 'top_bar' | 'below_header' | 'below_hero' | 'above_catalog' | 'above_footer';
@@ -705,6 +706,26 @@ export interface BannerSliderConfig {
 }
 
 export type HorizontalShelfCardStyle = 'classic' | 'modern';
+export type ProductCardDesignStyle = 'classic' | 'modern';
+
+export interface ProductCardDisplaySettings {
+  searchCardStyle?: ProductCardDesignStyle; // 'classic' | 'modern'
+  catalogCardStyle?: ProductCardDesignStyle; // 'classic' | 'modern'
+  showImage?: boolean;
+  showName?: boolean;
+  showSanskritName?: boolean;
+  showPrice?: boolean;
+  showResellerPrice?: boolean;
+  showMrpAndOffer?: boolean;
+  showTag?: boolean;
+  showRating?: boolean;
+  showAddToCart?: boolean;
+  showQuickView?: boolean;
+  showSeller?: boolean;
+  showVolume?: boolean;
+  showTagline?: boolean;
+  showWhatsApp?: boolean;
+}
 
 export interface HorizontalListCardFields {
   showImage?: boolean;

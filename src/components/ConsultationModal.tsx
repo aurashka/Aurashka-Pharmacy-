@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, Phone, MessageSquare, Clock, CheckCircle2, User, Mail, ShieldAlert } from 'lucide-react';
+import { X, Send, Phone, MessageSquare, Clock, CheckCircle2, User, Mail, ShieldAlert, Leaf } from 'lucide-react';
 import { HERBAL_PRODUCTS } from '../data/herbalProducts';
 import { SiteSettings } from '../types/pharmacy';
 import { useAuth } from '../context/AuthContext';
@@ -84,29 +84,34 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-lg bg-[#FBF9F5] border border-[#DCD5C5] rounded-xl shadow-2xl text-[#1E2922] overflow-hidden"
+        className="relative w-full max-w-lg bg-[#F6FAF7] border border-[#DCEFE3] rounded-3xl shadow-[0_25px_60px_-15px_rgba(20,59,37,0.35)] text-[#142B1F] overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#14291D] text-white">
-          <div className="space-y-0.5">
-            <span className="text-[11px] uppercase tracking-wider text-[#A5D6B6] font-semibold">
-              Aurashka Apothecary
-            </span>
-            <h3 className="font-serif text-lg font-bold">
-              Dosage & Clinical Consultation
-            </h3>
+        {/* Header with Leaf Icon and Aurora Glow */}
+        <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-[#143B25] via-[#1A5235] to-[#1E6B47] text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-inner border border-white/15">
+              <Leaf className="w-5 h-5 text-[#88E4B3]" />
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10.5px] uppercase tracking-wider text-[#A5E8C4] font-bold">
+                {siteSettings?.brandName || 'VedaVriksha'} Apothecary
+              </span>
+              <h3 className="font-serif text-lg font-bold leading-tight">
+                Dosage & Clinical Consultation
+              </h3>
+            </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Close consultation modal"
-            className="p-1 text-white/70 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -151,61 +156,61 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-            <div className="p-3 bg-[#F4F0E6] rounded-lg border border-[#E3DBD0] text-xs text-[#544C3F] flex items-start gap-2.5">
-              <ShieldAlert className="w-4 h-4 text-[#2C5E43] shrink-0 mt-0.5" />
+            <div className="p-3.5 bg-[#EAF7EE] rounded-2xl border border-[#C6ECD3] text-xs text-[#143B25] flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 text-[#1E6B47] shrink-0 mt-0.5" />
               <span>
                 Personalized dosage suggestions are prepared by certified Ayurvedic practitioners strictly aligned with AYUSH protocols.
               </span>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-medium text-[#2F2920] mb-1">
-                  Full Name <span className="text-red-600">*</span>
+                <label className="block font-semibold text-[#142B1F] mb-1">
+                  Full Name <span className="text-[#991B1B]">*</span>
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-2.5 text-[#8A8070]" />
+                  <User className="w-4 h-4 absolute left-3.5 top-2.5 text-[#6B8576]" />
                   <input
                     type="text"
                     required
                     placeholder="e.g. Ramesh Sharma"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#DCEFE3] rounded-2xl focus:outline-hidden focus:border-[#1E6B47] focus:ring-2 focus:ring-[#1E6B47]/20 text-xs text-[#142B1F] transition-all shadow-xs"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-[#2F2920] mb-1">
-                    Phone / WhatsApp Number <span className="text-red-600">*</span>
+                  <label className="block font-semibold text-[#142B1F] mb-1">
+                    Phone / WhatsApp Number <span className="text-[#991B1B]">*</span>
                   </label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 absolute left-3 top-2.5 text-[#8A8070]" />
+                    <Phone className="w-4 h-4 absolute left-3.5 top-2.5 text-[#6B8576]" />
                     <input
                       type="tel"
                       required
                       placeholder="+91 98765 00000"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full pl-9 pr-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#DCEFE3] rounded-2xl focus:outline-hidden focus:border-[#1E6B47] focus:ring-2 focus:ring-[#1E6B47]/20 text-xs text-[#142B1F] transition-all shadow-xs"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-medium text-[#2F2920] mb-1">
+                  <label className="block font-semibold text-[#142B1F] mb-1">
                     Email Address (Optional)
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-2.5 text-[#8A8070]" />
+                    <Mail className="w-4 h-4 absolute left-3.5 top-2.5 text-[#6B8576]" />
                     <input
                       type="email"
                       placeholder="name@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full pl-9 pr-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#DCEFE3] rounded-2xl focus:outline-hidden focus:border-[#1E6B47] focus:ring-2 focus:ring-[#1E6B47]/20 text-xs text-[#142B1F] transition-all shadow-xs"
                     />
                   </div>
                 </div>
@@ -213,13 +218,13 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-[#2F2920] mb-1">
+                  <label className="block font-semibold text-[#142B1F] mb-1">
                     Preferred Contact Mode
                   </label>
                   <select
                     value={formData.contactMethod}
                     onChange={(e) => setFormData({ ...formData, contactMethod: e.target.value as any })}
-                    className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#DCEFE3] rounded-2xl focus:outline-hidden focus:border-[#1E6B47] focus:ring-2 focus:ring-[#1E6B47]/20 text-xs text-[#142B1F] transition-all shadow-xs cursor-pointer"
                   >
                     <option value="whatsapp">WhatsApp Consultation</option>
                     <option value="phone">Direct Phone Call</option>
@@ -228,13 +233,13 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-medium text-[#2F2920] mb-1">
+                  <label className="block font-semibold text-[#142B1F] mb-1">
                     Preferred Callback Window
                   </label>
                   <select
                     value={formData.timeSlot}
                     onChange={(e) => setFormData({ ...formData, timeSlot: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#DCEFE3] rounded-2xl focus:outline-hidden focus:border-[#1E6B47] focus:ring-2 focus:ring-[#1E6B47]/20 text-xs text-[#142B1F] transition-all shadow-xs cursor-pointer"
                   >
                     <option value="Morning (9:00 AM - 1:00 PM)">Morning (9:00 AM - 1:00 PM)</option>
                     <option value="Afternoon (1:00 PM - 5:00 PM)">Afternoon (1:00 PM - 5:00 PM)</option>
@@ -245,7 +250,7 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-medium text-[#2F2920] mb-1">
+                <label className="block font-semibold text-[#142B1F] mb-1">
                   Additional Notes (Product and deal)
                 </label>
                 <textarea
@@ -253,14 +258,14 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                   placeholder="Mention product name, required quantity, deal inquiries or special requests..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-[#DCD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs text-[#1E2922]"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#DCEFE3] rounded-2xl focus:outline-hidden focus:border-[#1E6B47] focus:ring-2 focus:ring-[#1E6B47]/20 text-xs text-[#142B1F] transition-all shadow-xs"
                 />
               </div>
             </div>
 
             {/* WhatsApp Note & Action buttons */}
-            <div className="p-2.5 bg-[#E7EFEA]/80 border border-[#A5D6B6] rounded-lg flex items-center gap-2 text-[11px] text-[#14291D]">
-              <MessageSquare className="w-4 h-4 text-[#25D366] shrink-0" />
+            <div className="p-3 bg-[#EAF7EE] border border-[#C6ECD3] rounded-2xl flex items-center gap-2.5 text-[11px] text-[#143B25]">
+              <MessageSquare className="w-4 h-4 text-[#1E6B47] shrink-0" />
               <span>
                 On submit, this consultation request and your additional notes will directly open in WhatsApp with our Doctor.
               </span>
@@ -270,16 +275,16 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-[#645A4B] hover:text-[#1E2922] transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-[#526B5C] hover:text-[#142B1F] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold text-white bg-[#25D366] hover:bg-[#20bd5a] rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                className="aurora-btn-primary w-full sm:w-auto px-6 py-2.5 text-xs inline-flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
-                <MessageSquare className="w-4 h-4 fill-white/20" />
-                <span>Send Request & Note via WhatsApp</span>
+                <MessageSquare className="w-4 h-4" />
+                <span>Send Request via WhatsApp</span>
               </button>
             </div>
           </form>

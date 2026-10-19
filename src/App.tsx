@@ -33,7 +33,7 @@ import {
   fetchCatalogMetaFromFirebase,
   getOrAutoSeedFirebaseData
 } from './utils/firebaseSync';
-import { Shield, Settings, Sparkles } from 'lucide-react';
+import { Shield, Settings, Sparkles, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 
 const PRODUCTS_STORAGE_KEY = 'aurashka_catalog_products';
 const SITE_SETTINGS_STORAGE_KEY = 'aurashka_site_settings';
@@ -450,6 +450,16 @@ function PharmacyApp() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error'; id: number } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
+    const id = Date.now();
+    setToast({ message, type, id });
+    setTimeout(() => {
+      setToast((prev) => (prev?.id === id ? null : prev));
+    }, 3200);
+  };
+
   const handleAddToCart = (product: HerbalProduct) => {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
@@ -462,6 +472,7 @@ function PharmacyApp() {
       }
       return [...prev, { product, quantity: 1 }];
     });
+    showToast(`Added "${product.name}" to dispensary bag`, 'success');
     setIsCartOpen(true);
   };
 
@@ -560,7 +571,14 @@ function PharmacyApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBF9F5] text-[#1E2922] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F6FAF7] text-[#142B1F] flex flex-col font-sans relative overflow-x-hidden">
+      {/* Dynamic Aurora Gentle Ambient Flow Layers (From Reference Design) */}
+      <div className="aurora-layer pointer-events-none" aria-hidden="true">
+        <div className="aurora-orb-1" />
+        <div className="aurora-orb-2" />
+        <div className="aurora-orb-3" />
+      </div>
+
       {/* Optional Top-of-Page Marquee Bar */}
       {renderMarquee('top_bar')}
 
@@ -637,7 +655,7 @@ function PharmacyApp() {
         </div>
       )}
 
-      <main className="flex-1">
+      <main className="flex-1 relative z-10">
         {currentView === 'contact' ? (
           /* Dedicated Contact Page */
           <ContactPage
@@ -836,6 +854,26 @@ function PharmacyApp() {
         onOpenConsultationModal={() => handleOpenConsultationModal()}
         siteSettings={siteSettings}
       />
+
+      {/* Aurora Dynamic Toast Notification (From Reference Design System) */}
+      {toast && (
+        <div 
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4.5 py-3 rounded-2xl shadow-[0_12px_36px_rgba(20,50,30,0.15)] border transition-all animate-in slide-in-from-bottom-5 duration-300 backdrop-blur-md max-w-sm ${
+            toast.type === 'success'
+              ? 'bg-gradient-to-r from-[#EAF7EE]/95 to-[#DCF3E7]/95 border-[#BDE8D1] text-[#12452B]'
+              : toast.type === 'warning'
+              ? 'bg-gradient-to-r from-[#FEF9EE]/95 to-[#FEF3C7]/95 border-[#FDE68A] text-[#92400E]'
+              : 'bg-gradient-to-r from-[#FFF5F5]/95 to-[#FEE2E2]/95 border-[#FECACA] text-[#991B1B]'
+          }`}
+        >
+          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-[#1E6B47] shrink-0" />}
+          {toast.type === 'warning' && <AlertCircle className="w-5 h-5 text-[#D97706] shrink-0" />}
+          {toast.type === 'error' && <XCircle className="w-5 h-5 text-[#DC2626] shrink-0" />}
+          <span className="text-xs font-semibold leading-snug">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

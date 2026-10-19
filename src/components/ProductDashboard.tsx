@@ -24,9 +24,16 @@ import {
   Rocket,
   ArrowUpNarrowWide,
   ArrowDownWideNarrow,
+  LayoutGrid,
+  List as ListIcon,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  ShoppingBag,
+  ArrowRight
 } from 'lucide-react';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS } from '../data/herbalProducts';
-import { formatCompactNumber } from '../utils/numberFormatter';
+import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 
 export type SortOptionKey =
   | 'featured'
@@ -218,6 +225,14 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   const [sortBy, setSortBy] = useState<SortOptionKey>('featured');
   const [showInStockOnly, setShowInStockOnly] = useState(false);
   const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, selectedForm, searchQuery, sortBy, showInStockOnly]);
 
   const currentSortDef = useMemo(() => {
     return SORT_OPTIONS.find((o) => o.id === sortBy) || SORT_OPTIONS[0];
@@ -318,6 +333,12 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
     return list;
   }, [filteredProducts, sortBy]);
 
+  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage) || 1;
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedProducts.slice(start, start + itemsPerPage);
+  }, [sortedProducts, currentPage, itemsPerPage]);
+
   const hasActiveFilters =
     selectedCategory !== 'all' ||
     selectedForm !== 'all' ||
@@ -392,21 +413,53 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
         </div>
       </div>
 
-      {/* Simple Search Bar (Clicking opens Full Screen Search) */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E4DDD0] shadow-2xs">
+      {/* Category Filter Tabs with Smooth Tab Indicator (From Reference Image: Tabs) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => onSelectCategory('all')}
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+            selectedCategory === 'all'
+              ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-emerald-950/20'
+              : 'bg-white/80 hover:bg-[#DCF3E7] text-[#143B25] border border-[#DCEFE3]'
+          }`}
+        >
+          All Formulations
+        </button>
+        {categories.map((cat) => {
+          const isSelected = selectedCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onSelectCategory(cat.id as ProductCategory)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+                isSelected
+                  ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-emerald-950/20'
+                  : 'bg-white/80 hover:bg-[#DCF3E7] text-[#143B25] border border-[#DCEFE3]'
+              }`}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search & Layout Controls Bar with Aurora Glassmorphic Card */}
+      <div className="bg-white/90 backdrop-blur-md p-3.5 sm:p-4 rounded-3xl border border-[#DCEFE3] shadow-[0_8px_30px_rgba(20,50,30,0.04)]">
         <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
           <div
             onClick={() => onOpenFullSearch && onOpenFullSearch()}
             className="relative flex-1 cursor-pointer"
           >
-            <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#8A8070]" />
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#1E6B47]" />
             <input
               type="text"
               readOnly
               value={searchQuery}
               onClick={() => onOpenFullSearch && onOpenFullSearch()}
               placeholder="Search formulations, herbs, Sanskrit, monograph, dosage or price..."
-              className="w-full pl-10 pr-10 py-2 bg-[#FAF8F5] hover:bg-[#F3EFE7] border border-[#DDD5C5] hover:border-[#14291D]/40 rounded-xl text-xs text-[#1E2922] placeholder:text-[#8A8070] focus:outline-hidden transition-all cursor-pointer"
+              className="w-full pl-10 pr-10 py-2 bg-[#F6FAF7] hover:bg-[#EEF7F1] border border-[#DCEFE3] hover:border-[#1E6B47]/40 rounded-full text-xs text-[#142B1F] placeholder:text-[#6B8576] focus:outline-hidden transition-all cursor-pointer shadow-xs"
             />
             {searchQuery && (
               <button
@@ -415,7 +468,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
                   e.stopPropagation();
                   onSearchChange('');
                 }}
-                className="absolute right-2.5 top-2.5 text-[#887E6D] hover:text-[#14291D] cursor-pointer p-0.5"
+                className="absolute right-3 top-2.5 text-[#6B8576] hover:text-[#142B1F] cursor-pointer p-0.5"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -424,43 +477,73 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Grid vs Table View Mode Switcher from Reference Design */}
+            <div className="flex items-center bg-[#F0FAF4] p-1 rounded-full border border-[#DCEFE3]">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-[#143B25] text-white shadow-xs'
+                    : 'text-[#143B25] hover:text-[#1E6B47]'
+                }`}
+                title="Grid View"
+                aria-label="Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-[#143B25] text-white shadow-xs'
+                    : 'text-[#143B25] hover:text-[#1E6B47]'
+                }`}
+                title="Clean Table View"
+                aria-label="Clean Table View"
+              >
+                <ListIcon className="w-4 h-4" />
+              </button>
+            </div>
+
             {/* Minimal & Professional Sort Trigger Button */}
             <button
               type="button"
               onClick={() => setIsSortPopupOpen(true)}
-              className={`h-9 px-3 sm:px-3.5 bg-[#FAF8F5] hover:bg-[#F2ECE1] active:bg-[#EAE2D2] border ${
+              className={`h-9 px-3.5 bg-white hover:bg-[#F0FAF4] active:bg-[#DCF3E7] border ${
                 sortBy !== 'featured'
-                  ? 'border-[#2C5E43] ring-1 ring-[#2C5E43]/20 bg-[#F3F8F5]'
-                  : 'border-[#DDD5C5]'
-              } rounded-xl text-xs font-medium text-[#2F281E] flex items-center gap-2 transition-all cursor-pointer shadow-2xs group shrink-0`}
+                  ? 'border-[#1E6B47] ring-1 ring-[#1E6B47]/20 bg-[#F0FAF4]'
+                  : 'border-[#DCEFE3]'
+              } rounded-full text-xs font-semibold text-[#143B25] flex items-center gap-2 transition-all cursor-pointer shadow-xs group shrink-0`}
               aria-label="Sort catalog formulations"
               title="Sort: Change catalog ordering"
             >
               <div
-                className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                  sortBy !== 'featured' ? 'bg-[#2C5E43] text-white' : 'bg-[#EAE2D2] text-[#2C5E43]'
+                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                  sortBy !== 'featured' ? 'bg-[#1E6B47] text-white' : 'bg-[#DCF3E7] text-[#1E6B47]'
                 }`}
               >
                 <ArrowUpDown className="w-3 h-3" />
               </div>
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[#7A705E] font-normal hidden md:inline">Sort:</span>
-                <span className="font-semibold text-[#14291D] truncate max-w-[130px] sm:max-w-none">
+                <span className="text-[#6B8576] font-normal hidden md:inline">Sort:</span>
+                <span className="font-bold text-[#143B25] truncate max-w-[130px] sm:max-w-none">
                   {currentSortDef.shortLabel}
                 </span>
                 {currentSortDef.badge && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#EAE2D2] text-[#4A3D2A] border border-[#D5C9B7] hidden sm:inline leading-none">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hidden sm:inline leading-none">
                     {currentSortDef.badge}
                   </span>
                 )}
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-[#8A8070] ml-0.5 group-hover:text-[#14291D] transition-transform group-hover:translate-y-0.5" />
+              <ChevronDown className="w-3.5 h-3.5 text-[#6B8576] ml-0.5 group-hover:text-[#143B25] transition-transform group-hover:translate-y-0.5" />
             </button>
 
             {hasActiveFilters && (
               <button
                 onClick={handleResetFilters}
-                className="p-2 text-[#645A4A] hover:text-[#14291D] hover:bg-[#F2ECE1] rounded-xl border border-[#DDD5C5] text-xs transition-colors cursor-pointer"
+                className="p-2 text-[#6B8576] hover:text-[#143B25] hover:bg-[#F0FAF4] rounded-full border border-[#DCEFE3] text-xs transition-colors cursor-pointer shadow-2xs"
                 title="Reset filters and restore catalog order"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -624,24 +707,199 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
         )}
       </div>
 
-      {/* Product Cards Grid */}
+      {/* Product Display: Clean Table View OR Grid View (From Reference Image) */}
       {sortedProducts.length === 0 ? (
-        <div className="bg-white rounded-xl border border-[#E4DDD0] p-10 text-center space-y-3">
-          <h3 className="font-serif text-lg font-bold text-[#14291D]">
+        <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-[#DCEFE3] p-12 text-center space-y-4 shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-[#DCF3E7] text-[#143B25] flex items-center justify-center mx-auto shadow-inner">
+            <Search className="w-6 h-6" />
+          </div>
+          <h3 className="font-serif text-xl font-bold text-[#142B1F]">
             No Formulations Found
           </h3>
-          <p className="text-xs text-[#635A4B] max-w-sm mx-auto">
-            Try adjusting your search query or reset the filter to view all products.
+          <p className="text-xs sm:text-sm text-[#526B5C] max-w-md mx-auto leading-relaxed">
+            We couldn't find any herbal remedies matching your query. Try searching by Sanskrit name, botanical name, therapeutic ailment, or reset the filters.
           </p>
           <button
             onClick={handleResetFilters}
-            className="px-4 py-2 text-xs font-medium text-white bg-[#14291D] hover:bg-[#203E2D] rounded-lg transition-colors cursor-pointer"
+            className="aurora-btn-primary px-6 py-2.5 text-xs inline-flex items-center gap-2 cursor-pointer"
           >
-            Show All Products
+            <span>Show All Products</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
+      ) : viewMode === 'table' ? (
+        /* Reference Clean Table View with Subtle Row Hover */
+        <div className="space-y-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-[#DCEFE3] shadow-[0_8px_30px_rgba(20,50,30,0.04)] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#E3EFE7] bg-[#F4FAF6]/70 text-[11px] font-bold uppercase tracking-wider text-[#4A6B56]">
+                    <th className="py-3.5 px-4 sm:px-6">Product</th>
+                    <th className="py-3.5 px-4">Price</th>
+                    <th className="py-3.5 px-4">Stock</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EDF5F0] text-xs">
+                  {paginatedProducts.map((product) => {
+                    const priceFormatted = formatPrice(product.price);
+                    const isInCart = cartProductIds.has(product.id);
+                    return (
+                      <tr
+                        key={product.id}
+                        onClick={() => onOpenProductDetail(product)}
+                        className="group hover:bg-[#F2FAF5]/80 transition-colors cursor-pointer"
+                      >
+                        {/* Product Info */}
+                        <td className="py-3.5 px-4 sm:px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-[#EAF5EE] overflow-hidden shrink-0 border border-[#DCEFE3] relative">
+                              <img
+                                src={product.image || (product.images && product.images[0]) || ''}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-[#142B1F] group-hover:text-[#1E6B47] transition-colors truncate max-w-xs">
+                                {product.name}
+                              </div>
+                              <div className="text-[11px] text-[#6B8576] italic truncate">
+                                {product.sanskritName || product.categoryLabel || product.category}
+                              </div>
+                              <div className="text-[10px] text-[#8EA396] mt-0.5">
+                                {product.volumeOrWeight} • {product.form}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Price */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="font-bold text-[#142B1F] text-sm">
+                            {priceFormatted}
+                          </div>
+                          {product.mrp && product.mrp > product.price && (
+                            <div className="text-[10px] text-[#8EA396] line-through">
+                              {formatPrice(product.mrp)}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Stock */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {product.inStock ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#1E6B47] animate-pulse" />
+                              In Stock
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]">
+                              Out of Stock
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Status (Reference design Active/Draft pill) */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#EAF7EE] text-[#1E6B47] border border-[#C6ECD3]">
+                            Active
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onOpenProductDetail(product)}
+                              className="w-8 h-8 rounded-full border border-[#DCEFE3] bg-white hover:bg-[#DCF3E7] text-[#143B25] flex items-center justify-center transition-colors shadow-2xs"
+                              title="View formulation monograph & therapeutic guide"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            {product.inStock && (
+                              <button
+                                type="button"
+                                onClick={() => onAddToCart(product)}
+                                className={`h-8 px-3.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ${
+                                  isInCart
+                                    ? 'bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
+                                    : 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white hover:shadow-md'
+                                }`}
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                                <span>{isInCart ? 'In Cart' : 'Add to Cart'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Reference List / Pagination Controls: Circular & Soft-Pill Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2 px-2 flex-wrap gap-3">
+              <div className="text-xs text-[#526B5C]">
+                Showing page <span className="font-bold text-[#142B1F]">{currentPage}</span> of{' '}
+                <span className="font-bold text-[#142B1F]">{totalPages}</span> ({sortedProducts.length} items)
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="w-8 h-8 rounded-full border border-[#DCEFE3] bg-white text-[#143B25] hover:bg-[#DCF3E7] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center transition-colors shadow-2xs"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${
+                      currentPage === page
+                        ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-xs'
+                        : 'bg-white border border-[#DCEFE3] text-[#143B25] hover:bg-[#DCF3E7]'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="w-8 h-8 rounded-full border border-[#DCEFE3] bg-white text-[#143B25] hover:bg-[#DCF3E7] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center transition-colors shadow-2xs"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        /* Reference Grid Card Layout */
+        <div className={
+          siteSettings?.productCardDisplay?.catalogCardStyle === 'modern'
+            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5'
+            : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5'
+        }>
           {sortedProducts.map((product) => (
             <ProductCard
               key={product.id}

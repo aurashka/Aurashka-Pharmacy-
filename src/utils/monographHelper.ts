@@ -415,14 +415,6 @@ export const buildDefaultMonographTabs = (product: HerbalProduct): ProductMonogr
     },
   ];
 
-export const cleanMonographTabTitle = (title: string): string => {
-  if (!title) return '';
-  return title
-    .replace(/^(?:Default\s*)?Tab\s*\d+\s*:\s*/i, '')
-    .replace(/^(?:Default\s*)?Tab\s*#?\d+\s*[-–—:]\s*/i, '')
-    .trim();
-};
-
   return [
     {
       id: 'overview',
@@ -485,6 +477,14 @@ export const cleanMonographTabTitle = (title: string): string => {
       order: 6,
     },
   ];
+};
+
+export const cleanMonographTabTitle = (title: string): string => {
+  if (!title) return '';
+  return title
+    .replace(/^(?:Default\s*)?Tab\s*\d+\s*:\s*/i, '')
+    .replace(/^(?:Default\s*)?Tab\s*#?\d+\s*[-–—:]\s*/i, '')
+    .trim();
 };
 
 /**

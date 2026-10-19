@@ -361,7 +361,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }, [allProducts, product.id, product.category]);
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1E2922]">
+    <div className="min-h-screen bg-[#F6FAF7] text-[#142B1F] relative z-10">
       {/* Top Navigation & Breadcrumb Bar */}
       <div className="bg-[#14291D] text-white border-b border-[#234D34] sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">

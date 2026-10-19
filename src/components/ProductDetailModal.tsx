@@ -194,26 +194,31 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   return (
     <>
       <div 
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-xs"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-[#FBF9F5] border border-[#DDD5C5] rounded-2xl shadow-2xl text-[#1E2922]"
+          className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-[#F6FAF7] border border-[#DCEFE3] rounded-3xl shadow-[0_25px_60px_-15px_rgba(20,59,37,0.35)] text-[#142B1F] animate-in zoom-in-95 duration-200 scrollbar-thin"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-3.5 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E7DFD1]">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#2C5E43] uppercase tracking-wider">
-              <span>Apothecary Monograph & Gallery</span>
-              <span aria-hidden="true" className="text-[#BDB19C]">·</span>
-              <span className="font-mono text-[#6E6352]">{product.ayushLicenseNo}</span>
+          {/* Header with Leaf Icon and Aurora Glow (From Reference Image) */}
+          <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-4 bg-white/90 backdrop-blur-xl border-b border-[#DCEFE3]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#DCF3E7] text-[#143B25] flex items-center justify-center shadow-xs">
+                <Leaf className="w-4 h-4 text-[#1E6B47]" />
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-[#143B25] tracking-wide">
+                <span>Apothecary Monograph & Gallery</span>
+                <span aria-hidden="true" className="text-[#A4B5AC]">·</span>
+                <span className="font-mono text-[#6B8576] font-normal">{product.ayushLicenseNo}</span>
+              </div>
             </div>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="p-1.5 text-[#665D4D] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg transition-colors cursor-pointer"
+              className="w-8 h-8 flex items-center justify-center text-[#6B8576] hover:text-[#142B1F] hover:bg-[#DCF3E7] rounded-full transition-colors cursor-pointer border border-transparent hover:border-[#DCEFE3]"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -640,7 +645,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <button
                       disabled={!isAvailableInStock}
                       onClick={() => onAddToCart({
@@ -651,19 +656,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         volumeOrWeight: selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight,
                         image: (selectedVariant?.image) || product.image,
                       })}
-                      className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs ${
+                      className={`h-10 px-5 text-xs font-bold rounded-full transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
                         !isAvailableInStock
-                          ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                          ? 'bg-stone-200 text-stone-500 cursor-not-allowed border border-stone-300'
                           : isInCart
-                            ? 'bg-[#2C5E43] text-white cursor-pointer'
-                            : 'bg-[#14291D] text-white hover:bg-[#203E2D] cursor-pointer'
+                            ? 'bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
+                            : 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white hover:shadow-md'
                       }`}
                     >
                       {!isAvailableInStock ? (
                         <span>Out of Stock</span>
                       ) : isInCart ? (
                         <>
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5 text-[#1E6B47]" />
                           <span>In Order Bag</span>
                         </>
                       ) : (
@@ -676,7 +681,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                     <button
                       onClick={handleWhatsAppConsult}
-                      className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#25D366] text-white hover:bg-[#20bd5a] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      className="h-10 px-5 text-xs font-bold rounded-full bg-[#128C7E] hover:bg-[#075E54] text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
                     >
                       {product.customLink ? (
                         <>

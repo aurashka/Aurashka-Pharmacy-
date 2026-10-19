@@ -21,8 +21,14 @@ export const Footer: React.FC<FooterProps> = ({
 }) => {
   const { currentUser } = useAuth();
   return (
-    <footer className="bg-[#14291D] text-[#BACEC2] text-xs border-t border-[#1C3A27]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <footer className="relative z-10 bg-[#14291D] text-[#BACEC2] text-xs border-t border-[#1C3A27] overflow-hidden">
+      {/* Controlled Dark Aurora Ambient Glows (Controlled deep emerald tone, no harsh white wash) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-16 -right-10 w-72 h-72 bg-[#1E6B47]/22 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 left-10 w-64 h-64 bg-[#2D8558]/12 rounded-full blur-3xl pointer-events-none" />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Col 1: Brand Info */}
           <div className="space-y-2">

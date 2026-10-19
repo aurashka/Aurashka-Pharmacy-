@@ -33,7 +33,9 @@ import {
   ProductMonographTab,
   MonographDetailItem,
   MonographPriority,
-  ProductCustomDetailItem
+  ProductCustomDetailItem,
+  ProductCardDisplaySettings,
+  ProductCardDesignStyle
 } from '../types/pharmacy';
 import { MarqueeTicker } from './MarqueeTicker';
 import { ProductMonographTabs } from './ProductMonographTabs';
@@ -64,6 +66,7 @@ import {
   Link as LinkIcon, 
   Phone, 
   MessageSquare, 
+  MessageCircle,
   Mail, 
   Building2, 
   FileText,
@@ -118,7 +121,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
-import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS, DEFAULT_MARQUEE_CONFIG } from '../data/herbalProducts';
+import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SETTINGS, DEFAULT_BANNER_SLIDER, DEFAULT_PRODUCT_HORIZONTAL_LISTS, DEFAULT_MARQUEE_CONFIG, DEFAULT_PRODUCT_CARD_DISPLAY } from '../data/herbalProducts';
 import { detectVideoType, getYouTubeEmbedUrl, getYouTubeThumbnail, isValidVideoUrl } from '../utils/videoHelper';
 import { GRADIENT_OVERLAY_OPTIONS, GradientOverlayStyle, getProductBottomOverlayClasses } from '../utils/gradientHelper';
 import { CustomDetailsBuilder } from './CustomDetailsBuilder';
@@ -159,7 +162,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateForms,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'monograph_tabs' | 'deal_of_week' | 'marquee' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'monograph_tabs' | 'deal_of_week' | 'marquee' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages' | 'product_card_display'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -462,17 +465,65 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             ? (Object.values(s.marquee.items) as any[])
             : (DEFAULT_MARQUEE_CONFIG?.items || [])),
       },
+      productCardDisplay: {
+        searchCardStyle: s.productCardDisplay?.searchCardStyle || DEFAULT_PRODUCT_CARD_DISPLAY?.searchCardStyle || 'classic',
+        catalogCardStyle: s.productCardDisplay?.catalogCardStyle || DEFAULT_PRODUCT_CARD_DISPLAY?.catalogCardStyle || 'classic',
+        showImage: s.productCardDisplay?.showImage !== undefined ? Boolean(s.productCardDisplay.showImage) : true,
+        showName: s.productCardDisplay?.showName !== undefined ? Boolean(s.productCardDisplay.showName) : true,
+        showSanskritName: s.productCardDisplay?.showSanskritName !== undefined ? Boolean(s.productCardDisplay.showSanskritName) : true,
+        showPrice: s.productCardDisplay?.showPrice !== undefined ? Boolean(s.productCardDisplay.showPrice) : true,
+        showResellerPrice: s.productCardDisplay?.showResellerPrice !== undefined ? Boolean(s.productCardDisplay.showResellerPrice) : true,
+        showMrpAndOffer: s.productCardDisplay?.showMrpAndOffer !== undefined ? Boolean(s.productCardDisplay.showMrpAndOffer) : true,
+        showTag: s.productCardDisplay?.showTag !== undefined ? Boolean(s.productCardDisplay.showTag) : true,
+        showRating: s.productCardDisplay?.showRating !== undefined ? Boolean(s.productCardDisplay.showRating) : true,
+        showAddToCart: s.productCardDisplay?.showAddToCart !== undefined ? Boolean(s.productCardDisplay.showAddToCart) : true,
+        showQuickView: s.productCardDisplay?.showQuickView !== undefined ? Boolean(s.productCardDisplay.showQuickView) : true,
+        showSeller: s.productCardDisplay?.showSeller !== undefined ? Boolean(s.productCardDisplay.showSeller) : true,
+        showVolume: s.productCardDisplay?.showVolume !== undefined ? Boolean(s.productCardDisplay.showVolume) : true,
+        showTagline: s.productCardDisplay?.showTagline !== undefined ? Boolean(s.productCardDisplay.showTagline) : true,
+        showWhatsApp: s.productCardDisplay?.showWhatsApp !== undefined ? Boolean(s.productCardDisplay.showWhatsApp) : true,
+      },
     };
   };
 
   // Site Settings & Multiple Contacts Local Form State
   const [siteForm, setSiteForm] = useState<SiteSettings>(() => normalizeSettings(siteSettings));
 
+  // Product Card Display Form & Preview Mode
+  const [cardDisplayForm, setCardDisplayForm] = useState<ProductCardDisplaySettings>(() => {
+    return siteSettings?.productCardDisplay || DEFAULT_PRODUCT_CARD_DISPLAY;
+  });
+  const [cardDisplayPreviewMode, setCardDisplayPreviewMode] = useState<'search' | 'catalog'>('search');
+
   useEffect(() => {
     if (siteSettings) {
-      setSiteForm(normalizeSettings(siteSettings));
+      const normalized = normalizeSettings(siteSettings);
+      setSiteForm(normalized);
+      if (normalized.productCardDisplay) {
+        setCardDisplayForm(normalized.productCardDisplay);
+      }
     }
   }, [siteSettings]);
+
+  const updateCardDisplayField = (field: keyof ProductCardDisplaySettings, val: any) => {
+    setCardDisplayForm(prev => ({
+      ...prev,
+      [field]: val,
+    }));
+  };
+
+  const handleSaveCardDisplay = async (customDisplay?: ProductCardDisplaySettings) => {
+    const toSave = customDisplay || cardDisplayForm;
+    const updatedSiteSettings: SiteSettings = {
+      ...siteForm,
+      productCardDisplay: toSave,
+    };
+    setSiteForm(updatedSiteSettings);
+    onUpdateSiteSettings(updatedSiteSettings);
+    await backupSiteSettingsToFirebase(updatedSiteSettings);
+    setSaveSuccessMsg('Product View & Search Card Design settings successfully saved and applied to Storefront!');
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
 
   const updateHeaderBanner = (updates: Partial<HeaderBannerConfig>) => {
     setSiteForm(prev => ({
@@ -2219,6 +2270,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <option value="site_titles">🏷️ Website Titles & Banner Texts</option>
             <option value="assurance_badges">🛡️ Ayush & Quality Assurance Badges (Product View)</option>
             <option value="messages">💬 WhatsApp & Email Custom Messages</option>
+            <option value="product_card_display">🎨 Search & Product Card Design (Modern / Default)</option>
           </select>
         </div>
 
@@ -2414,6 +2466,30 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             >
               <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#25D366]' : 'text-[#25D366]'}`} />
               <span>WhatsApp & Email Messages</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('product_card_display');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'product_card_display'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Palette className={`w-3.5 h-3.5 ${activeTab === 'product_card_display' ? 'text-amber-300' : 'text-[#2C5E43]'}`} />
+              <span>Search & Product View Design</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                cardDisplayForm.searchCardStyle === 'modern'
+                  ? 'bg-amber-100 text-amber-900 font-bold'
+                  : 'bg-stone-100 text-stone-700'
+              }`}>
+                {cardDisplayForm.searchCardStyle === 'modern' ? 'Modern' : 'Default'}
+              </span>
             </button>
           </div>
         </div>
@@ -11389,6 +11465,953 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Tab: Product Card Display & Full-Screen Search View Customizer */}
+        {activeTab === 'product_card_display' && (
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-6 pb-28 sm:pb-8">
+            {/* Header Banner */}
+            <div className="bg-linear-to-r from-[#14291D] via-[#1E3F2C] to-[#2C5E43] text-white p-4 sm:p-5 rounded-2xl shadow-md border border-[#3E7A5A]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400 text-[#14291D] text-[10px] font-bold uppercase tracking-wider">
+                    Design Manager
+                  </span>
+                  <h3 className="font-serif text-lg sm:text-xl font-bold text-white">
+                    Product View & Full-Screen Search Card Design
+                  </h3>
+                </div>
+                <p className="text-xs text-[#DDD5C5] max-w-2xl leading-relaxed">
+                  Configure whether products in <strong>Full-Screen Search</strong> and <strong>Product List / Catalog</strong> are displayed in the <strong>Default Classic Style</strong> (Image on top) or the <strong>Modern Style</strong> (Attached Image Style: Left content with Top Rating Star, Name, Price & Buy + Right Full Image). Select exactly which elements to show or hide.
+                </p>
+              </div>
+
+              {/* Quick Save Header Button */}
+              <button
+                type="button"
+                onClick={() => handleSaveCardDisplay()}
+                className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-[#14291D] font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
+              >
+                <Save className="w-4 h-4 text-[#14291D]" />
+                <span>Save & Apply Design</span>
+              </button>
+            </div>
+
+            {/* Quick Presets Bar */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#D5CCBC] shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#B4741E]" />
+                <span className="text-xs font-bold text-[#14291D]">Quick Design Presets:</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const preset: ProductCardDisplaySettings = {
+                      searchCardStyle: 'modern',
+                      catalogCardStyle: 'classic',
+                      showImage: true,
+                      showName: true,
+                      showSanskritName: true,
+                      showPrice: true,
+                      showResellerPrice: true,
+                      showMrpAndOffer: true,
+                      showTag: true,
+                      showRating: true,
+                      showAddToCart: true,
+                      showQuickView: true,
+                      showSeller: true,
+                      showVolume: true,
+                      showTagline: true,
+                      showWhatsApp: true,
+                    };
+                    setCardDisplayForm(preset);
+                  }}
+                  className="px-3 py-1.5 bg-[#FAF8F5] hover:bg-[#F2EDE1] text-[#14291D] border border-[#C8BEAB] rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  <span>✨ Modern Search + Classic Catalog</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const preset: ProductCardDisplaySettings = {
+                      searchCardStyle: 'modern',
+                      catalogCardStyle: 'modern',
+                      showImage: true,
+                      showName: true,
+                      showSanskritName: true,
+                      showPrice: true,
+                      showResellerPrice: true,
+                      showMrpAndOffer: true,
+                      showTag: true,
+                      showRating: true,
+                      showAddToCart: true,
+                      showQuickView: true,
+                      showSeller: true,
+                      showVolume: true,
+                      showTagline: true,
+                      showWhatsApp: true,
+                    };
+                    setCardDisplayForm(preset);
+                  }}
+                  className="px-3 py-1.5 bg-[#14291D] text-white hover:bg-[#203E2D] rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
+                >
+                  <Star className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                  <span>🌟 Modern Style Everywhere (Attached Image Style)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const preset: ProductCardDisplaySettings = {
+                      searchCardStyle: 'classic',
+                      catalogCardStyle: 'classic',
+                      showImage: true,
+                      showName: true,
+                      showSanskritName: true,
+                      showPrice: true,
+                      showResellerPrice: true,
+                      showMrpAndOffer: true,
+                      showTag: true,
+                      showRating: true,
+                      showAddToCart: true,
+                      showQuickView: true,
+                      showSeller: true,
+                      showVolume: true,
+                      showTagline: true,
+                      showWhatsApp: true,
+                    };
+                    setCardDisplayForm(preset);
+                  }}
+                  className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-stone-600" />
+                  <span>🏛️ Default Classic Layout</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 1. Layout Style Switchers (Search vs Product List Catalog) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Box A: Full Screen Search View Design */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#F2EDE1] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-[#2C5E43]" />
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      1. Full-Screen Search View Style
+                    </h4>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E7EFEA] text-[#183624]">
+                    Active: {cardDisplayForm.searchCardStyle === 'modern' ? 'Modern Attached Style' : 'Default Classic'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-[#716858]">
+                  Select the card presentation when users open the full-screen search bar:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Modern Style Option */}
+                  <label
+                    onClick={() => updateCardDisplayField('searchCardStyle', 'modern')}
+                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      cardDisplayForm.searchCardStyle === 'modern'
+                        ? 'border-[#14291D] bg-[#F7FAF8] shadow-sm ring-1 ring-[#14291D]/20'
+                        : 'border-[#DDD5C5] bg-white hover:border-[#8C8270]'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14291D] flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="searchCardStyle"
+                            checked={cardDisplayForm.searchCardStyle === 'modern'}
+                            onChange={() => updateCardDisplayField('searchCardStyle', 'modern')}
+                            className="text-[#14291D] focus:ring-[#14291D]"
+                          />
+                          <span>Modern Style</span>
+                        </span>
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-900 border border-amber-300/80">
+                          Attached Image
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#716858] leading-snug">
+                        Left: Rating star, Name, Price & Buy. Right: Full product image.
+                      </p>
+                    </div>
+
+                    {/* Visual Miniature Schematic */}
+                    <div className="mt-3 p-2 bg-white rounded-lg border border-[#DDD5C5] flex items-center justify-between gap-1.5 text-[9px]">
+                      <div className="flex-1 space-y-0.5">
+                        <div className="flex items-center gap-1 text-amber-500 font-bold">
+                          <span>★ 4.9</span>
+                        </div>
+                        <div className="h-2 w-16 bg-stone-300 rounded" />
+                        <div className="flex items-center gap-1 pt-0.5">
+                          <span className="font-bold text-[#14291D]">₹299</span>
+                          <span className="px-1 py-0.2 bg-[#14291D] text-white rounded font-bold">Buy</span>
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 bg-linear-to-b from-stone-200 to-stone-300 rounded flex items-center justify-center font-bold text-stone-500 shrink-0">
+                        🖼️
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Classic Style Option */}
+                  <label
+                    onClick={() => updateCardDisplayField('searchCardStyle', 'classic')}
+                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      cardDisplayForm.searchCardStyle === 'classic'
+                        ? 'border-[#14291D] bg-[#F7FAF8] shadow-sm ring-1 ring-[#14291D]/20'
+                        : 'border-[#DDD5C5] bg-white hover:border-[#8C8270]'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14291D] flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="searchCardStyle"
+                            checked={cardDisplayForm.searchCardStyle === 'classic'}
+                            onChange={() => updateCardDisplayField('searchCardStyle', 'classic')}
+                            className="text-[#14291D] focus:ring-[#14291D]"
+                          />
+                          <span>Default Classic</span>
+                        </span>
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-stone-100 text-stone-700 border border-stone-300">
+                          Original
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#716858] leading-snug">
+                        Image on top with product details and buy buttons stacked below.
+                      </p>
+                    </div>
+
+                    {/* Visual Miniature Schematic */}
+                    <div className="mt-3 p-2 bg-white rounded-lg border border-[#DDD5C5] space-y-1 text-[9px]">
+                      <div className="w-full h-6 bg-stone-200 rounded flex items-center justify-center text-stone-500 font-bold">
+                        🖼️ Image Top
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="h-2 w-12 bg-stone-300 rounded" />
+                        <span className="text-[#14291D] font-bold">₹299</span>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Box B: Product List / Catalog Grid Style */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#D5CCBC] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#F2EDE1] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4 text-[#2C5E43]" />
+                    <h4 className="font-serif font-bold text-sm text-[#14291D]">
+                      2. Product List & Catalog Grid Style
+                    </h4>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E7EFEA] text-[#183624]">
+                    Active: {cardDisplayForm.catalogCardStyle === 'modern' ? 'Modern Attached Style' : 'Default Classic'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-[#716858]">
+                  Select the card presentation in the main storefront catalog product grid:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Classic Catalog Option */}
+                  <label
+                    onClick={() => updateCardDisplayField('catalogCardStyle', 'classic')}
+                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      cardDisplayForm.catalogCardStyle === 'classic'
+                        ? 'border-[#14291D] bg-[#F7FAF8] shadow-sm ring-1 ring-[#14291D]/20'
+                        : 'border-[#DDD5C5] bg-white hover:border-[#8C8270]'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14291D] flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="catalogCardStyle"
+                            checked={cardDisplayForm.catalogCardStyle === 'classic'}
+                            onChange={() => updateCardDisplayField('catalogCardStyle', 'classic')}
+                            className="text-[#14291D] focus:ring-[#14291D]"
+                          />
+                          <span>Default Classic</span>
+                        </span>
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-stone-100 text-stone-700 border border-stone-300">
+                          Standard Grid
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#716858] leading-snug">
+                        Original 3-4 column apothecary grid layout with image on top.
+                      </p>
+                    </div>
+
+                    <div className="mt-3 p-2 bg-white rounded-lg border border-[#DDD5C5] space-y-1 text-[9px]">
+                      <div className="w-full h-6 bg-stone-200 rounded flex items-center justify-center text-stone-500 font-bold">
+                        🖼️ Image Top
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="h-2 w-12 bg-stone-300 rounded" />
+                        <span className="text-[#14291D] font-bold">₹299</span>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Modern Catalog Option */}
+                  <label
+                    onClick={() => updateCardDisplayField('catalogCardStyle', 'modern')}
+                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      cardDisplayForm.catalogCardStyle === 'modern'
+                        ? 'border-[#14291D] bg-[#F7FAF8] shadow-sm ring-1 ring-[#14291D]/20'
+                        : 'border-[#DDD5C5] bg-white hover:border-[#8C8270]'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#14291D] flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="catalogCardStyle"
+                            checked={cardDisplayForm.catalogCardStyle === 'modern'}
+                            onChange={() => updateCardDisplayField('catalogCardStyle', 'modern')}
+                            className="text-[#14291D] focus:ring-[#14291D]"
+                          />
+                          <span>Modern Style</span>
+                        </span>
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-900 border border-amber-300/80">
+                          Attached Image
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#716858] leading-snug">
+                        Spacious modern cards with right full image and left details.
+                      </p>
+                    </div>
+
+                    <div className="mt-3 p-2 bg-white rounded-lg border border-[#DDD5C5] flex items-center justify-between gap-1.5 text-[9px]">
+                      <div className="flex-1 space-y-0.5">
+                        <div className="flex items-center gap-1 text-amber-500 font-bold">
+                          <span>★ 4.9</span>
+                        </div>
+                        <div className="h-2 w-16 bg-stone-300 rounded" />
+                        <div className="flex items-center gap-1 pt-0.5">
+                          <span className="font-bold text-[#14291D]">₹299</span>
+                          <span className="px-1 py-0.2 bg-[#14291D] text-white rounded font-bold">Buy</span>
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 bg-linear-to-b from-stone-200 to-stone-300 rounded flex items-center justify-center font-bold text-stone-500 shrink-0">
+                        🖼️
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Element Selection Checkboxes ("कौन-कौन se elements honge") */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#F2EDE1] gap-2">
+                <div>
+                  <h4 className="font-serif font-bold text-sm sm:text-base text-[#14291D] flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-[#2C5E43]" />
+                    <span>Card Elements Visibility (Select Elements to Show)</span>
+                  </h4>
+                  <p className="text-xs text-[#716858]">
+                    Control which data points appear on the product card in both Search and Product lists:
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCardDisplayForm(prev => ({
+                        ...prev,
+                        showImage: true,
+                        showName: true,
+                        showSanskritName: true,
+                        showPrice: true,
+                        showResellerPrice: true,
+                        showMrpAndOffer: true,
+                        showTag: true,
+                        showRating: true,
+                        showAddToCart: true,
+                        showQuickView: true,
+                        showSeller: true,
+                        showVolume: true,
+                        showTagline: true,
+                        showWhatsApp: true,
+                      }));
+                    }}
+                    className="px-2.5 py-1 bg-[#FAF8F5] hover:bg-[#F2EDE1] text-[#14291D] border border-[#DDD5C5] rounded-lg text-[11px] font-semibold cursor-pointer"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCardDisplayForm(prev => ({
+                        ...prev,
+                        ...DEFAULT_PRODUCT_CARD_DISPLAY,
+                      }));
+                    }}
+                    className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-lg text-[11px] font-semibold cursor-pointer"
+                  >
+                    Reset Defaults
+                  </button>
+                </div>
+              </div>
+
+              {/* Elements Checkbox Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {/* 1. Image */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showImage !== false}
+                    onChange={(e) => updateCardDisplayField('showImage', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🖼️ Product Image</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Right side in modern, top in classic</span>
+                  </div>
+                </label>
+
+                {/* 2. Rating */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showRating !== false}
+                    onChange={(e) => updateCardDisplayField('showRating', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">⭐ Star Rating & Reviews</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Top star rating e.g. 4.9 (1.2k)</span>
+                  </div>
+                </label>
+
+                {/* 3. Name */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showName !== false}
+                    onChange={(e) => updateCardDisplayField('showName', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🏷️ Product Name</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Title of formulation</span>
+                  </div>
+                </label>
+
+                {/* 4. Sanskrit Name */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showSanskritName !== false}
+                    onChange={(e) => updateCardDisplayField('showSanskritName', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🌿 Sanskrit Classical Name</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Classical botanical term in italics</span>
+                  </div>
+                </label>
+
+                {/* 5. Seller */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showSeller !== false}
+                    onChange={(e) => updateCardDisplayField('showSeller', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🏢 Seller / Brand Name</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Seller name e.g. Shree Ayur Pharma</span>
+                  </div>
+                </label>
+
+                {/* 6. Volume */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showVolume !== false}
+                    onChange={(e) => updateCardDisplayField('showVolume', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">📦 Volume / Pack Size</span>
+                    <span className="text-[10px] text-[#716858] block truncate">e.g. 450ml / 60 Tablets</span>
+                  </div>
+                </label>
+
+                {/* 7. Tagline */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showTagline !== false}
+                    onChange={(e) => updateCardDisplayField('showTagline', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">💬 Tagline & Key Indications</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Clinical benefits summary</span>
+                  </div>
+                </label>
+
+                {/* 8. Price */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showPrice !== false}
+                    onChange={(e) => updateCardDisplayField('showPrice', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">💰 Selling Price (₹)</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Main product sale price</span>
+                  </div>
+                </label>
+
+                {/* 9. MRP & Discount Offer */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showMrpAndOffer !== false}
+                    onChange={(e) => updateCardDisplayField('showMrpAndOffer', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🏷️ MRP & Discount %</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Strikethrough MRP and % OFF badge</span>
+                  </div>
+                </label>
+
+                {/* 10. Reseller Price */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showResellerPrice !== false}
+                    onChange={(e) => updateCardDisplayField('showResellerPrice', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">💼 Reseller Wholesale Rate</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Reseller margin & wholesale pill</span>
+                  </div>
+                </label>
+
+                {/* 11. Deal / Badges */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showTag !== false}
+                    onChange={(e) => updateCardDisplayField('showTag', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🎖️ Status & Deal Badges</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Bestseller, Trending, Deals</span>
+                  </div>
+                </label>
+
+                {/* 12. Buy Button */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showAddToCart !== false}
+                    onChange={(e) => updateCardDisplayField('showAddToCart', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">🛒 Buy / Add to Bag Button</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Direct order action button</span>
+                  </div>
+                </label>
+
+                {/* 13. Quick View / Eye */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showQuickView !== false}
+                    onChange={(e) => updateCardDisplayField('showQuickView', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">👁️ Quick View Eye Icon</span>
+                    <span className="text-[10px] text-[#716858] block truncate">View monograph formulations</span>
+                  </div>
+                </label>
+
+                {/* 14. WhatsApp Consult */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#E7DFD1] hover:bg-[#FAF8F5] cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={cardDisplayForm.showWhatsApp !== false}
+                    onChange={(e) => updateCardDisplayField('showWhatsApp', e.target.checked)}
+                    className="rounded text-[#14291D] focus:ring-[#14291D] w-4 h-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-xs text-[#14291D] block">💬 WhatsApp Inquiry</span>
+                    <span className="text-[10px] text-[#716858] block truncate">Quick doctor order & inquiry</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* 3. Real-Time Interactive Live Preview */}
+            <div className="bg-[#FAF8F5] p-4 sm:p-5 rounded-2xl border border-[#D5CCBC] shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-[#E7DFD1] gap-2">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-[#2C5E43]" />
+                  <h4 className="font-serif font-bold text-sm sm:text-base text-[#14291D]">
+                    Live Interactive Storefront Preview
+                  </h4>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-900">
+                    Real-Time Rendering
+                  </span>
+                </div>
+
+                {/* Preview View Mode Switcher */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#DDD5C5]">
+                  <button
+                    type="button"
+                    onClick={() => setCardDisplayPreviewMode('search')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                      cardDisplayPreviewMode === 'search'
+                        ? 'bg-[#14291D] text-white shadow-xs'
+                        : 'text-[#695F4F] hover:bg-stone-100'
+                    }`}
+                  >
+                    🔍 Search View ({cardDisplayForm.searchCardStyle === 'modern' ? 'Modern' : 'Default'})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCardDisplayPreviewMode('catalog')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                      cardDisplayPreviewMode === 'catalog'
+                        ? 'bg-[#14291D] text-white shadow-xs'
+                        : 'text-[#695F4F] hover:bg-stone-100'
+                    }`}
+                  >
+                    🛍️ Catalog View ({cardDisplayForm.catalogCardStyle === 'modern' ? 'Modern' : 'Default'})
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Preview Display Box */}
+              {(() => {
+                const sampleProd = products[0] || {
+                  id: 'sample-p1',
+                  name: 'Ashwagandharishta Classical Arishta',
+                  sanskritName: 'अश्वगन्धारिष्ट',
+                  category: 'immunity',
+                  categoryLabel: 'Immunity & Rasayana',
+                  form: 'Arishta',
+                  price: 295,
+                  mrp: 380,
+                  resellerPrice: 220,
+                  rating: 4.9,
+                  reviewsCount: 342,
+                  volumeOrWeight: '450 ml Glass Apothecary Bottle',
+                  image: 'https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=800',
+                  brand: siteForm.brandName || 'Shree Ayur Pharma',
+                  tagline: 'Authentic 60-day fermented neuro-restorative rasayana for deep sleep & stress relief',
+                  inStock: true,
+                  sortBadge: 'top_seller',
+                };
+
+                const currentPreviewStyle = cardDisplayPreviewMode === 'search' 
+                  ? cardDisplayForm.searchCardStyle 
+                  : cardDisplayForm.catalogCardStyle;
+
+                const isModernPreview = currentPreviewStyle === 'modern';
+                const discount = sampleProd.mrp > sampleProd.price 
+                  ? Math.round(((sampleProd.mrp - sampleProd.price) / sampleProd.mrp) * 100) 
+                  : 0;
+
+                return (
+                  <div className="p-4 sm:p-6 bg-white rounded-xl border border-[#DDD5C5] shadow-xs max-w-xl mx-auto">
+                    <div className="mb-2 text-[11px] font-bold text-[#716858] flex items-center justify-between">
+                      <span>Simulated Storefront Presentation:</span>
+                      <span className="font-mono text-[10px] text-[#2C5E43]">
+                        Layout: {isModernPreview ? 'Modern Attached Style (Right Image)' : 'Classic Card (Top Image)'}
+                      </span>
+                    </div>
+
+                    {isModernPreview ? (
+                      /* MODERN PREVIEW CARD */
+                      <div className="w-full bg-white rounded-2xl border border-[#D5CCBC] shadow-xs flex flex-row justify-between overflow-hidden relative min-h-[165px]">
+                        {/* Left Details */}
+                        <div className="flex-1 p-3.5 flex flex-col justify-between min-w-0 pr-2">
+                          <div className="space-y-1">
+                            {/* Rating & Badge */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {cardDisplayForm.showRating !== false && (
+                                <div className="flex items-center text-amber-500">
+                                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                  <span className="font-bold text-xs text-[#14291D] ml-1">4.9</span>
+                                  <span className="text-stone-300 mx-0.5">·</span>
+                                  <span className="text-[10px] text-[#716858]">(342)</span>
+                                </div>
+                              )}
+                              {cardDisplayForm.showTag !== false && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#14291D]/10 text-[#14291D]">
+                                  <Tag className="w-2.5 h-2.5 text-[#B4741E]" />
+                                  <span>Top Seller</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Name */}
+                            {cardDisplayForm.showName !== false && (
+                              <h4 className="font-serif text-sm font-bold text-[#14291D] line-clamp-2 leading-tight">
+                                {sampleProd.name}
+                              </h4>
+                            )}
+
+                            {/* Sanskrit Name */}
+                            {cardDisplayForm.showSanskritName !== false && sampleProd.sanskritName && (
+                              <p className="text-[10px] font-serif text-[#2C5E43] italic line-clamp-1">
+                                ({sampleProd.sanskritName})
+                              </p>
+                            )}
+
+                            {/* Seller */}
+                            {cardDisplayForm.showSeller !== false && (
+                              <div className="flex items-center gap-1 text-[10px] text-[#2C5E43] font-medium truncate">
+                                <span className="text-[#8C8270] text-[9.5px]">Seller:</span>
+                                <span className="font-semibold truncate">
+                                  {sampleProd.brand || siteForm.brandName || 'Shree Ayur Pharma'}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Volume */}
+                            {cardDisplayForm.showVolume !== false && sampleProd.volumeOrWeight && (
+                              <div className="text-[9.5px] text-stone-500 font-medium truncate">
+                                {sampleProd.volumeOrWeight}
+                              </div>
+                            )}
+
+                            {/* Tagline */}
+                            {cardDisplayForm.showTagline !== false && sampleProd.tagline && (
+                              <p className="text-[10.5px] text-[#716757] line-clamp-1 leading-snug">
+                                {sampleProd.tagline}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Pricing & Buttons */}
+                          <div className="mt-2 space-y-1.5">
+                            {(cardDisplayForm.showPrice !== false || cardDisplayForm.showMrpAndOffer !== false || cardDisplayForm.showResellerPrice !== false) && (
+                              <div className="pt-1.5 border-t border-[#F2ECE1]">
+                                <div className="flex items-baseline gap-1.5 flex-wrap">
+                                  {cardDisplayForm.showPrice !== false && (
+                                    <span className="font-mono font-bold text-sm text-[#14291D]">
+                                      ₹{sampleProd.price}
+                                    </span>
+                                  )}
+                                  {cardDisplayForm.showMrpAndOffer !== false && (
+                                    <span className="font-mono text-[10.5px] text-[#8C8270] line-through">
+                                      ₹{sampleProd.mrp}
+                                    </span>
+                                  )}
+                                </div>
+                                {cardDisplayForm.showResellerPrice !== false && sampleProd.resellerPrice && (
+                                  <div className="mt-0.5 text-[9.5px] bg-[#E7EFEA] text-[#183624] px-1.5 py-0.5 rounded font-mono font-semibold truncate border border-[#B5D6C4]/60">
+                                    Reseller: ₹{sampleProd.resellerPrice}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-1.5">
+                              {cardDisplayForm.showAddToCart !== false && (
+                                <button
+                                  type="button"
+                                  className="flex-1 py-1 px-2.5 rounded-xl text-xs font-bold bg-[#14291D] text-white flex items-center justify-center gap-1"
+                                >
+                                  <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Buy</span>
+                                </button>
+                              )}
+                              {cardDisplayForm.showWhatsApp !== false && (
+                                <button
+                                  type="button"
+                                  className="p-1.5 rounded-xl border border-emerald-300 text-emerald-700 bg-emerald-50 shrink-0"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {cardDisplayForm.showQuickView !== false && (
+                                <button
+                                  type="button"
+                                  className="p-1.5 rounded-xl border border-[#DDD5C5] text-[#554B3B] shrink-0"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Full Image */}
+                        {cardDisplayForm.showImage !== false && (
+                          <div className="w-[125px] sm:w-[145px] shrink-0 relative bg-linear-to-b from-[#FAF8F5] via-[#F4EEE4] to-[#ECE5D8] flex items-center justify-center border-l border-[#EDE6DA]">
+                            <img
+                              src={sampleProd.image}
+                              alt={sampleProd.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {cardDisplayForm.showMrpAndOffer !== false && discount > 0 && (
+                              <div className="absolute top-2 right-2">
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-[#B4741E] text-white shadow-xs">
+                                  {discount}% OFF
+                                </span>
+                              </div>
+                            )}
+                            <div className="absolute bottom-2 right-2">
+                              <span className="px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[8.5px] font-semibold">
+                                {sampleProd.form}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* CLASSIC PREVIEW CARD */
+                      <div className="w-full bg-white rounded-2xl border border-[#E4DCCF] p-3 flex flex-col justify-between max-w-sm mx-auto">
+                        <div>
+                          {cardDisplayForm.showImage !== false && (
+                            <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-stone-100 mb-2.5">
+                              <img
+                                src={sampleProd.image}
+                                alt={sampleProd.name}
+                                className="w-full h-full object-cover"
+                              />
+                              {cardDisplayForm.showMrpAndOffer !== false && discount > 0 && (
+                                <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-amber-500 text-amber-950 font-bold text-[10px]">
+                                  {discount}% OFF
+                                </span>
+                              )}
+                              <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[9px]">
+                                {sampleProd.form}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="space-y-0.5">
+                            {cardDisplayForm.showName !== false && (
+                              <h4 className="font-serif text-sm font-bold text-[#14291D] line-clamp-1">
+                                {sampleProd.name}
+                              </h4>
+                            )}
+                            {cardDisplayForm.showSanskritName !== false && sampleProd.sanskritName && (
+                              <div className="text-[10.5px] font-serif text-[#2C5E43] italic">
+                                ({sampleProd.sanskritName})
+                              </div>
+                            )}
+                          </div>
+
+                          {cardDisplayForm.showSeller !== false && (
+                            <div className="text-[10px] text-[#2C5E43] font-medium mt-1">
+                              Seller: <span className="font-semibold">{sampleProd.brand}</span>
+                            </div>
+                          )}
+
+                          {cardDisplayForm.showVolume !== false && (
+                            <div className="text-[9.5px] text-stone-500 font-medium">
+                              {sampleProd.volumeOrWeight}
+                            </div>
+                          )}
+
+                          {cardDisplayForm.showTagline !== false && (
+                            <p className="text-[11px] text-[#716757] line-clamp-1 mt-1">
+                              {sampleProd.tagline}
+                            </p>
+                          )}
+
+                          {cardDisplayForm.showRating !== false && (
+                            <div className="flex items-center gap-1 text-amber-500 text-xs font-bold mt-1.5">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              <span>4.9</span>
+                              <span className="text-[10px] text-[#716858] font-normal">(342)</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2.5 mt-2 border-t border-[#F2ECE1] space-y-1.5">
+                          <div className="flex items-baseline justify-between">
+                            {cardDisplayForm.showPrice !== false && (
+                              <span className="text-sm font-bold text-[#14291D] font-mono">
+                                ₹{sampleProd.price}
+                              </span>
+                            )}
+                            {cardDisplayForm.showMrpAndOffer !== false && (
+                              <span className="text-[11px] text-[#8C8270] line-through font-mono">
+                                ₹{sampleProd.mrp}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {cardDisplayForm.showAddToCart !== false && (
+                              <button
+                                type="button"
+                                className="flex-1 py-1.5 rounded-xl text-xs font-bold bg-[#14291D] text-white flex items-center justify-center gap-1"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                                <span>Add to Bag</span>
+                              </button>
+                            )}
+                            {cardDisplayForm.showWhatsApp !== false && (
+                              <button
+                                type="button"
+                                className="p-1.5 rounded-xl border border-emerald-300 text-emerald-700 bg-emerald-50 shrink-0"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {cardDisplayForm.showQuickView !== false && (
+                              <button
+                                type="button"
+                                className="p-1.5 rounded-xl border border-[#DDD5C5] text-[#554B3B] shrink-0"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Bottom Save All Button */}
+            <div className="flex justify-end pt-2 pb-6">
+              <button
+                type="button"
+                onClick={() => handleSaveCardDisplay()}
+                className="px-6 py-2.5 bg-[#14291D] hover:bg-[#234D34] text-white rounded-lg font-bold flex items-center gap-2 shadow-md cursor-pointer text-xs"
+              >
+                <Save className="w-4 h-4 text-amber-300" />
+                <span>Save & Apply All Card Design Changes to Storefront</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
