@@ -20,6 +20,9 @@ import {
   MessageCircle,
   Layers,
   FlaskConical,
+  ChevronDown,
+  ArrowUpDown,
+  Filter,
 } from 'lucide-react';
 import { HerbalProduct, SiteSettings, CategoryItem, ProductCardDisplaySettings } from '../types/pharmacy';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS } from '../data/herbalProducts';
@@ -97,10 +100,34 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedForm, setSelectedForm] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [isFormMenuOpen, setIsFormMenuOpen] = useState(false);
   const [isSortPopupOpen, setIsSortPopupOpen] = useState(false);
+  const [sortMenuPlacement, setSortMenuPlacement] = useState<'left' | 'right'>('left');
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
+  const formMenuRef = useRef<HTMLDivElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  // Measure Sort popup placement to ensure it always stays inside visible screen region and aligns cleanly with the button
+  useEffect(() => {
+    if (isSortPopupOpen && sortMenuRef.current) {
+      const rect = sortMenuRef.current.getBoundingClientRect();
+      const popupWidth = 260;
+      const windowWidth = window.innerWidth;
+      const padding = 16;
+
+      // Prefer opening rightwards (left-0) so it does not shift way to the left of the button,
+      // as long as it fits inside the visible viewport width
+      if (rect.left + popupWidth <= windowWidth - padding) {
+        setSortMenuPlacement('left');
+      } else {
+        setSortMenuPlacement('right');
+      }
+    }
+  }, [isSortPopupOpen]);
 
   // Category & Form Appearance configured from Admin Panel
   const categoryAppearance = siteSettings?.categoryAppearance || {
@@ -211,11 +238,37 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
     }
   }, [isOpen, initialQuery]);
 
-  // Handle ESC key to close modal or sort popup
+  // Handle click outside to close floating menus
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(target)) {
+        setIsCategoryMenuOpen(false);
+      }
+      if (formMenuRef.current && !formMenuRef.current.contains(target)) {
+        setIsFormMenuOpen(false);
+      }
+      if (sortMenuRef.current && !sortMenuRef.current.contains(target)) {
+        setIsSortPopupOpen(false);
+      }
+    };
+    if (isCategoryMenuOpen || isFormMenuOpen || isSortPopupOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCategoryMenuOpen, isFormMenuOpen, isSortPopupOpen]);
+
+  // Handle ESC key to close open menus or the full-screen modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        if (isSortPopupOpen) {
+        if (isCategoryMenuOpen) {
+          setIsCategoryMenuOpen(false);
+        } else if (isFormMenuOpen) {
+          setIsFormMenuOpen(false);
+        } else if (isSortPopupOpen) {
           setIsSortPopupOpen(false);
         } else {
           onClose();
@@ -224,7 +277,7 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isSortPopupOpen, onClose]);
+  }, [isOpen, isCategoryMenuOpen, isFormMenuOpen, isSortPopupOpen, onClose]);
 
   // Lock body scroll when search modal is open
   useEffect(() => {
@@ -330,7 +383,7 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#FBF9F5]/90 flex flex-col overflow-hidden animate-in fade-in duration-200 relative"
+      className="fixed inset-0 z-[9999] w-screen h-screen bg-[#F6FAF7] flex flex-col overflow-hidden animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-label="Full-Page Formulation Search"
@@ -339,7 +392,7 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
       <AuroraGlowBackground intensity="gentle" />
 
       {/* 1. Top Search Header with Frosted Glass & Blur */}
-      <div className="bg-[#14291D]/90 backdrop-blur-2xl text-white px-3 sm:px-6 py-3.5 sm:py-4 shadow-md shrink-0 border-b border-white/10 relative z-10">
+      <div className="bg-[#14291D]/90 backdrop-blur-2xl text-white px-3 sm:px-6 py-3.5 sm:py-4 shadow-md shrink-0 border-b border-white/10 relative z-20">
         <div className="max-w-6xl mx-auto flex items-center gap-2.5 sm:gap-4">
           <button
             type="button"
@@ -405,318 +458,518 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
         </div>
       </div>
 
-      {/* 2. Filter Bar: Separate Rows for Preset Categories & Forms with Frosted White Glass & High Blur */}
-      <div className="bg-white/65 backdrop-blur-2xl border-b border-white/60 shrink-0 divide-y divide-white/50 relative z-10 shadow-xs">
-        
-        {/* ROW 1: Preset Categories */}
-        <div className="px-3 sm:px-6 py-2">
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-2.5 sm:gap-3">
-            {/* Category Section Label */}
-            <div className="flex items-center gap-1.5 shrink-0 text-[#14291D] font-bold text-xs uppercase tracking-wider pr-1">
-              <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2C5E43]" />
-              <span className="hidden sm:inline">Categories:</span>
-            </div>
-
-            {/* Scrollable Categories List */}
-            <div className="flex-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 sm:gap-2 py-0.5">
-              {/* All Categories preset */}
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer border flex items-center gap-2 backdrop-blur-xl ${
-                  selectedCategory === 'all'
-                    ? 'bg-[#14291D]/90 text-white border-white/30 shadow-md ring-2 ring-[#14291D]/20'
-                    : 'bg-white/80 hover:bg-white text-[#383023] border-white/80 hover:border-emerald-700/40 shadow-xs hover:shadow-md'
-                }`}
-              >
-                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center shadow-2xs">
-                  <img
-                    src={getCategoryImageUrl({ id: 'all', label: 'All Products' })}
-                    alt="All Categories"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-                <span>All Categories</span>
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums ${
-                    selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-[#EFE9DC] text-[#695D4A]'
-                  }`}
-                >
-                  {products.length}
-                </span>
-              </button>
-
-              {/* Preset Category Items */}
-              {categories
-                .filter((c) => c.id !== 'all')
-                .map((cat) => {
-                  const isSelected = selectedCategory === cat.id;
-                  const catImg = getCategoryImageUrl(cat);
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory((prev) => (prev === cat.id ? 'all' : cat.id))}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer border flex items-center gap-2 backdrop-blur-xl ${
-                        isSelected
-                          ? 'bg-[#14291D]/90 text-white border-white/30 shadow-md ring-2 ring-[#14291D]/20'
-                          : 'bg-white/80 hover:bg-white text-[#383023] border-white/80 hover:border-emerald-700/40 shadow-xs hover:shadow-md'
-                      }`}
-                    >
-                      <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center shadow-2xs">
-                        <img
-                          src={catImg}
-                          alt={cat.label}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                      <span>{cat.label}</span>
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-[#EFE9DC] text-[#695D4A]'
-                        }`}
-                      >
-                        {categoryCounts[cat.id] || 0}
-                      </span>
-                    </button>
-                  );
-                })}
-            </div>
-
-            {/* Right Controls: Reset Filters & Sort Popup Trigger with High Blur Frosted Buttons */}
-            <div className="flex items-center gap-1.5 shrink-0 pl-1">
-              {(selectedCategory !== 'all' || selectedForm !== 'all' || sortBy !== 'default' || searchQuery) && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="px-2 sm:px-2.5 py-1.5 text-xs font-medium text-[#716858] hover:text-[#14291D] bg-white/80 hover:bg-white backdrop-blur-xl rounded-xl transition-all flex items-center gap-1 cursor-pointer border border-white/80 shadow-xs hover:shadow-md"
-                  title="Reset all filters"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Reset</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setIsSortPopupOpen(!isSortPopupOpen)}
-                className={`p-2 rounded-xl border flex items-center justify-center transition-all cursor-pointer backdrop-blur-xl shadow-xs hover:shadow-md ${
-                  sortBy !== 'default'
-                    ? 'bg-[#14291D]/90 text-amber-300 border-white/30'
-                    : 'bg-white/80 hover:bg-white text-[#332C22] border-white/80'
-                }`}
-                title="Sort Formulations"
-                aria-label="Sort options"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ROW 2: Formulation Form (Select Form With Its Image) */}
-        <div className="px-3 sm:px-6 py-2 bg-white/50 backdrop-blur-xl">
-          <div className="max-w-6xl mx-auto flex items-center gap-2.5 sm:gap-3">
-            {/* Form Section Label */}
-            <div className="flex items-center gap-1.5 shrink-0 text-[#14291D] font-bold text-xs uppercase tracking-wider pr-1">
-              <FlaskConical className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#B4741E]" />
-              <span className="hidden sm:inline">Form / Swaroop:</span>
-            </div>
-
-            {/* Scrollable Forms List with Formulation Images */}
-            <div className="flex-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 sm:gap-2 py-0.5">
-              {/* All Forms Preset */}
-              <button
-                type="button"
-                onClick={() => setSelectedForm('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer border flex items-center gap-2 backdrop-blur-xl ${
-                  selectedForm === 'all'
-                    ? 'bg-[#2C5E43]/90 text-white border-white/30 shadow-md ring-2 ring-[#2C5E43]/30'
-                    : 'bg-white/80 hover:bg-white text-[#383023] border-white/80 hover:border-[#2C5E43]/40 shadow-xs hover:shadow-md'
-                }`}
-              >
-                <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center shadow-2xs">
-                  <img
-                    src={getFormImageUrl('all')}
-                    alt="All Forms"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-                <span>All Forms</span>
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums ${
-                    selectedForm === 'all' ? 'bg-white/20 text-white' : 'bg-[#EFE9DC] text-[#695D4A]'
-                  }`}
-                >
-                  {products.length}
-                </span>
-              </button>
-
-              {/* Each Form with Its Distinct Image */}
-              {forms
-                .filter((f) => f !== 'all')
-                .map((formName) => {
-                  const isSelected = selectedForm === formName;
-                  const formImgUrl = getFormImageUrl(formName);
-                  return (
-                    <button
-                      key={formName}
-                      type="button"
-                      onClick={() => setSelectedForm((prev) => (prev === formName ? 'all' : formName))}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer border flex items-center gap-2 backdrop-blur-xl ${
-                        isSelected
-                          ? 'bg-[#2C5E43]/90 text-white border-white/30 shadow-md ring-2 ring-[#2C5E43]/30'
-                          : 'bg-white/80 hover:bg-white text-[#383023] border-white/80 hover:border-[#2C5E43]/40 shadow-xs hover:shadow-md'
-                      }`}
-                      title={`Filter by ${formName}`}
-                    >
-                      <div className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center shadow-2xs">
-                        <img
-                          src={formImgUrl}
-                          alt={formName}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                      <span>{formName}</span>
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-[#EFE9DC] text-[#695D4A]'
-                        }`}
-                      >
-                        {formCounts[formName] || 0}
-                      </span>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-        </div>
-
-        {/* Active Filter Chips Bar (Instant 1-Click Clear) with Frosted Blur */}
-        {(selectedCategory !== 'all' || selectedForm !== 'all') && (
-          <div className="px-3 sm:px-6 py-1.5 bg-white/60 backdrop-blur-xl flex items-center justify-between gap-2 text-xs border-t border-white/40">
-            <div className="max-w-6xl mx-auto w-full flex items-center gap-2 flex-wrap">
-              <span className="text-[10.5px] font-bold text-[#716858] uppercase tracking-wider">Filtered by:</span>
-              {selectedCategory !== 'all' && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#14291D]/90 text-white backdrop-blur-xl border border-white/20 shadow-xs">
-                  <span>Category: {categories.find((c) => c.id === selectedCategory)?.label || selectedCategory}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory('all')}
-                    className="p-0.5 hover:bg-white/20 rounded-full cursor-pointer transition-colors"
-                    title="Clear category filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
-              {selectedForm !== 'all' && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#2C5E43]/90 text-white backdrop-blur-xl border border-white/20 shadow-xs">
-                  <span>Form: {selectedForm}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedForm('all')}
-                    className="p-0.5 hover:bg-white/20 rounded-full cursor-pointer transition-colors"
-                    title="Clear form filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+      {/* 2. Sleek Minimalist Filter Bar with Separate Expandable Floating Menus (relative z-50 ensures popovers stay on top of all product cards) */}
+      <div className="bg-white/90 backdrop-blur-2xl border-b border-[#DCEFE3] shrink-0 relative z-50 shadow-xs px-3 sm:px-6 py-2.5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
+          
+          {/* Left: Separate Floating Category & Form Triggers */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            
+            {/* A. SEPARATE FLOATING CATEGORY SELECTOR */}
+            <div className="relative" ref={categoryMenuRef}>
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedCategory('all');
-                  setSelectedForm('all');
+                  setIsCategoryMenuOpen(!isCategoryMenuOpen);
+                  setIsFormMenuOpen(false);
+                  setIsSortPopupOpen(false);
                 }}
-                className="text-[11px] font-medium text-[#8C8270] hover:text-[#14291D] underline ml-1 cursor-pointer"
+                className={`h-9 px-3 rounded-full text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-xs border ${
+                  selectedCategory !== 'all'
+                    ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white border-[#143B25] shadow-emerald-950/20'
+                    : 'bg-white hover:bg-[#F0FAF4] text-[#14291D] border-[#DCEFE3]'
+                }`}
+                title="Filter by category"
+                aria-expanded={isCategoryMenuOpen}
               >
-                Clear all filters
+                {/* Category Thumbnail Image respecting Admin Settings */}
+                {showImagesGlobally && (
+                  <div
+                    style={{ width: `${Math.min(imageSizePx, 24)}px`, height: `${Math.min(imageSizePx, 24)}px` }}
+                    className={`${shapeClass} overflow-hidden shrink-0 border border-black/10 bg-white/30 flex items-center justify-center`}
+                  >
+                    <img
+                      src={
+                        selectedCategory === 'all'
+                          ? getCategoryImageUrl({ id: 'all', label: 'All Products' })
+                          : getCategoryImageUrl(categories.find((c) => c.id === selectedCategory) || { id: selectedCategory, label: selectedCategory })
+                      }
+                      alt="Category"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <span className="truncate max-w-[130px] sm:max-w-[180px]">
+                  {selectedCategory === 'all'
+                    ? 'Category: All'
+                    : categories.find((c) => c.id === selectedCategory)?.label || selectedCategory}
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums ${
+                    selectedCategory !== 'all' ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'
+                  }`}
+                >
+                  {categoryCounts[selectedCategory] || products.length}
+                </span>
+                {selectedCategory !== 'all' ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCategory('all');
+                    }}
+                    className="p-0.5 hover:bg-white/25 rounded-full cursor-pointer ml-0.5"
+                    title="Clear category"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                ) : (
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#6B8576] transition-transform duration-200 ${isCategoryMenuOpen ? 'rotate-180 text-[#143B25]' : ''}`} />
+                )}
               </button>
+
+              {/* Floating Category Menu Dropdown (z-[100] ensures it is on top of every card) */}
+              {isCategoryMenuOpen && (
+                <div className="absolute left-0 top-full mt-2 w-[310px] sm:w-[380px] max-w-[calc(100vw-32px)] bg-white/98 backdrop-blur-2xl border border-[#DCEFE3] rounded-3xl shadow-[0_25px_60px_rgba(20,50,30,0.25)] p-3 sm:p-4 space-y-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#EAF4ED]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-[#EAF7EE] text-[#1E6B47] flex items-center justify-center">
+                        <Layers className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-xs font-bold text-[#14291D]">Select Category</span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#6B8576]">
+                      {categories.length} categories
+                    </span>
+                  </div>
+
+                  <div className="max-h-[58vh] overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                    {/* All Categories Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory('all');
+                        setIsCategoryMenuOpen(false);
+                      }}
+                      className={`w-full text-left p-2 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                        selectedCategory === 'all'
+                          ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-xs'
+                          : 'hover:bg-[#F0FAF4] text-[#142B1F]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {showImagesGlobally && (
+                          <div
+                            style={{ width: `${imageSizePx}px`, height: `${imageSizePx}px` }}
+                            className={`${shapeClass} overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center`}
+                          >
+                            <img
+                              src={getCategoryImageUrl({ id: 'all', label: 'All Products' })}
+                              alt="All"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <span className="truncate">All Categories</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
+                            selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'
+                          }`}
+                        >
+                          {products.length}
+                        </span>
+                        {selectedCategory === 'all' && <Check className="w-3.5 h-3.5 text-emerald-200" />}
+                      </div>
+                    </button>
+
+                    {/* Presets / Admin Defined Categories */}
+                    {categories
+                      .filter((c) => c.id !== 'all')
+                      .map((cat) => {
+                        const isSelected = selectedCategory === cat.id;
+                        const catImg = getCategoryImageUrl(cat);
+                        const layoutClass = getPillLayoutClass(showImagesGlobally);
+
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategory(isSelected ? 'all' : cat.id);
+                              setIsCategoryMenuOpen(false);
+                            }}
+                            className={`w-full text-left p-2 rounded-2xl text-xs font-medium flex items-center justify-between transition-all cursor-pointer group ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white font-semibold shadow-xs'
+                                : 'hover:bg-[#F0FAF4] text-[#142B1F]'
+                            }`}
+                          >
+                            <div className={`${layoutClass} min-w-0`}>
+                              {showImagesGlobally && (
+                                <div
+                                  style={{ width: `${imageSizePx}px`, height: `${imageSizePx}px` }}
+                                  className={`${shapeClass} overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center`}
+                                >
+                                  <img
+                                    src={catImg}
+                                    alt={cat.label}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <span className="truncate">{cat.label}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
+                                  isSelected ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'
+                                }`}
+                              >
+                                {categoryCounts[cat.id] || 0}
+                              </span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-emerald-200" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
 
-      </div>
-
-      {/* 3. Sort Popup Menu */}
-      {isSortPopupOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => setIsSortPopupOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl border border-[#D5CCBC] shadow-xl w-full max-w-xs p-4 space-y-3"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-[#F2ECE1]">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-[#2C5E43]" />
-                <h4 className="font-serif font-bold text-sm text-[#14291D]">Sort By</h4>
-              </div>
+            {/* B. SEPARATE FLOATING FORM / SWAROOP SELECTOR */}
+            <div className="relative" ref={formMenuRef}>
               <button
                 type="button"
-                onClick={() => setIsSortPopupOpen(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 cursor-pointer"
+                onClick={() => {
+                  setIsFormMenuOpen(!isFormMenuOpen);
+                  setIsCategoryMenuOpen(false);
+                  setIsSortPopupOpen(false);
+                }}
+                className={`h-9 px-3 rounded-full text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-xs border ${
+                  selectedForm !== 'all'
+                    ? 'bg-gradient-to-r from-[#1E6B47] to-[#2C5E43] text-white border-[#1E6B47] shadow-emerald-950/20'
+                    : 'bg-white hover:bg-[#F0FAF4] text-[#14291D] border-[#DCEFE3]'
+                }`}
+                title="Filter by formulation form"
+                aria-expanded={isFormMenuOpen}
               >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              {SORT_OPTIONS.map((opt) => {
-                const isSelected = sortBy === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      setSortBy(opt.id);
-                      setIsSortPopupOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#14291D] text-white font-semibold'
-                        : 'hover:bg-[#FAF8F5] text-[#332C22]'
-                    }`}
+                {/* Form Thumbnail Image */}
+                {showImagesGlobally && (
+                  <div
+                    style={{ width: `${Math.min(imageSizePx, 24)}px`, height: `${Math.min(imageSizePx, 24)}px` }}
+                    className={`${shapeClass} overflow-hidden shrink-0 border border-black/10 bg-white/30 flex items-center justify-center`}
                   >
-                    <span>{opt.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-amber-300" />}
+                    <img
+                      src={getFormImageUrl(selectedForm)}
+                      alt="Form"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <span className="truncate max-w-[120px] sm:max-w-[160px]">
+                  {selectedForm === 'all' ? 'Form: All' : selectedForm}
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full tabular-nums ${
+                    selectedForm !== 'all' ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'
+                  }`}
+                >
+                  {formCounts[selectedForm] || products.length}
+                </span>
+                {selectedForm !== 'all' ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedForm('all');
+                    }}
+                    className="p-0.5 hover:bg-white/25 rounded-full cursor-pointer ml-0.5"
+                    title="Clear form"
+                  >
+                    <X className="w-3 h-3 text-white" />
                   </button>
-                );
-              })}
+                ) : (
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#6B8576] transition-transform duration-200 ${isFormMenuOpen ? 'rotate-180 text-[#143B25]' : ''}`} />
+                )}
+              </button>
+
+              {/* Floating Form Menu Dropdown (opens inwards on mobile and z-[100] on top of cards) */}
+              {isFormMenuOpen && (
+                <div className="absolute left-auto right-0 sm:right-auto sm:left-0 top-full mt-2 w-[290px] sm:w-[360px] max-w-[calc(100vw-32px)] bg-white/98 backdrop-blur-2xl border border-[#DCEFE3] rounded-3xl shadow-[0_25px_60px_rgba(20,50,30,0.25)] p-3 sm:p-4 space-y-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#EAF4ED]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-[#FAF0E1] text-[#B4741E] flex items-center justify-center">
+                        <FlaskConical className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-xs font-bold text-[#14291D]">Select Form / Swaroop</span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#6B8576]">
+                      {forms.length} forms
+                    </span>
+                  </div>
+
+                  <div className="max-h-[58vh] overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                    {/* All Forms Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedForm('all');
+                        setIsFormMenuOpen(false);
+                      }}
+                      className={`w-full text-left p-2 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                        selectedForm === 'all'
+                          ? 'bg-gradient-to-r from-[#1E6B47] to-[#2C5E43] text-white shadow-xs'
+                          : 'hover:bg-[#F0FAF4] text-[#142B1F]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {showImagesGlobally && (
+                          <div
+                            style={{ width: `${imageSizePx}px`, height: `${imageSizePx}px` }}
+                            className={`${shapeClass} overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center`}
+                          >
+                            <img
+                              src={getFormImageUrl('all')}
+                              alt="All"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <span className="truncate">All Forms</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
+                            selectedForm === 'all' ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'
+                          }`}
+                        >
+                          {products.length}
+                        </span>
+                        {selectedForm === 'all' && <Check className="w-3.5 h-3.5 text-emerald-200" />}
+                      </div>
+                    </button>
+
+                    {/* Presets / Admin Defined Forms */}
+                    {forms
+                      .filter((f) => f !== 'all')
+                      .map((formName) => {
+                        const isSelected = selectedForm === formName;
+                        const formImg = getFormImageUrl(formName);
+
+                        return (
+                          <button
+                            key={formName}
+                            type="button"
+                            onClick={() => {
+                              setSelectedForm(isSelected ? 'all' : formName);
+                              setIsFormMenuOpen(false);
+                            }}
+                            className={`w-full text-left p-2 rounded-2xl text-xs font-medium flex items-center justify-between transition-all cursor-pointer group ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-[#1E6B47] to-[#2C5E43] text-white font-semibold shadow-xs'
+                                : 'hover:bg-[#F0FAF4] text-[#142B1F]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {showImagesGlobally && (
+                                <div
+                                  style={{ width: `${imageSizePx}px`, height: `${imageSizePx}px` }}
+                                  className={`${shapeClass} overflow-hidden shrink-0 border border-black/10 bg-stone-100 flex items-center justify-center`}
+                                >
+                                  <img
+                                    src={formImg}
+                                    alt={formName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <span className="truncate">{formName}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
+                                  isSelected ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'
+                                }`}
+                              >
+                                {formCounts[formName] || 0}
+                              </span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-emerald-200" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {sortBy !== 'default' && (
-              <div className="pt-2 border-t border-[#F2ECE1]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSortBy('default');
-                    setIsSortPopupOpen(false);
-                  }}
-                  className="w-full text-center text-xs text-[#8C8271] hover:text-[#14291D] flex items-center justify-center gap-1.5 py-1 cursor-pointer font-medium"
+          </div>
+
+          {/* Right: Separate Floating Sort Menu & Quick Reset */}
+          <div className="flex items-center gap-2">
+            
+            {/* C. FLOATING SORT DROPDOWN */}
+            <div className="relative" ref={sortMenuRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSortPopupOpen(!isSortPopupOpen);
+                  setIsCategoryMenuOpen(false);
+                  setIsFormMenuOpen(false);
+                }}
+                className={`h-9 px-3 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border ${
+                  sortBy !== 'default'
+                    ? 'bg-[#14291D] text-amber-300 border-[#14291D]'
+                    : 'bg-white hover:bg-[#F0FAF4] text-[#14291D] border-[#DCEFE3]'
+                }`}
+                title="Sort formulations"
+                aria-expanded={isSortPopupOpen}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sort:</span>
+                <span className="font-bold truncate max-w-[100px] sm:max-w-[130px]">
+                  {SORT_OPTIONS.find((s) => s.id === sortBy)?.label.replace('Default Catalog Order', 'Default') || 'Sort'}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#6B8576] transition-transform duration-200 ${isSortPopupOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Floating Sort Dropdown Popover (dynamically placed so it stays in visible region and never shifts awkwardly to the left) */}
+              {isSortPopupOpen && (
+                <div
+                  className={`absolute top-full mt-2 w-64 max-w-[calc(100vw-24px)] bg-white/98 backdrop-blur-2xl border border-[#DCEFE3] rounded-2xl shadow-[0_25px_60px_rgba(20,50,30,0.25)] p-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-150 space-y-1 ${
+                    sortMenuPlacement === 'left' ? 'left-0 right-auto' : 'right-0 left-auto'
+                  }`}
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Reset to Default</span>
-                </button>
-              </div>
+                  <div className="px-2.5 py-1.5 border-b border-[#EAF4ED] flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#14291D]">
+                      Sort Catalog
+                    </span>
+                    <span className="text-[10px] text-[#6B8576]">
+                      {SORT_OPTIONS.length} modes
+                    </span>
+                  </div>
+                  <div className="py-1 space-y-0.5">
+                    {SORT_OPTIONS.map((opt) => {
+                      const isSelected = sortBy === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setSortBy(opt.id);
+                            setIsSortPopupOpen(false);
+                          }}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white font-semibold'
+                              : 'text-[#142B1F] hover:bg-[#F0FAF4]'
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-200" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {sortBy !== 'default' && (
+                    <div className="pt-1 border-t border-[#EAF4ED]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('default');
+                          setIsSortPopupOpen(false);
+                        }}
+                        className="w-full text-center text-xs text-[#6B8576] hover:text-[#14291D] py-1 cursor-pointer font-medium flex items-center justify-center gap-1 hover:bg-[#F0FAF4] rounded-lg transition-colors"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Reset Sort</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Reset All Filters Button */}
+            {(selectedCategory !== 'all' || selectedForm !== 'all' || sortBy !== 'default' || searchQuery) && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="h-9 px-2.5 sm:px-3 text-xs font-semibold text-[#6B8576] hover:text-[#14291D] bg-white hover:bg-[#F0FAF4] rounded-full border border-[#DCEFE3] shadow-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                title="Reset all filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
             )}
+
           </div>
         </div>
-      )}
+
+        {/* Active Filter Chips (Clean & Minimalist 1-Line Status) */}
+        {(selectedCategory !== 'all' || selectedForm !== 'all') && (
+          <div className="max-w-6xl mx-auto pt-2 flex items-center gap-2 flex-wrap text-xs">
+            <span className="text-[10px] font-bold text-[#6B8576] uppercase tracking-wider">Active:</span>
+            {selectedCategory !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#14291D] text-white shadow-xs">
+                <span>Category: {categories.find((c) => c.id === selectedCategory)?.label || selectedCategory}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className="p-0.5 hover:bg-white/20 rounded-full cursor-pointer transition-colors"
+                  title="Clear category filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {selectedForm !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#1E6B47] text-white shadow-xs">
+                <span>Form: {selectedForm}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedForm('all')}
+                  className="p-0.5 hover:bg-white/20 rounded-full cursor-pointer transition-colors"
+                  title="Clear form filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('all');
+                setSelectedForm('all');
+              }}
+              className="text-[11px] font-medium text-[#6B8576] hover:text-[#14291D] hover:underline cursor-pointer ml-1"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* 4. Products Grid */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-6 py-4 relative z-10">

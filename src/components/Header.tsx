@@ -46,10 +46,27 @@ export const Header: React.FC<HeaderProps> = ({
   const { currentUser, isAdmin, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [navMenuPlacement, setNavMenuPlacement] = useState<'left' | 'right'>('left');
 
   const headerRef = useRef<HTMLElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Measure Navigation Menu dropdown placement so it always stays inside visible screen bounds
+  useEffect(() => {
+    if (isDropdownOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const menuWidth = 320;
+      const windowWidth = window.innerWidth;
+      const padding = 16;
+
+      if (rect.left + menuWidth <= windowWidth - padding) {
+        setNavMenuPlacement('left');
+      } else {
+        setNavMenuPlacement('right');
+      }
+    }
+  }, [isDropdownOpen]);
 
   // Close floating dropdown on outside click or Escape key
   useEffect(() => {
@@ -185,20 +202,23 @@ export const Header: React.FC<HeaderProps> = ({
                 />
               </button>
 
-              {/* Floating Dropdown: position absolute, floats over page, 2% transparent + blur opaque + luxury curbs */}
+              {/* Minimalist Floating Dropdown Menu (Aurora style, always in visible region, z-[100]) */}
               {isDropdownOpen && (
                 <div 
-                  className="dropdown-menu absolute top-full left-0 sm:left-1/2 sm:-translate-x-1/2 mt-2.5 w-76 sm:w-80 bg-white/98 backdrop-blur-2xl border border-[#DDD5C5]/90 rounded-2xl sm:rounded-3xl p-3 shadow-2xl shadow-emerald-950/10 ring-1 ring-black/5 z-50 animate-in fade-in-0 zoom-in-95 duration-150 space-y-2"
+                  className={`dropdown-menu absolute top-full mt-2.5 w-76 sm:w-80 max-w-[calc(100vw-24px)] bg-white/95 backdrop-blur-2xl border border-[#DCEFE3] rounded-3xl p-2.5 shadow-[0_20px_50px_rgba(20,50,30,0.18)] z-[100] animate-in fade-in-0 zoom-in-95 duration-150 space-y-1 ${
+                    navMenuPlacement === 'left' ? 'left-0 right-auto' : 'right-0 left-auto'
+                  }`}
                   style={{ position: 'absolute' }}
                   onMouseEnter={handleMouseEnter}
                   onMouseLeave={handleMouseLeave}
                 >
-                  <div className="px-2 pt-1 pb-1.5 border-b border-[#F0EAE1] flex items-center justify-between">
-                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#716858]">
-                      Quick Navigation
+                  <div className="px-2.5 pt-1 pb-1.5 border-b border-[#EAF4ED] flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1.5">
+                      <Leaf className="w-3 h-3 text-[#1E6B47]" />
+                      Navigation
                     </span>
-                    <span className="text-[10px] text-[#2C5E43] font-semibold">
-                      Select section
+                    <span className="text-[10px] text-[#6B8576] font-medium">
+                      Quick Links
                     </span>
                   </div>
 
@@ -206,17 +226,17 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => handleNavAction(() => onNavigateSection('deals-catalog'))}
-                    className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#FAF8F5] border border-transparent hover:border-[#DDD5C5] text-left transition-all cursor-pointer group"
+                    className="w-full flex items-start gap-2.5 p-2 rounded-2xl hover:bg-[#F0FAF4] border border-transparent hover:border-[#DCEFE3] text-left transition-all cursor-pointer group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#14291D] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
-                      <Package className="w-4 h-4 text-[#2C5E43]" />
+                    <div className="w-8 h-8 rounded-xl bg-[#EAF7EE] text-[#1E6B47] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                      <Package className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-[#14291D] group-hover:text-[#2C5E43] flex items-center justify-between">
+                      <div className="text-xs font-bold text-[#14291D] group-hover:text-[#1E6B47] flex items-center justify-between">
                         <span>Products & Prices</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-[#8C8270] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="w-3.5 h-3.5 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all" />
                       </div>
-                      <div className="text-[10.5px] text-[#716858] leading-tight mt-0.5">
+                      <div className="text-[10.5px] text-[#6B8576] leading-tight mt-0.5">
                         Classical formulations, MRP & deals catalog
                       </div>
                     </div>
@@ -226,23 +246,23 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => handleNavAction(onOpenConsultationModal)}
-                    className="w-full flex items-start gap-3 p-2.5 rounded-xl bg-emerald-50/60 hover:bg-emerald-100/70 border border-emerald-200/70 text-left transition-all cursor-pointer group"
+                    className="w-full flex items-start gap-2.5 p-2 rounded-2xl hover:bg-[#F0FAF4] border border-transparent hover:border-[#DCEFE3] text-left transition-all cursor-pointer group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-[#14291D] text-white flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
-                      <Stethoscope className="w-4 h-4 text-emerald-300" />
+                    <div className="w-8 h-8 rounded-xl bg-[#EAF7EE] text-[#1E6B47] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                      <Stethoscope className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-[#14291D] group-hover:text-[#2C5E43] flex items-center justify-between">
+                      <div className="text-xs font-bold text-[#14291D] group-hover:text-[#1E6B47] flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <span>Consultation</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-700 text-white leading-tight">
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-[#1E6B47] text-white leading-tight">
                             Free
                           </span>
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-emerald-700 group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="w-3.5 h-3.5 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all" />
                       </div>
-                      <div className="text-[10.5px] text-[#554C3E] leading-tight mt-0.5">
-                        Personalized Ayurvedic dosage & health advice
+                      <div className="text-[10.5px] text-[#6B8576] leading-tight mt-0.5">
+                        Personalized Ayurvedic dosage guidance
                       </div>
                     </div>
                   </button>
@@ -251,17 +271,17 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => handleNavAction(() => onNavigateSection('contact-us'))}
-                    className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#FAF8F5] border border-transparent hover:border-[#DDD5C5] text-left transition-all cursor-pointer group"
+                    className="w-full flex items-start gap-2.5 p-2 rounded-2xl hover:bg-[#F0FAF4] border border-transparent hover:border-[#DCEFE3] text-left transition-all cursor-pointer group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-stone-100 text-[#14291D] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
-                      <Phone className="w-4 h-4 text-[#2C5E43]" />
+                    <div className="w-8 h-8 rounded-xl bg-[#EAF7EE] text-[#1E6B47] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                      <Phone className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-[#14291D] group-hover:text-[#2C5E43] flex items-center justify-between">
+                      <div className="text-xs font-bold text-[#14291D] group-hover:text-[#1E6B47] flex items-center justify-between">
                         <span>Contact</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-[#8C8270] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="w-3.5 h-3.5 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all" />
                       </div>
-                      <div className="text-[10.5px] text-[#716858] leading-tight mt-0.5">
+                      <div className="text-[10.5px] text-[#6B8576] leading-tight mt-0.5">
                         Dispensary address, WhatsApp & helpline
                       </div>
                     </div>
@@ -383,18 +403,19 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile Floating Dropdown Menu: STRICTLY position: absolute, floats on top of page, does not push page down */}
+      {/* Mobile Floating Dropdown Menu: STRICTLY position: absolute, floats on top of page in visible region, z-[100] */}
       {isMobileMenuOpen && (
         <div 
-          className="dropdown-menu md:hidden absolute top-full left-3 right-3 mt-2 bg-white/98 backdrop-blur-2xl p-3.5 space-y-2 rounded-3xl border border-[#DDD5C5] shadow-2xl z-50 animate-in slide-in-from-top-2 duration-200"
+          className="dropdown-menu md:hidden absolute top-full left-3 right-3 mt-2 max-w-[420px] mx-auto bg-white/95 backdrop-blur-2xl p-3 sm:p-4 space-y-2 rounded-3xl border border-[#DCEFE3] shadow-[0_25px_60px_rgba(20,50,30,0.22)] z-[100] animate-in slide-in-from-top-2 duration-200 max-h-[calc(100vh-80px)] overflow-y-auto scrollbar-thin"
           style={{ position: 'absolute' }}
         >
           <div className="flex items-center justify-between px-1 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#716858]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1.5">
+              <Leaf className="w-3 h-3 text-[#1E6B47]" />
               Navigation Menu
             </span>
-            <span className="text-[10px] text-[#2C5E43] font-bold">
-              Tap to view
+            <span className="text-[10px] text-[#1E6B47] font-bold">
+              Quick Links
             </span>
           </div>
 
@@ -403,25 +424,25 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleNavAction(onOpenSearch)}
-              className="w-full flex items-center justify-between p-3 rounded-2xl bg-amber-50/70 hover:bg-amber-100 border border-amber-300/80 text-left transition-all cursor-pointer shadow-2xs"
+              className="w-full flex items-center justify-between p-3 rounded-2xl bg-[#F0FAF4] hover:bg-[#E2F5EA] border border-[#DCEFE3] text-left transition-all cursor-pointer shadow-xs group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#14291D] text-amber-300 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-[#14291D] text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <Search className="w-4 h-4 text-amber-300" />
                 </div>
                 <div>
                   <div className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
                     <span>Search Formulations</span>
                     <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-[#14291D] text-amber-300 leading-tight">
-                      Smart & Random
+                      Smart Search
                     </span>
                   </div>
-                  <div className="text-[10.5px] text-[#716858]">
+                  <div className="text-[10.5px] text-[#6B8576]">
                     Explore classical herbs, Sanskrit names & clinical details
                   </div>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-amber-800 shrink-0" />
+              <ChevronRight className="w-4 h-4 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
           )}
 
@@ -429,89 +450,89 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => handleNavAction(() => onNavigateSection('deals-catalog'))}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-emerald-50/80 active:bg-emerald-100 border border-[#DDD5C5] text-left transition-all cursor-pointer shadow-2xs"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F0FAF4] border border-[#DCEFE3] text-left transition-all cursor-pointer shadow-2xs group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#14291D] flex items-center justify-center shrink-0">
-                <Package className="w-4 h-4 text-[#2C5E43]" />
+              <div className="w-8 h-8 rounded-xl bg-[#EAF7EE] text-[#1E6B47] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Package className="w-4 h-4 text-[#1E6B47]" />
               </div>
               <div>
-                <div className="font-bold text-xs text-[#14291D]">
+                <div className="font-bold text-xs text-[#14291D] group-hover:text-[#1E6B47]">
                   Products & Prices
                 </div>
-                <div className="text-[10.5px] text-[#716858]">
+                <div className="text-[10.5px] text-[#6B8576]">
                   Classical formulations, MRP & deals catalog
                 </div>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-[#8C8270] shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all shrink-0" />
           </button>
 
           {/* 2. Consultation */}
           <button
             type="button"
             onClick={() => handleNavAction(onOpenConsultationModal)}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-emerald-50/80 active:bg-emerald-100 border border-[#DDD5C5] text-left transition-all cursor-pointer shadow-2xs"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F0FAF4] border border-[#DCEFE3] text-left transition-all cursor-pointer shadow-2xs group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-[#14291D] text-white flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#14291D] text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <Stethoscope className="w-4 h-4 text-emerald-300" />
               </div>
               <div>
-                <div className="font-bold text-xs text-[#14291D] flex items-center gap-1.5">
+                <div className="font-bold text-xs text-[#14291D] flex items-center gap-1.5 group-hover:text-[#1E6B47]">
                   <span>Consultation</span>
-                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-700 text-white leading-tight">
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-[#1E6B47] text-white leading-tight">
                     Free
                   </span>
                 </div>
-                <div className="text-[10.5px] text-[#716858]">
+                <div className="text-[10.5px] text-[#6B8576]">
                   Personalized Ayurvedic dosage guidance
                 </div>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-[#8C8270] shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all shrink-0" />
           </button>
 
           {/* 3. Contact */}
           <button
             type="button"
             onClick={() => handleNavAction(() => onNavigateSection('contact-us'))}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-emerald-50/80 active:bg-emerald-100 border border-[#DDD5C5] text-left transition-all cursor-pointer shadow-2xs"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-[#F0FAF4] border border-[#DCEFE3] text-left transition-all cursor-pointer shadow-2xs group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-stone-100 text-[#14291D] flex items-center justify-center shrink-0">
-                <Phone className="w-4 h-4 text-[#2C5E43]" />
+              <div className="w-8 h-8 rounded-xl bg-[#EAF7EE] text-[#1E6B47] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Phone className="w-4 h-4 text-[#1E6B47]" />
               </div>
               <div>
-                <div className="font-bold text-xs text-[#14291D]">
+                <div className="font-bold text-xs text-[#14291D] group-hover:text-[#1E6B47]">
                   Contact
                 </div>
-                <div className="text-[10.5px] text-[#716858]">
+                <div className="text-[10.5px] text-[#6B8576]">
                   Dispensary address, WhatsApp & helpline
                 </div>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-[#8C8270] shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all shrink-0" />
           </button>
 
           {/* Quick Admin Access & User Account in Mobile Menu */}
-          <div className="pt-2 flex items-center gap-2 border-t border-[#EAE3D4]">
+          <div className="pt-2 flex items-center gap-2 border-t border-[#EAF4ED]">
             {isAdmin && (
               <button
                 onClick={() => {
                   onOpenAdminPanel();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex-1 py-2 px-3 bg-[#B4741E] hover:bg-[#975f15] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                className="flex-1 py-2 px-3 bg-gradient-to-r from-[#B4741E] to-[#C98424] hover:opacity-90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer border border-[#F4BE77]/60"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <Settings className="w-3.5 h-3.5 text-amber-200" />
                 <span>Admin Panel</span>
               </button>
             )}
 
             {currentUser ? (
-              <div className="flex items-center justify-between flex-1 bg-white px-3 py-1.5 rounded-xl border border-[#DDD5C5] text-xs">
-                <span className="font-medium text-[#14291D] truncate">{currentUser.name}</span>
+              <div className="flex items-center justify-between flex-1 bg-[#EBF6F0] px-3 py-1.5 rounded-xl border border-[#CDE6D7] text-xs">
+                <span className="font-medium text-[#143B25] truncate">{currentUser.name}</span>
                 <button
                   onClick={() => {
                     logout();
@@ -528,9 +549,9 @@ export const Header: React.FC<HeaderProps> = ({
                   onOpenAuthModal();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex-1 py-2 px-3 bg-white hover:bg-stone-50 text-[#14291D] border border-[#DDD5C5] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                className="flex-1 py-2 px-3 bg-white hover:bg-[#E8F6EE] text-[#143B25] border border-[#CDE5D7] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <LogIn className="w-3.5 h-3.5 text-[#2C5E43]" />
+                <LogIn className="w-3.5 h-3.5 text-[#1E6B47]" />
                 <span>Sign In</span>
               </button>
             )}

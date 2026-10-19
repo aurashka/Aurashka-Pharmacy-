@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HerbalProduct, ProductCategory, CategoryItem, SiteSettings } from '../types/pharmacy';
 import { ProductCard } from './ProductCard';
 import {
@@ -238,20 +238,44 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
     return SORT_OPTIONS.find((o) => o.id === sortBy) || SORT_OPTIONS[0];
   }, [sortBy]);
 
-  // Lock body scroll and listen for Escape key when Sort Popup is open
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [sortMenuPlacement, setSortMenuPlacement] = useState<'left' | 'right'>('left');
+
+  // Measure Sort popup placement to ensure it always stays inside visible screen region and aligns cleanly with the button
   useEffect(() => {
+    if (isSortPopupOpen && sortMenuRef.current) {
+      const rect = sortMenuRef.current.getBoundingClientRect();
+      const popupWidth = 300;
+      const windowWidth = window.innerWidth;
+      const padding = 16;
+
+      if (rect.left + popupWidth <= windowWidth - padding) {
+        setSortMenuPlacement('left');
+      } else {
+        setSortMenuPlacement('right');
+      }
+    }
+  }, [isSortPopupOpen]);
+
+  // Close floating sort menu on click outside or Escape
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setIsSortPopupOpen(false);
+      }
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsSortPopupOpen(false);
       }
     };
     if (isSortPopupOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
       window.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
     }
     return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
     };
   }, [isSortPopupOpen]);
 
@@ -413,40 +437,8 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
         </div>
       </div>
 
-      {/* Category Filter Tabs with Smooth Tab Indicator (From Reference Image: Tabs) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <button
-          type="button"
-          onClick={() => onSelectCategory('all')}
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shadow-xs ${
-            selectedCategory === 'all'
-              ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-emerald-950/20'
-              : 'bg-white/80 hover:bg-[#DCF3E7] text-[#143B25] border border-[#DCEFE3]'
-          }`}
-        >
-          All Formulations
-        </button>
-        {categories.map((cat) => {
-          const isSelected = selectedCategory === cat.id;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => onSelectCategory(cat.id as ProductCategory)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shadow-xs ${
-                isSelected
-                  ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-emerald-950/20'
-                  : 'bg-white/80 hover:bg-[#DCF3E7] text-[#143B25] border border-[#DCEFE3]'
-              }`}
-            >
-              {cat.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search & Layout Controls Bar with Aurora Glassmorphic Card */}
-      <div className="bg-white/90 backdrop-blur-md p-3.5 sm:p-4 rounded-3xl border border-[#DCEFE3] shadow-[0_8px_30px_rgba(20,50,30,0.04)]">
+      {/* Search & Layout Controls Bar with Aurora Glassmorphic Card (relative z-40 ensures floating menus sit strictly above all cards) */}
+      <div className="relative z-40 bg-white/90 backdrop-blur-md p-3.5 sm:p-4 rounded-3xl border border-[#DCEFE3] shadow-[0_8px_30px_rgba(20,50,30,0.04)]">
         <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
           <div
             onClick={() => onOpenFullSearch && onOpenFullSearch()}
@@ -507,38 +499,115 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
               </button>
             </div>
 
-            {/* Minimal & Professional Sort Trigger Button */}
-            <button
-              type="button"
-              onClick={() => setIsSortPopupOpen(true)}
-              className={`h-9 px-3.5 bg-white hover:bg-[#F0FAF4] active:bg-[#DCF3E7] border ${
-                sortBy !== 'featured'
-                  ? 'border-[#1E6B47] ring-1 ring-[#1E6B47]/20 bg-[#F0FAF4]'
-                  : 'border-[#DCEFE3]'
-              } rounded-full text-xs font-semibold text-[#143B25] flex items-center gap-2 transition-all cursor-pointer shadow-xs group shrink-0`}
-              aria-label="Sort catalog formulations"
-              title="Sort: Change catalog ordering"
-            >
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                  sortBy !== 'featured' ? 'bg-[#1E6B47] text-white' : 'bg-[#DCF3E7] text-[#1E6B47]'
-                }`}
+            {/* Minimalist Floating Catalog Order Menu */}
+            <div className="relative" ref={sortMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsSortPopupOpen(!isSortPopupOpen)}
+                className={`h-9 px-3.5 bg-white hover:bg-[#F0FAF4] active:bg-[#DCF3E7] border ${
+                  sortBy !== 'featured'
+                    ? 'border-[#1E6B47] ring-1 ring-[#1E6B47]/20 bg-[#F0FAF4]'
+                    : 'border-[#DCEFE3]'
+                } rounded-full text-xs font-semibold text-[#143B25] flex items-center gap-2 transition-all cursor-pointer shadow-xs group shrink-0`}
+                aria-label="Sort catalog formulations"
+                title="Sort: Change catalog ordering"
+                aria-expanded={isSortPopupOpen}
               >
-                <ArrowUpDown className="w-3 h-3" />
-              </div>
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[#6B8576] font-normal hidden md:inline">Sort:</span>
-                <span className="font-bold text-[#143B25] truncate max-w-[130px] sm:max-w-none">
-                  {currentSortDef.shortLabel}
-                </span>
-                {currentSortDef.badge && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hidden sm:inline leading-none">
-                    {currentSortDef.badge}
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                    sortBy !== 'featured' ? 'bg-[#1E6B47] text-white' : 'bg-[#DCF3E7] text-[#1E6B47]'
+                  }`}
+                >
+                  <ArrowUpDown className="w-3 h-3" />
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[#6B8576] font-normal hidden md:inline">Sort:</span>
+                  <span className="font-bold text-[#143B25] truncate max-w-[130px] sm:max-w-none">
+                    {currentSortDef.shortLabel}
                   </span>
-                )}
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-[#6B8576] ml-0.5 group-hover:text-[#143B25] transition-transform group-hover:translate-y-0.5" />
-            </button>
+                  {currentSortDef.badge && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hidden sm:inline leading-none">
+                      {currentSortDef.badge}
+                    </span>
+                  )}
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#6B8576] ml-0.5 transition-transform duration-200 ${isSortPopupOpen ? 'rotate-180 text-[#143B25]' : 'group-hover:text-[#143B25]'}`} />
+              </button>
+
+              {/* Minimalist Floating Dropdown Popover (dynamically placed so it stays in visible region and never shifts awkwardly to the left) */}
+              {isSortPopupOpen && (
+                <div
+                  className={`absolute top-full mt-2 w-[270px] sm:w-80 max-w-[calc(100vw-24px)] bg-white/95 backdrop-blur-xl border border-[#DCEFE3] rounded-2xl shadow-[0_20px_50px_rgba(20,50,30,0.22)] p-2 z-[100] animate-in fade-in slide-in-from-top-2 duration-150 space-y-1 ${
+                    sortMenuPlacement === 'left' ? 'left-0 right-auto' : 'right-0 left-auto'
+                  }`}
+                >
+                  <div className="px-3 py-2 border-b border-[#EAF4ED] flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#1E6B47]" />
+                      Catalog Order
+                    </span>
+                    <span className="text-[10px] text-[#6B8576] font-medium">
+                      {SORT_OPTIONS.length} options
+                    </span>
+                  </div>
+                  <div className="py-1 max-h-72 overflow-y-auto space-y-0.5 scrollbar-thin">
+                    {SORT_OPTIONS.map((opt) => {
+                      const isSelected = sortBy === opt.id;
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setSortBy(opt.id);
+                            setIsSortPopupOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white font-semibold shadow-xs'
+                              : 'text-[#142B1F] hover:bg-[#F0FAF4] hover:text-[#143B25]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                              isSelected ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47] group-hover:bg-[#DCF3E7]'
+                            }`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-xs truncate leading-tight">{opt.label}</p>
+                              <p className={`text-[10px] truncate leading-tight mt-0.5 ${isSelected ? 'text-white/80' : 'text-[#6B8576]'}`}>{opt.description}</p>
+                            </div>
+                          </div>
+                          {isSelected ? (
+                            <Check className="w-4 h-4 text-emerald-200 shrink-0 ml-2" />
+                          ) : opt.badge ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FAF6EE] text-[#786D5C] border border-[#E0D7C6] shrink-0 ml-2">
+                              {opt.badge}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {sortBy !== 'featured' && (
+                    <div className="pt-1.5 border-t border-[#EAF4ED] px-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSortBy('featured');
+                          setIsSortPopupOpen(false);
+                        }}
+                        className="w-full text-center text-xs text-[#6B8576] hover:text-[#143B25] py-1 cursor-pointer font-medium flex items-center justify-center gap-1.5 hover:bg-[#F0FAF4] rounded-lg transition-colors"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Reset to Default Order</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {hasActiveFilters && (
               <button
@@ -551,160 +620,6 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
             )}
           </div>
         </div>
-
-        {/* Curved Popup Card View for Sort Selection */}
-        {isSortPopupOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
-            onClick={() => setIsSortPopupOpen(false)}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div
-              className="relative w-full sm:max-w-xl max-h-[90vh] bg-[#FBF9F5] border-t sm:border border-[#DCD5C5] rounded-t-3xl sm:rounded-3xl shadow-2xl text-[#1E2922] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Curved Header */}
-              <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-[#EAE3D4] shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#14291D] text-amber-300 flex items-center justify-center shadow-2xs">
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-serif text-base font-bold text-[#14291D]">
-                        Sort Formulations
-                      </h3>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FAF6EE] text-[#695D4A] border border-[#E0D7C6]">
-                        Catalog Order
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#786D5C] mt-0.5">
-                      Choose how products and herbal remedies are arranged in the store
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsSortPopupOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[#FAF8F5] hover:bg-[#EFEAE0] border border-[#DDD5C5] text-[#554C3E] hover:text-[#14291D] flex items-center justify-center transition-colors cursor-pointer"
-                  aria-label="Close sort popup"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Scrollable Card View Grid */}
-              <div className="p-4 sm:p-5 overflow-y-auto overscroll-contain space-y-3 max-h-[62vh] scrollbar-thin">
-                <div className="text-[11px] font-semibold text-[#8A7E6B] uppercase tracking-wider flex items-center justify-between">
-                  <span>Select Ordering Preference</span>
-                  <span className="text-[10px] font-normal normal-case">
-                    {SORT_OPTIONS.length} ordering modes
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {SORT_OPTIONS.map((opt) => {
-                    const isSelected = sortBy === opt.id;
-                    const Icon = opt.icon;
-                    return (
-                      <div
-                        key={opt.id}
-                        onClick={() => {
-                          setSortBy(opt.id);
-                          setIsSortPopupOpen(false);
-                        }}
-                        className={`relative p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 text-left group ${
-                          isSelected
-                            ? 'bg-white border-[#14291D] ring-2 ring-[#14291D]/15 shadow-sm'
-                            : 'bg-white hover:bg-[#FAF8F5] border-[#E2DAD0] hover:border-[#2C5E43]/40 shadow-2xs'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                                isSelected
-                                  ? 'bg-[#14291D] text-amber-300 shadow-2xs'
-                                  : 'bg-[#FAF6EE] text-[#2C5E43] group-hover:bg-[#EAE2D2]'
-                              }`}
-                            >
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`text-xs font-bold leading-tight ${
-                                    isSelected ? 'text-[#14291D]' : 'text-[#2F281E]'
-                                  }`}
-                                >
-                                  {opt.label}
-                                </span>
-                              </div>
-                              {opt.badge && (
-                                <span
-                                  className={`inline-block text-[9.5px] font-bold px-1.5 py-0.5 rounded-md mt-0.5 leading-none ${
-                                    isSelected
-                                      ? 'bg-[#14291D] text-amber-300'
-                                      : 'bg-[#EFE9DC] text-[#5A4D39] border border-[#DDD5C5]'
-                                  }`}
-                                >
-                                  {opt.badge}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Radio / Check indicator */}
-                          <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                              isSelected
-                                ? 'bg-[#14291D] text-white scale-100 ring-2 ring-[#14291D]/20'
-                                : 'border border-[#CFC5B4] bg-[#FAF8F5] group-hover:border-[#2C5E43]'
-                            }`}
-                          >
-                            {isSelected ? (
-                              <Check className="w-3 h-3 stroke-[2.5]" />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-[#2C5E43]/30" />
-                            )}
-                          </div>
-                        </div>
-
-                        <p className="text-[11px] text-[#716757] leading-relaxed pl-10.5">
-                          {opt.description}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Curved Footer */}
-              <div className="px-5 py-3.5 bg-white border-t border-[#EAE3D4] flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSortBy('featured');
-                    setIsSortPopupOpen(false);
-                  }}
-                  className="text-xs font-medium text-[#645A4A] hover:text-[#14291D] hover:underline flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-[#887E6D]" />
-                  <span>Reset to Catalog Order (Admin Set)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsSortPopupOpen(false)}
-                  className="px-4 py-2 bg-[#14291D] hover:bg-[#224430] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Product Display: Clean Table View OR Grid View (From Reference Image) */}
