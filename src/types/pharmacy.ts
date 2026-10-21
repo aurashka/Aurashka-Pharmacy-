@@ -428,6 +428,30 @@ export interface HerbalProduct {
   brand?: string; // Brand / Manufacturer / Seller e.g. "Vaidya Shala Authentic"
   sellerName?: string; // Seller / Dispenser
   isDraft?: boolean; // Draft mode: only visible to admin in catalog and admin panel
+  availabilityLinks?: ProductAvailabilityLink[]; // External platform links (Amazon, Meesho, Flipkart etc.) with price & floating offer badges
+}
+
+export type AvailabilityPlatformId =
+  | 'amazon'
+  | 'meesho'
+  | 'flipkart'
+  | 'tata_1mg'
+  | 'netmeds'
+  | 'apollo'
+  | 'jiomart'
+  | 'custom';
+
+export interface ProductAvailabilityLink {
+  id: string;
+  platform: AvailabilityPlatformId;
+  platformName: string; // e.g. "Amazon", "Meesho", "Flipkart", "1mg", "Apollo Pharmacy"
+  url: string; // Direct link
+  price?: number; // Optional platform price in ₹
+  originalPrice?: number; // Optional platform MRP in ₹
+  badgeText?: string; // Floating offer/badge text (e.g. "15% OFF", "Prime", "Best Deal", "Free Delivery")
+  badgeColor?: string; // Custom badge background color (e.g. #F59E0B)
+  badgeTextColor?: string; // Custom badge text color (e.g. #FFFFFF)
+  isActive?: boolean;
 }
 
 export type CustomDetailElementType = 

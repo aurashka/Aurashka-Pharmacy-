@@ -89,10 +89,11 @@ export const PeopleSection: React.FC<PeopleSectionProps> = ({
           {/* Horizontal Scroll / Swipe Container */}
           <div
             ref={scrollContainerRef}
-            className="flex items-stretch overflow-x-auto gap-4 sm:gap-6 pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory touch-pan-x cursor-grab active:cursor-grabbing no-scrollbar"
+            className="flex items-stretch overflow-x-auto gap-4 sm:gap-6 pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory touch-pan-x touch-pan-y cursor-grab active:cursor-grabbing no-scrollbar"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
+              touchAction: 'pan-x pan-y',
             }}
           >
             {people.map((person) => (

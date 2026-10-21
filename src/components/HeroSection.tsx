@@ -413,7 +413,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               {/* Deal of the Week Carousel Card (Clean card with soft shadow & rounded corners) */}
               {isDealsSectionEnabled && dealItems.length > 0 && (
                 <div 
-                  className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/50 shadow-2xl shadow-emerald-950/20 text-[#142B1F] relative overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                  className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/50 shadow-2xl shadow-emerald-950/20 text-[#142B1F] relative overflow-hidden select-none cursor-grab active:cursor-grabbing touch-pan-y"
+                  style={{ touchAction: 'pan-y' }}
                   onMouseEnter={() => setIsPaused(true)}
                   onMouseLeave={() => {
                     setIsPaused(false);

@@ -184,12 +184,11 @@ export const ImageBannerScroller: React.FC<ImageBannerScrollerProps> = ({
     <div className={`w-full group/slider relative ${className}`}>
       {/* Outer Slider Shell */}
       <div
-        className={`w-full ${getAspectRatioClasses()} overflow-hidden relative select-none cursor-grab active:cursor-grabbing bg-transparent`}
-        style={
-          config?.customHeightPx && config.customHeightPx > 0
-            ? { height: `${config.customHeightPx}px` }
-            : undefined
-        }
+        className={`w-full ${getAspectRatioClasses()} overflow-hidden relative select-none cursor-grab active:cursor-grabbing bg-transparent touch-pan-y`}
+        style={{
+          touchAction: 'pan-y',
+          ...(config?.customHeightPx && config.customHeightPx > 0 ? { height: `${config.customHeightPx}px` } : {})
+        }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => {
           setIsPaused(false);

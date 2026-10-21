@@ -35,8 +35,11 @@ import {
   MonographPriority,
   ProductCustomDetailItem,
   ProductCardDisplaySettings,
-  ProductCardDesignStyle
+  ProductCardDesignStyle,
+  ProductAvailabilityLink,
+  AvailabilityPlatformId
 } from '../types/pharmacy';
+import { PLATFORM_PRESETS, PlatformLogo } from './ProductActionHub';
 import { MarqueeTicker } from './MarqueeTicker';
 import { ProductMonographTabs } from './ProductMonographTabs';
 import { AdminMonographTabsManager } from './AdminMonographTabsManager';
@@ -72,6 +75,7 @@ import {
   FileText,
   MapPin,
   ExternalLink,
+  Globe,
   Leaf,
   Sparkles,
   Layers,
@@ -109,6 +113,7 @@ import {
   Circle,
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   Repeat,
   MoveHorizontal,
   ScrollText,
@@ -270,6 +275,37 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
   const [variantPhotoInput, setVariantPhotoInput] = useState<Record<number, string>>({});
 
+  // Product External Availability Links state (Amazon, Meesho, Flipkart, etc. with price & floating offer badges)
+  const [availabilityLinksList, setAvailabilityLinksList] = useState<ProductAvailabilityLink[]>([]);
+  const [quickStorePlatform, setQuickStorePlatform] = useState<AvailabilityPlatformId>('amazon');
+  const [quickStoreUrl, setQuickStoreUrl] = useState('');
+  const [quickStorePrice, setQuickStorePrice] = useState<string>('');
+  const [quickStoreMrp, setQuickStoreMrp] = useState<string>('');
+  const [quickStoreOfferBadge, setQuickStoreOfferBadge] = useState<string>('Prime Free Delivery');
+  const [quickStoreBadgeColor, setQuickStoreBadgeColor] = useState<string>('#FF9900');
+  const [activeStoreIconPlatform, setActiveStoreIconPlatform] = useState<AvailabilityPlatformId | null>('amazon');
+
+  const handleToggleStoreIcon = (pid: AvailabilityPlatformId) => {
+    setActiveStoreIconPlatform(pid);
+    const existingIndex = availabilityLinksList.findIndex((l) => l.platform === pid);
+    if (existingIndex === -1) {
+      const preset = PLATFORM_PRESETS[pid] || PLATFORM_PRESETS.custom;
+      const newLink: ProductAvailabilityLink = {
+        id: `link_${pid}_${Date.now()}`,
+        platform: pid,
+        platformName: preset.name,
+        url: '',
+        price: productForm.price > 0 ? (pid === 'meesho' ? Math.round(productForm.price * 0.9) : productForm.price) : undefined,
+        originalPrice: productForm.mrp > 0 ? productForm.mrp : undefined,
+        badgeText: preset.defaultBadge,
+        badgeColor: preset.badgeBg,
+        badgeTextColor: preset.badgeText,
+        isActive: true,
+      };
+      setAvailabilityLinksList([...availabilityLinksList, newLink]);
+    }
+  };
+
   // Product Form state including Reseller Price, Rating Star, Sort Badge, Stock, Display Order, Assurance Badges
   const [productForm, setProductForm] = useState({
     name: '',
@@ -322,7 +358,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   });
 
   // Step-by-Step Multi-Tab / Wizard Process State for Product Form
-  type ProductFormStep = 'basic' | 'media' | 'variants' | 'badges' | 'monograph' | 'custom_details';
+  type ProductFormStep = 'basic' | 'media' | 'variants' | 'badges' | 'monograph' | 'custom_details' | 'availability';
   const [productFormStep, setProductFormStep] = useState<ProductFormStep>('basic');
   const [customDetailsList, setCustomDetailsList] = useState<ProductCustomDetailItem[]>([]);
   const [productMonographTabs, setProductMonographTabs] = useState<ProductMonographTab[]>([]);
@@ -1290,6 +1326,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       isDraft: false,
     });
     setCustomDetailsList([]);
+    setAvailabilityLinksList([]);
     const defaultNewTabs = buildDefaultMonographTabs({
       id: `prod_${Date.now()}`,
       name: 'New Formulation',
@@ -1410,6 +1447,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       primaryImageGradient: (p.primaryImageGradient as any) || 'default',
       isDraft: Boolean(p.isDraft),
     });
+
+    // Setup external marketplace availability links (Amazon, Meesho, Flipkart, etc.)
+    setAvailabilityLinksList(
+      p.availabilityLinks && Array.isArray(p.availabilityLinks)
+        ? JSON.parse(JSON.stringify(p.availabilityLinks))
+        : []
+    );
   };
 
   // Image Array helpers
@@ -1981,6 +2025,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         primaryImageGradient: productForm.primaryImageGradient !== 'default' ? productForm.primaryImageGradient : undefined,
         isDraft: isDraftVal,
         customDetails: customDetailsList,
+        availabilityLinks: availabilityLinksList
+          .filter((l) => l.url && l.url.trim().length > 0)
+          .map((l) => ({
+            ...l,
+            url: l.url.trim(),
+            platformName: l.platformName?.trim() || PLATFORM_PRESETS[l.platform]?.name || 'Store',
+            badgeText: l.badgeText?.trim() || undefined,
+            badgeColor: l.badgeColor?.trim() || undefined,
+            badgeTextColor: l.badgeTextColor?.trim() || undefined,
+            price: l.price !== undefined && l.price > 0 ? Number(l.price) : undefined,
+            originalPrice: l.originalPrice !== undefined && l.originalPrice > 0 ? Number(l.originalPrice) : undefined,
+            isActive: l.isActive !== false,
+          })),
       };
 
       const newProd: HerbalProduct = {
@@ -2047,6 +2104,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         primaryImageGradient: productForm.primaryImageGradient !== 'default' ? productForm.primaryImageGradient : undefined,
         isDraft: isDraftVal,
         customDetails: customDetailsList,
+        availabilityLinks: availabilityLinksList
+          .filter((l) => l.url && l.url.trim().length > 0)
+          .map((l) => ({
+            ...l,
+            url: l.url.trim(),
+            platformName: l.platformName?.trim() || PLATFORM_PRESETS[l.platform]?.name || 'Store',
+            badgeText: l.badgeText?.trim() || undefined,
+            badgeColor: l.badgeColor?.trim() || undefined,
+            badgeTextColor: l.badgeTextColor?.trim() || undefined,
+            price: l.price !== undefined && l.price > 0 ? Number(l.price) : undefined,
+            originalPrice: l.originalPrice !== undefined && l.originalPrice > 0 ? Number(l.originalPrice) : undefined,
+            isActive: l.isActive !== false,
+          })),
         monographTabs: productMonographTabs && productMonographTabs.length > 0 ? productMonographTabs : (editingProduct.monographTabs || buildDefaultMonographTabs(editingProduct)),
       };
 
@@ -2534,15 +2604,24 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <div className="h-5 w-px bg-white/20 hidden sm:block shrink-0" />
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] uppercase tracking-wider text-amber-300 font-bold px-2 py-0.5 rounded bg-white/10">
                             {isCreatingNew ? "Create Formulation Page" : "Edit Formulation Page"}
                           </span>
-                          {productForm.isDraft && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400 text-amber-950">
-                              📝 Draft Mode
-                            </span>
-                          )}
+                          {/* Quick Interactive Visibility Switcher */}
+                          <button
+                            type="button"
+                            onClick={() => setProductForm({ ...productForm, isDraft: !productForm.isDraft })}
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all border shadow-xs ${
+                              productForm.isDraft
+                                ? 'bg-amber-400 text-amber-950 border-amber-500 hover:bg-amber-300'
+                                : 'bg-emerald-500/25 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/35'
+                            }`}
+                            title="Click to toggle Show (Public) / Hide (Only Admin)"
+                          >
+                            <span>{productForm.isDraft ? '🔒 Hide (Only Admin)' : '👁️ Show (Public)'}</span>
+                            <span className="text-[9px] opacity-75 font-normal underline">switch</span>
+                          </button>
                         </div>
                         <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate mt-0.5">
                           {productForm.name || (editingProduct?.name || 'New Formulation')}
@@ -2609,6 +2688,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       { id: "badges", num: "4", title: "Badges & Trust", icon: Star },
                       { id: "monograph", num: "5", title: "Monograph Tabs", icon: Layers },
                       { id: "custom_details", num: "6", title: "Custom Details (Optional)", icon: Sparkles },
+                      { id: "availability", num: "7", title: "Marketplaces (Amazon/Meesho)", icon: Globe },
                     ].map((step) => {
                       const IconComponent = step.icon;
                       const isActive = productFormStep === step.id;
@@ -2699,9 +2779,306 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         />
                       </div>
 
+                      {/* Multi-Platform Availability via Store Icons Button */}
+                      <div className="md:col-span-4 p-4 bg-gradient-to-br from-[#FAF8F5] via-[#F4FAF6] to-amber-50/30 rounded-2xl border border-[#D0EADB] shadow-xs space-y-3.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3EDDE] pb-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-[#143B25] text-[#A3D9C0] flex items-center justify-center shrink-0 shadow-2xs">
+                              <Globe className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-xs sm:text-sm text-[#14291D] flex items-center gap-2">
+                                <span>Marketplace Stores Direct Links via Icons</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                  availabilityLinksList.filter(l => l.url.trim()).length > 0 
+                                    ? 'bg-[#1E6B47] text-white shadow-2xs' 
+                                    : 'bg-stone-200 text-stone-600'
+                                }`}>
+                                  {availabilityLinksList.filter(l => l.url.trim()).length} Active Stores
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#527760] mt-0.5">
+                                Click any store icon button below to set its direct link, platform price &amp; floating offer badge
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setProductFormStep('availability')}
+                            className="px-3 py-1 rounded-lg bg-white hover:bg-[#EAF7EE] text-[#1E6B47] border border-[#BBDDC7] font-bold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs shrink-0"
+                            title="Open full marketplace reorder manager"
+                          >
+                            <span>Step 7 Manager</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Store Icon Buttons Row */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-[#2B251D] mb-1.5 flex items-center justify-between">
+                            <span>Select Store Icon to Set Link:</span>
+                            <span className="text-[10px] text-[#6B8576] font-normal">
+                              Green checkmark = Store link configured
+                            </span>
+                          </label>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+                            {(['amazon', 'meesho', 'flipkart', 'tata_1mg', 'apollo', 'jiomart', 'netmeds', 'custom'] as AvailabilityPlatformId[]).map((pid) => {
+                              const preset = PLATFORM_PRESETS[pid] || PLATFORM_PRESETS.custom;
+                              const existingLink = availabilityLinksList.find((l) => l.platform === pid);
+                              const isConfigured = Boolean(existingLink && existingLink.url.trim());
+                              const isSelected = activeStoreIconPlatform === pid;
+
+                              return (
+                                <button
+                                  key={pid}
+                                  type="button"
+                                  onClick={() => handleToggleStoreIcon(pid)}
+                                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1.5 text-center transition-all cursor-pointer relative ${
+                                    isSelected
+                                      ? 'border-[#1E6B47] ring-2 ring-[#1E6B47] bg-white shadow-xs scale-[1.02]'
+                                      : isConfigured
+                                      ? 'border-emerald-300 bg-[#EAF7EE]/70 hover:bg-[#EAF7EE]'
+                                      : 'border-[#DDD5C5] bg-white/90 hover:bg-[#FAF8F5]'
+                                  }`}
+                                  title={`Click to set direct link for ${preset.name}`}
+                                >
+                                  {/* Store Logo Avatar */}
+                                  <div
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-2xs relative"
+                                    style={{
+                                      backgroundColor: preset.iconBg,
+                                      color: preset.iconText,
+                                    }}
+                                  >
+                                    <PlatformLogo platform={pid} className="w-3.5 h-3.5" />
+                                    {isConfigured && (
+                                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-600 text-white flex items-center justify-center ring-2 ring-white">
+                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="w-full">
+                                    <span className="block text-[11px] font-bold text-[#14291D] truncate leading-tight">
+                                      {preset.name}
+                                    </span>
+                                    <span className={`block text-[9px] truncate font-medium mt-0.5 ${
+                                      isConfigured ? 'text-emerald-700 font-bold' : 'text-[#8C8272]'
+                                    }`}>
+                                      {isConfigured 
+                                        ? (existingLink?.price ? formatPrice(existingLink.price) : 'Configured') 
+                                        : '+ Set Link'}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Active Selected Store Link Config Card */}
+                        {activeStoreIconPlatform && (() => {
+                          const pid = activeStoreIconPlatform;
+                          const preset = PLATFORM_PRESETS[pid] || PLATFORM_PRESETS.custom;
+                          const linkIndex = availabilityLinksList.findIndex((l) => l.platform === pid);
+                          const currentLink = linkIndex !== -1 ? availabilityLinksList[linkIndex] : null;
+
+                          if (!currentLink) return null;
+
+                          const updateField = (field: keyof ProductAvailabilityLink, val: any) => {
+                            const copy = [...availabilityLinksList];
+                            copy[linkIndex] = { ...copy[linkIndex], [field]: val };
+                            setAvailabilityLinksList(copy);
+                          };
+
+                          return (
+                            <div className="p-3.5 bg-white rounded-xl border border-[#C5DEC8] shadow-2xs space-y-3 animate-in fade-in zoom-in-98 duration-150">
+                              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#F0EAE0]">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs"
+                                    style={{
+                                      backgroundColor: preset.iconBg,
+                                      color: preset.iconText,
+                                    }}
+                                  >
+                                    <PlatformLogo platform={pid} className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-bold text-xs text-[#14291D]">
+                                    Configure Direct Link for: <strong>{preset.name}</strong>
+                                  </span>
+                                  <span className="text-[10px] text-[#6B8576] font-normal">
+                                    ({preset.tagline})
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-[#14291D]">
+                                    <input
+                                      type="checkbox"
+                                      checked={currentLink.isActive !== false}
+                                      onChange={(e) => updateField('isActive', e.target.checked)}
+                                      className="w-3.5 h-3.5 rounded text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                                    />
+                                    <span>Show on Product View</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAvailabilityLinksList(availabilityLinksList.filter((_, i) => i !== linkIndex));
+                                    }}
+                                    className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                    title="Remove this store link"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                {/* Direct URL */}
+                                <div className="sm:col-span-2">
+                                  <label className="block text-[11px] font-bold text-[#2B251D] mb-1 flex items-center justify-between">
+                                    <span className="flex items-center gap-1">
+                                      <LinkIcon className="w-3 h-3 text-[#1E6B47]" />
+                                      <span>Direct Product Store URL *</span>
+                                    </span>
+                                    {currentLink.url.trim() && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          let url = currentLink.url.trim();
+                                          if (!url.startsWith('http://') && !url.startsWith('https://')) url = `https://${url}`;
+                                          window.open(url, '_blank', 'noopener,noreferrer');
+                                        }}
+                                        className="text-[10px] text-[#1E6B47] hover:underline flex items-center gap-0.5 font-bold cursor-pointer"
+                                      >
+                                        <span>Test Link</span>
+                                        <ArrowUpRight className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </label>
+                                  <input
+                                    type="url"
+                                    placeholder={
+                                      pid === 'amazon' ? 'https://www.amazon.in/dp/B00XXXXXXXX' :
+                                      pid === 'meesho' ? 'https://www.meesho.com/s/p/XXXXXX' :
+                                      pid === 'flipkart' ? 'https://www.flipkart.com/product/p/itme...' :
+                                      'https://store-link.com/product'
+                                    }
+                                    value={currentLink.url}
+                                    onChange={(e) => updateField('url', e.target.value)}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono focus:outline-hidden focus:border-[#2C5E43]"
+                                  />
+                                </div>
+
+                                {/* Platform Price */}
+                                <div>
+                                  <label className="block text-[11px] font-bold text-[#2B251D] mb-1">
+                                    Platform Price (₹)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    placeholder={productForm.price ? String(productForm.price) : 'e.g. 299'}
+                                    value={currentLink.price !== undefined ? currentLink.price : ''}
+                                    onChange={(e) => updateField('price', e.target.value ? Math.max(0, parseInt(e.target.value) || 0) : undefined)}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono font-bold focus:outline-hidden focus:border-[#2C5E43]"
+                                  />
+                                </div>
+
+                                {/* Platform MRP */}
+                                <div>
+                                  <label className="block text-[11px] font-bold text-[#2B251D] mb-1">
+                                    Platform MRP (₹)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    placeholder={productForm.mrp ? String(productForm.mrp) : 'e.g. 399'}
+                                    value={currentLink.originalPrice !== undefined ? currentLink.originalPrice : ''}
+                                    onChange={(e) => updateField('originalPrice', e.target.value ? Math.max(0, parseInt(e.target.value) || 0) : undefined)}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-mono focus:outline-hidden focus:border-[#2C5E43]"
+                                  />
+                                </div>
+
+                                {/* Floating Offer Badge */}
+                                <div className="sm:col-span-2">
+                                  <label className="block text-[11px] font-bold text-[#2B251D] mb-1 flex items-center justify-between">
+                                    <span className="flex items-center gap-1">
+                                      <Tag className="w-3 h-3 text-amber-600" />
+                                      <span>Floating Offer Badge Text</span>
+                                    </span>
+                                    <span className="text-[10px] text-[#716858]">Appears on button corner</span>
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Prime, 15% OFF, Best Price, Free Delivery"
+                                      value={currentLink.badgeText || ''}
+                                      onChange={(e) => updateField('badgeText', e.target.value)}
+                                      className="w-full px-2.5 py-1.5 bg-white border border-[#DDD5C5] rounded-lg text-xs font-bold focus:outline-hidden focus:border-[#2C5E43]"
+                                    />
+                                    {/* Preset Quick Badges */}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {['Prime', '15% OFF', 'Lowest Price', 'Free Del'].map((pill) => (
+                                        <button
+                                          key={pill}
+                                          type="button"
+                                          onClick={() => updateField('badgeText', pill)}
+                                          className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-[#FAF8F5] border border-[#DDD5C5] hover:bg-stone-200 cursor-pointer"
+                                        >
+                                          {pill}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Live Customer Button Preview */}
+                                <div className="sm:col-span-2 p-2 rounded-xl bg-[#FAF8F5] border border-[#E0D7C6] flex items-center justify-between gap-3">
+                                  <span className="text-[10px] font-bold text-[#554B3B] block uppercase tracking-wider">
+                                    Live Button Preview on Product View:
+                                  </span>
+                                  <div className={`relative px-3 py-1.5 rounded-xl border text-left flex items-center gap-2 bg-gradient-to-br ${preset.cardGradient} ${preset.borderColor} shadow-2xs`}>
+                                    {currentLink.badgeText && (
+                                      <span
+                                        className="absolute -top-2 -right-1 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider shadow-xs leading-none ring-1 ring-white"
+                                        style={{
+                                          backgroundColor: currentLink.badgeColor || preset.badgeBg,
+                                          color: currentLink.badgeTextColor || preset.badgeText,
+                                        }}
+                                      >
+                                        {currentLink.badgeText}
+                                      </span>
+                                    )}
+                                    <div
+                                      className="w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold"
+                                      style={{ backgroundColor: preset.iconBg, color: preset.iconText }}
+                                    >
+                                      <PlatformLogo platform={pid} className="w-2.5 h-2.5" />
+                                    </div>
+                                    <div className="flex items-baseline gap-1.5">
+                                      <span className="font-bold text-[11px] text-[#14291D]">{preset.name}</span>
+                                      {currentLink.price ? (
+                                        <span className="font-mono font-bold text-[10.5px] text-[#14291D]">{formatPrice(currentLink.price)}</span>
+                                      ) : null}
+                                    </div>
+                                    <ArrowUpRight className="w-3 h-3 text-[#1E6B47] ml-1" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
                       {/* Product Stock Availability Toggle */}
-                      <div className="flex items-center">
-                        <label className={`w-full p-2.5 rounded-lg border flex items-center gap-2.5 cursor-pointer transition-colors ${
+                      <div className="md:col-span-2 flex items-center">
+                        <label className={`w-full p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-colors ${
                           productForm.inStock 
                             ? 'bg-[#EBF5EF] border-[#BBDDC7] text-[#183624]' 
                             : 'bg-rose-50 border-rose-200 text-rose-800'
@@ -2717,10 +3094,61 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               {productForm.inStock ? '✅ In Stock (Ready to Order)' : '❌ Out of Stock'}
                             </span>
                             <span className="text-[10px] opacity-80">
-                              {productForm.inStock ? 'Available for immediate dispatch' : 'Disabled for orders'}
+                              {productForm.inStock ? 'Available for immediate dispatch & inquiry' : 'Disabled for orders'}
                             </span>
                           </div>
                         </label>
+                      </div>
+
+                      {/* Product Visibility: Show (Public) / Hide (Only Admin) */}
+                      <div className="md:col-span-2 p-3 rounded-xl border border-[#DDD5C5] bg-[#FAF8F5] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="font-bold text-xs text-[#2B251D] flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5 text-[#1E6B47]" />
+                            <span>Product Visibility Status</span>
+                          </label>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                            productForm.isDraft 
+                              ? 'bg-amber-200 text-amber-950 border border-amber-300' 
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                          }`}>
+                            {productForm.isDraft ? '🔒 Hide (Only Admin)' : '👁️ Show (Public)'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setProductForm({ ...productForm, isDraft: false })}
+                            className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all cursor-pointer ${
+                              !productForm.isDraft
+                                ? 'bg-[#EAF7EE] border-[#2C5E43] ring-2 ring-[#2C5E43] text-[#14291D] font-bold shadow-xs'
+                                : 'bg-white border-[#DDD5C5] text-[#554B3B] hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-sm mt-0.5">👁️</span>
+                            <div className="min-w-0">
+                              <span className="block text-xs font-bold truncate">Show (Public)</span>
+                              <span className="block text-[10px] text-[#527760] mt-0.5 leading-tight">All customers on store</span>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProductForm({ ...productForm, isDraft: true })}
+                            className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all cursor-pointer ${
+                              productForm.isDraft
+                                ? 'bg-amber-100/90 border-amber-600 ring-2 ring-amber-600 text-amber-950 font-bold shadow-xs'
+                                : 'bg-white border-[#DDD5C5] text-[#554B3B] hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-sm mt-0.5">🔒</span>
+                            <div className="min-w-0">
+                              <span className="block text-xs font-bold truncate">Hide (Only Admin)</span>
+                              <span className="block text-[10px] text-amber-800 mt-0.5 leading-tight">Draft / Admin only mode</span>
+                            </div>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -2931,35 +3359,75 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Draft Mode Toggle Switch */}
-                          <div className="p-4 bg-[#FFFBF0] rounded-xl border border-amber-200">
-                            <label className="flex items-start gap-3 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={productForm.isDraft}
-                                onChange={(e) => setProductForm({ ...productForm, isDraft: e.target.checked })}
-                                className="mt-1 w-4 h-4 rounded text-amber-700 focus:ring-amber-500 cursor-pointer accent-amber-700"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-bold text-xs text-amber-950">
-                                    📝 Save Formulation in Draft Mode (Admin-Only Visibility)
-                                  </span>
-                                  {productForm.isDraft ? (
-                                    <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-amber-200 text-amber-950 border border-amber-300">
-                                      DRAFT ACTIVE (HIDDEN FROM CUSTOMERS)
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                                      WILL BE PUBLISHED LIVE
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] text-amber-800/90 mt-1 leading-relaxed">
-                                  Draft products storefront par regular visitors/customers ko <strong>kewal aur kewal hidden</strong> rehte hain. Kewal logged-in administrators ko catalog me aur Admin Panel me <strong>Draft</strong> tag ke sath show honge.
-                                </p>
+                          {/* Product Visibility (Show / Hide Only Admin) Selector */}
+                          <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#DDD5C5] space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Eye className="w-4 h-4 text-[#14291D]" />
+                                <h5 className="font-bold text-xs text-[#14291D]">
+                                  Product Visibility Setting (Show / Hide / Only Admin)
+                                </h5>
                               </div>
-                            </label>
+                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                productForm.isDraft
+                                  ? 'bg-amber-200 text-amber-950 border border-amber-300'
+                                  : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              }`}>
+                                Current: {productForm.isDraft ? '🔒 Hidden (Only Admin)' : '👁️ Show (Public)'}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* Option 1: Show Public */}
+                              <button
+                                type="button"
+                                onClick={() => setProductForm({ ...productForm, isDraft: false })}
+                                className={`p-3 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                                  !productForm.isDraft
+                                    ? 'bg-[#EAF7EE] border-[#2C5E43] ring-2 ring-[#2C5E43] text-[#14291D] shadow-xs'
+                                    : 'bg-white border-[#DDD5C5] text-[#554B3B] hover:bg-stone-50'
+                                }`}
+                              >
+                                <div className={`w-5 h-5 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${
+                                  !productForm.isDraft ? 'border-[#2C5E43] bg-[#2C5E43] text-white' : 'border-stone-400 bg-white'
+                                }`}>
+                                  {!productForm.isDraft && <Check className="w-3 h-3 stroke-[3]" />}
+                                </div>
+                                <div>
+                                  <span className="font-bold text-xs block text-[#14291D]">
+                                    👁️ Show (Public Storefront)
+                                  </span>
+                                  <p className="text-[11px] text-[#527760] mt-0.5 leading-relaxed">
+                                    Product storefront par sabhi regular visitors aur customers ko dikhega. Search aur catalog me live available rahega.
+                                  </p>
+                                </div>
+                              </button>
+
+                              {/* Option 2: Hide Only Admin */}
+                              <button
+                                type="button"
+                                onClick={() => setProductForm({ ...productForm, isDraft: true })}
+                                className={`p-3 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                                  productForm.isDraft
+                                    ? 'bg-amber-100/80 border-amber-600 ring-2 ring-amber-600 text-amber-950 shadow-xs'
+                                    : 'bg-white border-[#DDD5C5] text-[#554B3B] hover:bg-stone-50'
+                                }`}
+                              >
+                                <div className={`w-5 h-5 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${
+                                  productForm.isDraft ? 'border-amber-700 bg-amber-700 text-white' : 'border-stone-400 bg-white'
+                                }`}>
+                                  {productForm.isDraft && <Check className="w-3 h-3 stroke-[3]" />}
+                                </div>
+                                <div>
+                                  <span className="font-bold text-xs block text-amber-950">
+                                    🔒 Hide (Only Admin / Draft Mode)
+                                  </span>
+                                  <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                                    Product normal customers ko storefront par <strong>kewal aur kewal hidden</strong> rahega. Sirf logged-in administrators ko catalog aur Admin Panel me dikhega.
+                                  </p>
+                                </div>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -4074,6 +4542,513 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           />
                         </div>
                       )}
+
+                      {/* STEP 7: MULTI-PLATFORM MARKETPLACE AVAILABILITY & DIRECT BUY BUTTONS */}
+                      {productFormStep === "availability" && (
+                        <div className="space-y-6 animate-in fade-in duration-150">
+                          {/* Banner Header */}
+                          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#14291D] via-[#1A3828] to-[#244E38] rounded-2xl text-white shadow-sm flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-start gap-3.5 max-w-2xl">
+                              <div className="w-10 h-10 rounded-xl bg-white/10 text-emerald-300 flex items-center justify-center shrink-0 border border-white/10 shadow-xs">
+                                <Globe className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h3 className="font-serif font-bold text-base sm:text-lg flex items-center gap-2">
+                                  <span>Marketplace Availability & Direct Store Buttons</span>
+                                  <span className="text-[10px] font-sans font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-amber-950">
+                                    Amazon / Meesho / Flipkart
+                                  </span>
+                                </h3>
+                                <p className="text-white/80 text-xs mt-1 leading-relaxed">
+                                  Add direct purchase links to external platforms like Amazon, Meesho, Flipkart, Tata 1mg, Apollo Pharmacy, JioMart or custom stores. You can also specify platform-specific prices and eye-catching floating offer badges (e.g. &quot;15% OFF&quot;, &quot;Prime&quot;, &quot;Lowest Price&quot;) that hover on the button with aurora effects!
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Count Badge */}
+                            <div className="bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-center">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-200 block">
+                                Configured Stores
+                              </span>
+                              <span className="text-xl font-bold font-mono text-white">
+                                {availabilityLinksList.length}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Quick 1-Click Platform Presets Bar */}
+                          <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E0D7C6] space-y-2">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-[#2B251D] flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Quick 1-Click Add Platform Preset</span>
+                              </label>
+                              <span className="text-[10px] text-[#716858]">
+                                Click to instantly create a configured store button
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {(['amazon', 'meesho', 'flipkart', 'tata_1mg', 'netmeds', 'apollo', 'jiomart', 'custom'] as AvailabilityPlatformId[]).map((pid) => {
+                                const preset = PLATFORM_PRESETS[pid];
+                                return (
+                                  <button
+                                    key={pid}
+                                    type="button"
+                                    onClick={() => {
+                                      const newLink: ProductAvailabilityLink = {
+                                        id: `link_${pid}_${Date.now()}`,
+                                        platform: pid,
+                                        platformName: preset.name,
+                                        url: '',
+                                        price: productForm.price > 0 ? productForm.price : undefined,
+                                        originalPrice: productForm.mrp > 0 ? productForm.mrp : undefined,
+                                        badgeText: preset.defaultBadge,
+                                        badgeColor: preset.badgeBg,
+                                        badgeTextColor: preset.badgeText,
+                                        isActive: true,
+                                      };
+                                      setAvailabilityLinksList([...availabilityLinksList, newLink]);
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg border border-[#DDD5C5] bg-white hover:bg-[#F2ECE1] text-[#2B251D] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-[0.98]"
+                                  >
+                                    <PlatformLogo platform={pid} className="w-3.5 h-3.5" />
+                                    <span>+ {preset.name}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Configured Availability Links List */}
+                          {availabilityLinksList.length === 0 ? (
+                            <div className="p-8 text-center rounded-2xl border-2 border-dashed border-[#DDD5C5] bg-[#FAF8F5] space-y-3">
+                              <div className="w-12 h-12 rounded-2xl bg-[#EAF7EE] text-[#1E6B47] mx-auto flex items-center justify-center">
+                                <Globe className="w-6 h-6" />
+                              </div>
+                              <h4 className="font-bold text-sm text-[#14291D]">
+                                No External Platform Links Configured Yet
+                              </h4>
+                              <p className="text-xs text-[#716858] max-w-md mx-auto">
+                                Agar aap is product ko Amazon, Meesho, Flipkart ya kisi aur platform par bhi bechte hain, to upar diye gaye presets se ek click me add karein. Wahan product ka direct link, platform price aur floating offer badge set kar sakte hain.
+                              </p>
+                              <div className="pt-2 flex justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const preset = PLATFORM_PRESETS.amazon;
+                                    setAvailabilityLinksList([
+                                      ...availabilityLinksList,
+                                      {
+                                        id: `link_amazon_${Date.now()}`,
+                                        platform: 'amazon',
+                                        platformName: preset.name,
+                                        url: '',
+                                        price: productForm.price > 0 ? productForm.price : undefined,
+                                        originalPrice: productForm.mrp > 0 ? productForm.mrp : undefined,
+                                        badgeText: 'Prime',
+                                        badgeColor: preset.badgeBg,
+                                        badgeTextColor: preset.badgeText,
+                                        isActive: true,
+                                      },
+                                    ]);
+                                  }}
+                                  className="px-4 py-2 rounded-xl bg-[#FF9900] hover:bg-[#E68A00] text-black font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <PlatformLogo platform="amazon" className="w-3.5 h-3.5" />
+                                  <span>Add Amazon Store</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const preset = PLATFORM_PRESETS.meesho;
+                                    setAvailabilityLinksList([
+                                      ...availabilityLinksList,
+                                      {
+                                        id: `link_meesho_${Date.now()}`,
+                                        platform: 'meesho',
+                                        platformName: preset.name,
+                                        url: '',
+                                        price: productForm.price > 0 ? Math.round(productForm.price * 0.9) : undefined,
+                                        originalPrice: productForm.mrp > 0 ? productForm.mrp : undefined,
+                                        badgeText: 'Best Price',
+                                        badgeColor: preset.badgeBg,
+                                        badgeTextColor: preset.badgeText,
+                                        isActive: true,
+                                      },
+                                    ]);
+                                  }}
+                                  className="px-4 py-2 rounded-xl bg-[#9A1663] hover:bg-[#831254] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <PlatformLogo platform="meesho" className="w-3.5 h-3.5" />
+                                  <span>Add Meesho Store</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {availabilityLinksList.map((link, idx) => {
+                                const preset = PLATFORM_PRESETS[link.platform] || PLATFORM_PRESETS.custom;
+
+                                return (
+                                  <div
+                                    key={link.id}
+                                    className="p-4 rounded-2xl bg-white border border-[#DCEFE3] shadow-xs space-y-3.5 transition-all hover:border-[#1E6B47]/60"
+                                  >
+                                    {/* Card Header: Reorder, Platform icon, Name, Active Toggle & Delete */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#EAE3D4]">
+                                      <div className="flex items-center gap-2">
+                                        {/* Reorder Buttons */}
+                                        <div className="flex items-center gap-0.5">
+                                          <button
+                                            type="button"
+                                            disabled={idx === 0}
+                                            onClick={() => {
+                                              if (idx === 0) return;
+                                              const copy = [...availabilityLinksList];
+                                              const [item] = copy.splice(idx, 1);
+                                              copy.splice(idx - 1, 0, item);
+                                              setAvailabilityLinksList(copy);
+                                            }}
+                                            className="p-1 rounded hover:bg-[#F2ECE1] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                            title="Move Up"
+                                          >
+                                            <ArrowUp className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={idx === availabilityLinksList.length - 1}
+                                            onClick={() => {
+                                              if (idx === availabilityLinksList.length - 1) return;
+                                              const copy = [...availabilityLinksList];
+                                              const [item] = copy.splice(idx, 1);
+                                              copy.splice(idx + 1, 0, item);
+                                              setAvailabilityLinksList(copy);
+                                            }}
+                                            className="p-1 rounded hover:bg-[#F2ECE1] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                            title="Move Down"
+                                          >
+                                            <ArrowDown className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+
+                                        {/* Platform Logo & Title */}
+                                        <div
+                                          className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                                          style={{
+                                            backgroundColor: preset.iconBg,
+                                            color: preset.iconText,
+                                          }}
+                                        >
+                                          <PlatformLogo platform={link.platform} className="w-3.5 h-3.5" />
+                                        </div>
+                                        <span className="font-bold text-sm text-[#14291D]">
+                                          Store #{idx + 1}: {link.platformName || preset.name}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-3">
+                                        {/* Active Toggle */}
+                                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#14291D]">
+                                          <input
+                                            type="checkbox"
+                                            checked={link.isActive !== false}
+                                            onChange={(e) => {
+                                              const copy = [...availabilityLinksList];
+                                              copy[idx] = { ...copy[idx], isActive: e.target.checked };
+                                              setAvailabilityLinksList(copy);
+                                            }}
+                                            className="w-4 h-4 rounded text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                                          />
+                                          <span>Visible on Product View</span>
+                                        </label>
+
+                                        {/* Delete Button */}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const copy = availabilityLinksList.filter((_, i) => i !== idx);
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                          title="Delete Store Link"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Form Fields Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                      {/* Platform Selector */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1">
+                                          Platform Store Type
+                                        </label>
+                                        <select
+                                          value={link.platform}
+                                          onChange={(e) => {
+                                            const nextP = e.target.value as AvailabilityPlatformId;
+                                            const pPreset = PLATFORM_PRESETS[nextP] || PLATFORM_PRESETS.custom;
+                                            const copy = [...availabilityLinksList];
+                                            copy[idx] = {
+                                              ...copy[idx],
+                                              platform: nextP,
+                                              platformName: copy[idx].platformName === preset.name ? pPreset.name : copy[idx].platformName,
+                                              badgeText: copy[idx].badgeText || pPreset.defaultBadge,
+                                              badgeColor: copy[idx].badgeColor || pPreset.badgeBg,
+                                              badgeTextColor: copy[idx].badgeTextColor || pPreset.badgeText,
+                                            };
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs font-semibold"
+                                        >
+                                          <option value="amazon">Amazon Store</option>
+                                          <option value="meesho">Meesho Store</option>
+                                          <option value="flipkart">Flipkart Store</option>
+                                          <option value="tata_1mg">Tata 1mg</option>
+                                          <option value="netmeds">Netmeds</option>
+                                          <option value="apollo">Apollo Pharmacy</option>
+                                          <option value="jiomart">JioMart</option>
+                                          <option value="custom">Custom Partner Store</option>
+                                        </select>
+                                      </div>
+
+                                      {/* Display Label / Platform Name */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1">
+                                          Store Button Label
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g. Amazon, Meesho, Flipkart"
+                                          value={link.platformName}
+                                          onChange={(e) => {
+                                            const copy = [...availabilityLinksList];
+                                            copy[idx] = { ...copy[idx], platformName: e.target.value };
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs font-semibold"
+                                        />
+                                      </div>
+
+                                      {/* Direct Product Link */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                                          <span className="flex items-center gap-1">
+                                            <LinkIcon className="w-3.5 h-3.5 text-[#2C5E43]" />
+                                            <span>Direct Product URL</span>
+                                            <span className="text-red-500">*</span>
+                                          </span>
+                                          {link.url && link.url.trim() && (
+                                            <a
+                                              href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-[10px] text-[#2C5E43] hover:underline flex items-center gap-0.5"
+                                            >
+                                              <span>Test</span>
+                                              <ExternalLink className="w-2.5 h-2.5" />
+                                            </a>
+                                          )}
+                                        </label>
+                                        <input
+                                          type="url"
+                                          required
+                                          placeholder="https://www.amazon.in/dp/..."
+                                          value={link.url}
+                                          onChange={(e) => {
+                                            const copy = [...availabilityLinksList];
+                                            copy[idx] = { ...copy[idx], url: e.target.value };
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs font-mono"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Row 2: Price & Floating Offer Badge Settings */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#E8DFC8]">
+                                      {/* Platform Price */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1">
+                                          Store Price (₹) (Optional)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          placeholder="e.g. 299"
+                                          value={link.price !== undefined ? link.price : ''}
+                                          onChange={(e) => {
+                                            const copy = [...availabilityLinksList];
+                                            copy[idx] = {
+                                              ...copy[idx],
+                                              price: e.target.value ? Number(e.target.value) : undefined,
+                                            };
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] font-mono font-bold text-xs"
+                                        />
+                                      </div>
+
+                                      {/* Platform Original MRP */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1">
+                                          Store MRP (₹) (Optional)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          placeholder="e.g. 399"
+                                          value={link.originalPrice !== undefined ? link.originalPrice : ''}
+                                          onChange={(e) => {
+                                            const copy = [...availabilityLinksList];
+                                            copy[idx] = {
+                                              ...copy[idx],
+                                              originalPrice: e.target.value ? Number(e.target.value) : undefined,
+                                            };
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] font-mono text-xs"
+                                        />
+                                      </div>
+
+                                      {/* Floating Offer Badge Text */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1 flex items-center justify-between">
+                                          <span className="flex items-center gap-1">
+                                            <Tag className="w-3.5 h-3.5 text-amber-600" />
+                                            <span>Floating Offer Badge</span>
+                                          </span>
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g. 15% OFF, Prime, Best Deal"
+                                          value={link.badgeText || ''}
+                                          onChange={(e) => {
+                                            const copy = [...availabilityLinksList];
+                                            copy[idx] = { ...copy[idx], badgeText: e.target.value };
+                                            setAvailabilityLinksList(copy);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#DDD5C5] rounded-lg focus:outline-hidden focus:border-[#2C5E43] text-xs font-semibold"
+                                        />
+                                      </div>
+
+                                      {/* Badge Color Picker */}
+                                      <div>
+                                        <label className="block font-medium text-[#2B251D] mb-1">
+                                          Badge Color
+                                        </label>
+                                        <div className="flex items-center gap-1.5">
+                                          {[
+                                            { color: '#FF9900', label: 'Amazon Orange' },
+                                            { color: '#9A1663', label: 'Meesho Pink' },
+                                            { color: '#2874F0', label: 'Flipkart Blue' },
+                                            { color: '#F59E0B', label: 'Amber Gold' },
+                                            { color: '#1E6B47', label: 'Forest Green' },
+                                            { color: '#EF4444', label: 'Red' },
+                                          ].map((c) => (
+                                            <button
+                                              key={c.color}
+                                              type="button"
+                                              onClick={() => {
+                                                const copy = [...availabilityLinksList];
+                                                copy[idx] = { ...copy[idx], badgeColor: c.color, badgeTextColor: '#FFFFFF' };
+                                                setAvailabilityLinksList(copy);
+                                              }}
+                                              className={`w-5 h-5 rounded-full cursor-pointer transition-transform ${
+                                                (link.badgeColor || preset.badgeBg) === c.color ? 'ring-2 ring-black scale-110' : 'hover:scale-105'
+                                              }`}
+                                              style={{ backgroundColor: c.color }}
+                                              title={c.label}
+                                            />
+                                          ))}
+                                          <input
+                                            type="color"
+                                            value={link.badgeColor || preset.badgeBg}
+                                            onChange={(e) => {
+                                              const copy = [...availabilityLinksList];
+                                              copy[idx] = { ...copy[idx], badgeColor: e.target.value };
+                                              setAvailabilityLinksList(copy);
+                                            }}
+                                            className="w-6 h-6 rounded cursor-pointer border border-stone-300"
+                                            title="Custom Color"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Live Storefront Preview */}
+                                    <div className="pt-2 border-t border-[#F0EBE1] flex items-center justify-between gap-3 text-xs">
+                                      <span className="text-[11px] text-[#716858] font-semibold flex items-center gap-1">
+                                        <Eye className="w-3.5 h-3.5 text-[#1E6B47]" />
+                                        <span>Customer Storefront Preview:</span>
+                                      </span>
+
+                                      <div className="w-56">
+                                        <div
+                                          className={`relative p-2 rounded-xl border text-left flex flex-col justify-between shadow-2xs bg-gradient-to-br ${preset.cardGradient} ${preset.borderColor}`}
+                                        >
+                                          {link.badgeText && (
+                                            <span
+                                              className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider shadow-xs leading-none ring-2 ring-white z-10"
+                                              style={{
+                                                backgroundColor: link.badgeColor || preset.badgeBg,
+                                                color: link.badgeTextColor || preset.badgeText,
+                                              }}
+                                            >
+                                              {link.badgeText}
+                                            </span>
+                                          )}
+                                          <div className="flex items-center justify-between gap-1 w-full">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <div
+                                                className="w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 border border-black/5 font-bold"
+                                                style={{
+                                                  backgroundColor: preset.iconBg,
+                                                  color: preset.iconText,
+                                                }}
+                                              >
+                                                <PlatformLogo platform={link.platform} className="w-2.5 h-2.5" />
+                                              </div>
+                                              <span className="font-bold text-[11px] text-[#14291D] truncate">
+                                                {link.platformName || preset.name}
+                                              </span>
+                                            </div>
+                                            <ArrowUpRight className="w-3 h-3 text-[#6B8576]" />
+                                          </div>
+                                          <div className="flex items-baseline justify-between gap-1 mt-1 pt-1 border-t border-black/5 w-full">
+                                            {link.price ? (
+                                              <div className="flex items-baseline gap-1">
+                                                <span className="text-[11px] font-black font-mono text-[#14291D]">
+                                                  {formatPrice(link.price)}
+                                                </span>
+                                                {link.originalPrice && link.originalPrice > link.price && (
+                                                  <span className="text-[9px] text-[#7E7464] line-through font-mono">
+                                                    {formatPrice(link.originalPrice)}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span className="text-[9.5px] text-[#6B8576]">
+                                                View Store
+                                              </span>
+                                            )}
+                                            <span className="text-[9px] font-bold text-[#1E6B47]">
+                                              Buy Now
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Sticky Step Footer Navigation & Save Actions */}
@@ -4084,7 +5059,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           type="button"
                           disabled={productFormStep === "basic"}
                           onClick={() => {
-                            const order: ProductFormStep[] = ["basic", "media", "variants", "badges", "monograph", "custom_details"];
+                            const order: ProductFormStep[] = ["basic", "media", "variants", "badges", "monograph", "custom_details", "availability"];
                             const curIdx = order.indexOf(productFormStep);
                             if (curIdx > 0) setProductFormStep(order[curIdx - 1]);
                           }}
@@ -4100,14 +5075,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                         <button
                           type="button"
-                          disabled={productFormStep === "custom_details"}
+                          disabled={productFormStep === "availability"}
                           onClick={() => {
-                            const order: ProductFormStep[] = ["basic", "media", "variants", "badges", "monograph", "custom_details"];
+                            const order: ProductFormStep[] = ["basic", "media", "variants", "badges", "monograph", "custom_details", "availability"];
                             const curIdx = order.indexOf(productFormStep);
                             if (curIdx < order.length - 1) setProductFormStep(order[curIdx + 1]);
                           }}
                           className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                            productFormStep === "custom_details"
+                            productFormStep === "availability"
                               ? "opacity-40 bg-stone-200 text-stone-400 cursor-not-allowed"
                               : "bg-[#2C5E43] hover:bg-[#20442E] text-white cursor-pointer shadow-2xs"
                           }`}
@@ -4326,11 +5301,24 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <div className="flex items-start justify-between gap-1">
                               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                                 <h4 className="font-bold text-[#14291D] text-sm leading-snug line-clamp-1">{prod.name}</h4>
-                                {prod.isDraft && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
-                                    📝 Draft
-                                  </span>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newDraft = !prod.isDraft;
+                                    onUpdateProduct({ ...prod, isDraft: newDraft });
+                                    setSaveSuccessMsg(newDraft ? `"${prod.name}" set to Hidden (Only Admin Can See)` : `"${prod.name}" is now Live (Publicly Visible)`);
+                                    setTimeout(() => setSaveSuccessMsg(null), 3500);
+                                  }}
+                                  className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 cursor-pointer transition-all shrink-0 ${
+                                    prod.isDraft
+                                      ? 'bg-amber-100 text-amber-950 border-amber-400 hover:bg-amber-200 shadow-2xs'
+                                      : 'bg-emerald-100 text-emerald-950 border-emerald-400 hover:bg-emerald-200 shadow-2xs'
+                                  }`}
+                                  title={prod.isDraft ? 'Click to make Public (Visible to all visitors)' : 'Click to Hide (Only Admin Can See)'}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${prod.isDraft ? 'bg-amber-600 animate-pulse' : 'bg-emerald-600'}`} />
+                                  <span>{prod.isDraft ? '🔒 Admin Only' : '👁️ Live'}</span>
+                                </button>
                               </div>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                                 prod.inStock !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
@@ -4570,7 +5558,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                               {/* Actions */}
                               <td className="py-2 px-3 text-right">
-                                <div className="flex items-center justify-end gap-1">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {/* 1-Click Visibility Toggle Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newDraft = !prod.isDraft;
+                                      onUpdateProduct({ ...prod, isDraft: newDraft });
+                                      setSaveSuccessMsg(newDraft ? `"${prod.name}" set to Hidden (Only Admin Can See)` : `"${prod.name}" is now Live (Publicly Visible)`);
+                                      setTimeout(() => setSaveSuccessMsg(null), 3500);
+                                    }}
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                                      prod.isDraft
+                                        ? 'bg-amber-100 text-amber-950 border-amber-400 hover:bg-amber-200 shadow-2xs'
+                                        : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
+                                    }`}
+                                    title={prod.isDraft ? 'Click to make Public (Visible to all visitors)' : 'Click to Hide (Only Admin Can See)'}
+                                  >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${prod.isDraft ? 'bg-amber-600 animate-pulse' : 'bg-emerald-600'}`} />
+                                    <span>{prod.isDraft ? '🔒 Admin Only' : '👁️ Live'}</span>
+                                  </button>
+
                                   <button
                                     onClick={() => onPreviewProduct(prod)}
                                     className="p-1.5 text-[#2C5E43] hover:bg-[#E7EFEA] rounded cursor-pointer"

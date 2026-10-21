@@ -181,8 +181,8 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
       <div className="relative group/track">
         <div
           ref={scrollRef}
-          className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto pb-2.5 pt-1 px-1 scroll-smooth snap-x snap-mandatory touch-pan-x cursor-grab active:cursor-grabbing no-scrollbar"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex items-stretch gap-3 sm:gap-3.5 overflow-x-auto pb-2.5 pt-1 px-1 scroll-smooth snap-x snap-mandatory touch-pan-x touch-pan-y cursor-grab active:cursor-grabbing no-scrollbar"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y' }}
         >
           {shelfProducts.map((prod) => {
             const isInCart = cartProductIds.has(prod.id);

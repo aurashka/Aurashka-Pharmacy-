@@ -36,6 +36,8 @@ import {
 } from '../utils/messageFormatter';
 import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
 import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
+import { ProductActionHub } from './ProductActionHub';
+import { DEFAULT_SITE_SETTINGS } from '../data/herbalProducts';
 
 interface ProductDetailModalProps {
   product: HerbalProduct | null;
@@ -45,6 +47,7 @@ interface ProductDetailModalProps {
   siteSettings?: SiteSettings;
   allProducts?: HerbalProduct[];
   onSelectProduct?: (product: HerbalProduct) => void;
+  onOpenConsultationModal?: (productName?: string) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -55,6 +58,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   siteSettings,
   allProducts = [],
   onSelectProduct,
+  onOpenConsultationModal,
 }) => {
   const { currentUser } = useAuth();
   const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
@@ -390,7 +394,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       <span>Click thumbnail to switch photo / video</span>
                     </div>
 
-                    <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-thin">
+                    <div
+                      className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-thin touch-pan-x touch-pan-y"
+                      style={{ touchAction: 'pan-x pan-y' }}
+                    >
                       {mediaList.map((item, idx) => {
                         const isSelected = currentMediaIndex === idx;
                         if (item.type === 'video') {
@@ -644,59 +651,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       )}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2.5">
-                    <button
-                      disabled={!isAvailableInStock}
-                      onClick={() => onAddToCart({
-                        ...product,
-                        price: currentPrice,
-                        mrp: currentMrp,
-                        resellerPrice: currentReseller,
-                        volumeOrWeight: selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight,
-                        image: (selectedVariant?.image) || product.image,
-                      })}
-                      className={`h-10 px-5 text-xs font-bold rounded-full transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
-                        !isAvailableInStock
-                          ? 'bg-stone-200 text-stone-500 cursor-not-allowed border border-stone-300'
-                          : isInCart
-                            ? 'bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
-                            : 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white hover:shadow-md'
-                      }`}
-                    >
-                      {!isAvailableInStock ? (
-                        <span>Out of Stock</span>
-                      ) : isInCart ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-[#1E6B47]" />
-                          <span>In Order Bag</span>
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Add to Bag</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={handleWhatsAppConsult}
-                      className="h-10 px-5 text-xs font-bold rounded-full bg-[#128C7E] hover:bg-[#075E54] text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      {product.customLink ? (
-                        <>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Order Link</span>
-                        </>
-                      ) : (
-                        <>
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>WhatsApp Order</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
+
+                {/* Aurora Glassmorphic Action Hub: Inquiry Cart, WhatsApp Order, Free Routine Advice & External Platforms Availability */}
+                <ProductActionHub
+                  product={product}
+                  selectedVariant={selectedVariant}
+                  currentPrice={currentPrice}
+                  currentMrp={currentMrp}
+                  currentReseller={currentReseller}
+                  isInCart={isInCart}
+                  isAvailableInStock={isAvailableInStock}
+                  onAddToCart={onAddToCart}
+                  onOpenConsultationModal={onOpenConsultationModal || (() => {})}
+                  onWhatsAppOrder={handleWhatsAppConsult}
+                  siteSettings={siteSettings || DEFAULT_SITE_SETTINGS}
+                  isModal={true}
+                  className="mt-2"
+                />
 
                 {/* Reseller / B2B Wholesale Pricing Callout */}
                 {product.resellerPrice !== undefined && product.resellerPrice > 0 && (
@@ -746,7 +718,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </h4>
                 </div>
 
-                <div className="flex items-stretch gap-3 overflow-x-auto pb-2.5 scroll-smooth snap-x snap-mandatory visible-tabs-scrollbar touch-pan-x">
+                <div
+                  className="flex items-stretch gap-3 overflow-x-auto pb-2.5 scroll-smooth snap-x snap-mandatory visible-tabs-scrollbar touch-pan-x touch-pan-y"
+                  style={{ touchAction: 'pan-x pan-y' }}
+                >
                   {suggestedProducts.map((rel) => {
                     const isSameCat = rel.category === product.category;
                     return (

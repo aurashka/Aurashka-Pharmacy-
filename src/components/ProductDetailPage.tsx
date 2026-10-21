@@ -3,6 +3,7 @@ import { HerbalProduct, SiteSettings, ProductCustomField, IngredientItem, Produc
 import { ImageLightboxModal } from './ImageLightboxModal';
 import { ProductMonographTabs } from './ProductMonographTabs';
 import { CustomDetailsRenderer } from './CustomDetailsRenderer';
+import { ProductActionHub } from './ProductActionHub';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   ArrowLeft, 
@@ -580,7 +581,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
             {/* Thumbnail Strip (Images + Videos) */}
             {mediaList.length > 1 && (
-              <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
+              <div
+                className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin touch-pan-x touch-pan-y"
+                style={{ touchAction: 'pan-x pan-y' }}
+              >
                 {mediaList.map((item, idx) => {
                   const isSelected = currentImageIndex === idx;
                   if (item.type === 'video') {
@@ -830,62 +834,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-2.5 pt-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  disabled={!isAvailableInStock}
-                  onClick={() => onAddToCart({
-                    ...product,
-                    price: currentPrice,
-                    mrp: currentMrp,
-                    resellerPrice: currentReseller,
-                    volumeOrWeight: selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight,
-                    image: (selectedVariant?.image) || product.image,
-                  })}
-                  className={`py-3 px-5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-xs ${
-                    !isAvailableInStock
-                      ? 'bg-stone-200 text-stone-500 border border-stone-300 cursor-not-allowed'
-                      : isInCart
-                        ? 'bg-[#183624] text-white hover:bg-[#20442E] cursor-pointer'
-                        : 'bg-[#2C5E43] text-white hover:bg-[#224A35] cursor-pointer'
-                  }`}
-                >
-                  {!isAvailableInStock ? (
-                    <span>Out of Stock</span>
-                  ) : isInCart ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-300" />
-                      <span>In Inquiry Cart</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>Add to Inquiry Cart</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleWhatsAppOrder}
-                  className="py-3 px-5 rounded-xl font-semibold text-xs bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Instant WhatsApp Order</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onOpenConsultationModal(product.name)}
-                className="w-full py-2.5 px-4 rounded-xl border border-[#C8BEAB] bg-white hover:bg-[#F2ECE1] text-[#332A1C] font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <Calendar className="w-4 h-4 text-[#2C5E43]" />
-                <span>Request Free Dosage & Classical Routine Advice</span>
-              </button>
-            </div>
+            {/* Aurora Glassmorphic Action Hub: Inquiry Cart, WhatsApp Order, Free Routine Advice & External Platforms Availability */}
+            <ProductActionHub
+              product={product}
+              selectedVariant={selectedVariant}
+              currentPrice={currentPrice}
+              currentMrp={currentMrp}
+              currentReseller={currentReseller}
+              isInCart={isInCart}
+              isAvailableInStock={isAvailableInStock}
+              onAddToCart={onAddToCart}
+              onOpenConsultationModal={onOpenConsultationModal}
+              onWhatsAppOrder={handleWhatsAppOrder}
+              siteSettings={siteSettings}
+              className="mt-2"
+            />
           </div>
         </div>
 
@@ -932,7 +895,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <div className="relative group/carousel">
               <div
                 id="suggested-products-carousel"
-                className="flex items-stretch gap-3.5 overflow-x-auto pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory visible-tabs-scrollbar touch-pan-x"
+                className="flex items-stretch gap-3.5 overflow-x-auto pb-4 pt-1 px-1 scroll-smooth snap-x snap-mandatory visible-tabs-scrollbar touch-pan-x touch-pan-y"
+                style={{ touchAction: 'pan-x pan-y' }}
               >
                 {suggestedProducts.map((rel) => {
                   const isSameCat = rel.category === product.category;

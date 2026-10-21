@@ -343,6 +343,14 @@ textarea::placeholder {
   scrollbar-width: thin !important;
   scrollbar-color: #2C5E43 #E8E1D3 !important;
   overflow-x: auto !important;
+  touch-action: pan-x pan-y !important;
+  overscroll-behavior-y: auto !important;
+}
+
+/* Ensure ALL horizontal scroll containers never block or lock vertical page scrolling on touch devices */
+.overflow-x-auto {
+  touch-action: pan-x pan-y !important;
+  overscroll-behavior-y: auto !important;
 }
 
 .visible-tabs-scrollbar::-webkit-scrollbar {
