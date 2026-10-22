@@ -13275,13 +13275,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Right Full Image */}
+                        {/* Right Image (Flush edge-to-edge, transparent, rounded-none) */}
                         {cardDisplayForm.showImage !== false && (
-                          <div className="w-[125px] sm:w-[145px] shrink-0 relative bg-linear-to-b from-[#FAF8F5] via-[#F4EEE4] to-[#ECE5D8] flex items-center justify-center border-l border-[#EDE6DA]">
+                          <div className="w-[125px] sm:w-[145px] shrink-0 relative bg-transparent rounded-none flex items-center justify-center border-l border-[#EDE6DA] p-0 overflow-hidden">
                             <img
                               src={sampleProd.image}
                               alt={sampleProd.name}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover rounded-none bg-transparent"
                             />
                             {cardDisplayForm.showMrpAndOffer !== false && discount > 0 && (
                               <div className="absolute top-2 right-2">
@@ -13300,14 +13300,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     ) : (
                       /* CLASSIC PREVIEW CARD */
-                      <div className="w-full bg-white rounded-2xl border border-[#E4DCCF] p-3 flex flex-col justify-between max-w-sm mx-auto">
+                      <div className="w-full bg-white rounded-2xl border border-[#E4DCCF] p-3 flex flex-col justify-between max-w-sm mx-auto overflow-hidden">
                         <div>
                           {cardDisplayForm.showImage !== false && (
-                            <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-stone-100 mb-2.5">
+                            <div className="relative aspect-4/3 w-full rounded-none overflow-hidden bg-transparent mb-2.5 border-0 flex items-center justify-center p-0">
                               <img
                                 src={sampleProd.image}
                                 alt={sampleProd.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover rounded-none bg-transparent"
                               />
                               {cardDisplayForm.showMrpAndOffer !== false && discount > 0 && (
                                 <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-amber-500 text-amber-950 font-bold text-[10px]">

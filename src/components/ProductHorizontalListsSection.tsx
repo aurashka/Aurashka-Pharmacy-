@@ -13,6 +13,8 @@ import {
 import { HerbalProduct, ProductHorizontalList, SiteSettings } from '../types/pharmacy';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
+import { ProgressiveImage } from './ProgressiveImage';
+import { HorizontalShelfSkeleton } from './ShimmerSkeletons';
 
 interface ProductHorizontalListsSectionProps {
   lists?: ProductHorizontalList[];
@@ -23,6 +25,7 @@ interface ProductHorizontalListsSectionProps {
   cartProductIds?: Set<string>;
   isAdmin?: boolean;
   onOpenAdminPanel?: () => void;
+  isLoading?: boolean;
 }
 
 export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSectionProps> = ({
@@ -34,7 +37,16 @@ export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSecti
   cartProductIds = new Set(),
   isAdmin = false,
   onOpenAdminPanel,
+  isLoading = false,
 }) => {
+  if (isLoading) {
+    return (
+      <div id="curated-shelves" className="space-y-6 sm:space-y-8 pt-4 pb-2 sm:pt-5 sm:pb-3 scroll-mt-20">
+        <HorizontalShelfSkeleton />
+      </div>
+    );
+  }
+
   // Filter active lists and sort by displayOrder
   const listArray: ProductHorizontalList[] = Array.isArray(lists) 
     ? lists 
@@ -329,16 +341,13 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                     </div>
                   </div>
 
-                  {/* Right Column: Full Image (Neutral background, no green tint) */}
+                  {/* Right Column: Full Image (Flush edge-to-edge, transparent background, no rounded corners, supports transparent PNGs) */}
                   {showImage && (
-                    <div className="w-[110px] sm:w-[125px] md:w-[135px] shrink-0 relative bg-[#F8FAF9] overflow-hidden flex items-center justify-center border-l border-[#E6F0EB]">
-                      <img
+                    <div className="w-[110px] sm:w-[125px] md:w-[135px] shrink-0 relative bg-transparent rounded-none overflow-hidden flex items-center justify-center border-l border-[#E6F0EB]/60 p-0">
+                      <ProgressiveImage
                         src={prod.image || (prod.images && prod.images[0]) || ''}
                         alt={prod.name}
-                        className="w-full h-full object-cover group-hover/card:scale-106 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
+                        className="w-full h-full object-cover rounded-none group-hover/card:scale-106 transition-transform duration-500 bg-transparent"
                       />
 
                       {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
@@ -368,16 +377,13 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                 className="w-[200px] sm:w-[220px] md:w-[240px] shrink-0 snap-start bg-white/95 backdrop-blur-xs rounded-3xl border border-[#DCEFE3] hover:border-[#1E6B47] shadow-[0_4px_20px_rgba(20,50,30,0.04)] hover:shadow-[0_12px_32px_rgba(20,50,30,0.1)] transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden group/card"
               >
                 <div>
-                  {/* Image Container */}
+                  {/* Image Container (Flush edge-to-edge, transparent background, no rounded corners, supports transparent PNGs) */}
                   {showImage && (
-                    <div className="relative aspect-4/3 sm:aspect-square bg-gradient-to-b from-[#F4FAF6] to-[#EAF5EE] overflow-hidden rounded-t-3xl border-0">
-                      <img
+                    <div className="relative aspect-4/3 sm:aspect-square bg-transparent rounded-none overflow-hidden border-0 flex items-center justify-center p-0">
+                      <ProgressiveImage
                         src={prod.image || (prod.images && prod.images[0]) || ''}
                         alt={prod.name}
-                        className="w-full h-full object-cover group-hover/card:scale-106 transition-transform duration-500 bg-transparent"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
+                        className="w-full h-full object-cover rounded-none group-hover/card:scale-106 transition-transform duration-500 bg-transparent"
                       />
 
                       {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}

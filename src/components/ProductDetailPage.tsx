@@ -4,6 +4,7 @@ import { ImageLightboxModal } from './ImageLightboxModal';
 import { ProductMonographTabs } from './ProductMonographTabs';
 import { CustomDetailsRenderer } from './CustomDetailsRenderer';
 import { ProductActionHub } from './ProductActionHub';
+import { ProgressiveImage } from './ProgressiveImage';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   ArrowLeft, 
@@ -496,12 +497,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 )}
               </div>
             ) : (
-              <div className="bg-transparent rounded-none border-0 overflow-hidden shadow-none relative group aspect-4/3 sm:aspect-square flex items-center justify-center">
-                <img
+              <div 
+                className="bg-transparent rounded-none border-0 overflow-hidden shadow-none relative group aspect-4/3 sm:aspect-square flex items-center justify-center cursor-zoom-in"
+                onClick={() => setIsLightboxOpen(true)}
+              >
+                <ProgressiveImage
                   src={activeImage}
                   alt={product.name}
-                  className="w-full h-full object-cover cursor-zoom-in group-hover:scale-102 transition-transform duration-300 bg-transparent"
-                  onClick={() => setIsLightboxOpen(true)}
+                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300 bg-transparent"
                 />
 
                 {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}

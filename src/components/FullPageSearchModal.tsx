@@ -27,6 +27,7 @@ import {
 import { HerbalProduct, SiteSettings, CategoryItem, ProductCardDisplaySettings } from '../types/pharmacy';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS } from '../data/herbalProducts';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
+import { ProgressiveImage } from './ProgressiveImage';
 import { 
   getPrimaryWhatsApp, 
   formatCustomMessage, 
@@ -1297,16 +1298,13 @@ const SearchProductCard: React.FC<SearchProductCardProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Full Image */}
+        {/* Right Column: Full Image (Flush edge-to-edge, transparent background, no rounded corners, supports transparent PNGs) */}
         {showImage && (
-          <div className="w-[110px] sm:w-[130px] md:w-[145px] shrink-0 relative bg-linear-to-b from-[#FAF8F5]/80 via-[#F4EEE4]/80 to-[#ECE5D8]/80 overflow-hidden flex items-center justify-center border-l border-white/60">
-            <img
+          <div className="w-[110px] sm:w-[130px] md:w-[145px] shrink-0 relative bg-transparent rounded-none overflow-hidden flex items-center justify-center border-l border-white/40 p-0">
+            <ProgressiveImage
               src={product.image}
               alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
+              className="w-full h-full object-cover rounded-none group-hover:scale-106 transition-transform duration-500 bg-transparent"
             />
 
             {/* Discount Badge on Image */}
@@ -1338,16 +1336,13 @@ const SearchProductCard: React.FC<SearchProductCardProps> = ({
       className="bg-white/85 hover:bg-white/95 backdrop-blur-2xl rounded-2xl border border-white/80 hover:border-white p-3 sm:p-3.5 flex flex-col justify-between transition-all duration-300 shadow-[0_4px_24px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.10)] cursor-pointer group relative overflow-hidden"
     >
       <div>
-        {/* Top Image & Badges */}
+        {/* Top Image & Badges (Flush edge-to-edge, zero margin/padding) */}
         {showImage && (
-          <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-stone-100/80 mb-2.5 border border-white/60">
-            <img
+          <div className="relative aspect-4/3 w-full rounded-none overflow-hidden bg-transparent mb-2.5 border-0 flex items-center justify-center p-0">
+            <ProgressiveImage
               src={product.image}
               alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
+              className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-300 bg-transparent"
             />
 
             {/* Badges Overlay */}

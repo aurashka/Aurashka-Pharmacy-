@@ -26,6 +26,7 @@ import {
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
 import { getProductOverlayConfig } from '../utils/gradientHelper';
+import { ProgressiveImage } from './ProgressiveImage';
 
 interface ProductCardProps {
   product: HerbalProduct;
@@ -376,17 +377,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Full Image (Clean neutral background, no harsh green tint) */}
+        {/* Right Column: Image Holder (Flush edge-to-edge, transparent background, no rounded corners, supports transparent PNGs) */}
         {showImage && (
-          <div className="w-[120px] sm:w-[145px] md:w-[160px] shrink-0 relative bg-[#F8FAF9] overflow-hidden flex items-center justify-center border-l border-[#E6F0EB]">
-            <img
+          <div className="w-[120px] sm:w-[145px] md:w-[160px] shrink-0 relative bg-transparent rounded-none overflow-hidden flex items-center justify-center border-l border-[#E6F0EB]/60 p-0">
+            <ProgressiveImage
               src={primaryImage}
               alt={product.name}
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-500"
-              onError={(e) => {
-                (e.currentTarget as HTMLElement).style.display = 'none';
-              }}
+              className="w-full h-full object-cover rounded-none group-hover:scale-106 transition-transform duration-500 bg-transparent"
             />
 
             {/* Discount Badge on Image */}
@@ -417,17 +415,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onClick={() => onOpenDetail(product)}
       className="group bg-white rounded-3xl border border-[#DCEFE3] hover:border-[#1E6B47] shadow-[0_8px_30px_rgba(20,50,30,0.04)] hover:shadow-[0_18px_42px_rgba(20,60,35,0.1)] hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative z-10"
     >
-      {/* Product Image Slot with Soft Background & Rounded Style */}
+      {/* Product Image Slot with Transparent Background & No Rounded Corners (Flush edge-to-edge, zero margin/padding) */}
       {showImage && (
-        <div className="relative aspect-4/3 bg-[#F8FAF9] overflow-hidden rounded-t-3xl border-b border-[#E8F2EC] flex items-center justify-center p-3">
-          <img
+        <div className="relative aspect-4/3 bg-transparent rounded-none overflow-hidden border-0 flex items-center justify-center p-0">
+          <ProgressiveImage
             src={primaryImage}
             alt={product.name}
             referrerPolicy="no-referrer"
-            className="w-full h-full object-contain rounded-2xl group-hover:scale-105 transition-transform duration-400 drop-shadow-sm"
-            onError={(e) => {
-              (e.currentTarget as HTMLElement).style.display = 'none';
-            }}
+            className="w-full h-full object-cover rounded-none group-hover:scale-105 transition-transform duration-400 bg-transparent"
           />
 
           {/* Optional Configurable Bottom Gradient / Blur Glass Overlay with Smooth Top Fade */}
@@ -517,7 +512,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Hover preview pill */}
           {showQuickView && (
-            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4 rounded-t-3xl backdrop-blur-2xs">
+            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4 rounded-none backdrop-blur-2xs">
               <span className="px-3.5 py-1.5 rounded-full bg-white text-[#143B25] text-xs font-bold shadow-lg flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5 text-[#1E6B47]" />
                 <span>Quick View</span>

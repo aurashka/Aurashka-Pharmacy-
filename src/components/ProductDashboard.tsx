@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HerbalProduct, ProductCategory, CategoryItem, SiteSettings } from '../types/pharmacy';
 import { ProductCard } from './ProductCard';
+import { ProductGridSkeleton } from './ShimmerSkeletons';
 import {
   Search,
   X,
@@ -146,6 +147,7 @@ interface ProductDashboardProps {
   selectedForm?: string;
   onSelectForm?: (form: string) => void;
   onOpenFullSearch?: () => void;
+  isLoading?: boolean;
 }
 
 export const ProductDashboard: React.FC<ProductDashboardProps> = ({
@@ -166,6 +168,7 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   selectedForm: externalSelectedForm,
   onSelectForm: externalOnSelectForm,
   onOpenFullSearch,
+  isLoading = false,
 }) => {
   const [internalSelectedForm, setInternalSelectedForm] = useState<string>('all');
   const selectedForm = externalSelectedForm !== undefined ? externalSelectedForm : internalSelectedForm;
@@ -622,8 +625,13 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
         </div>
       </div>
 
-      {/* Product Display: Clean Table View OR Grid View (From Reference Image) */}
-      {sortedProducts.length === 0 ? (
+      {/* Product Display: Shimmer Skeleton during live load OR Clean Table / Grid View */}
+      {isLoading ? (
+        <ProductGridSkeleton 
+          count={6} 
+          isModern={siteSettings?.productCardDisplay?.catalogCardStyle === 'modern'} 
+        />
+      ) : sortedProducts.length === 0 ? (
         <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-[#DCEFE3] p-12 text-center space-y-4 shadow-sm">
           <div className="w-14 h-14 rounded-2xl bg-[#DCF3E7] text-[#143B25] flex items-center justify-center mx-auto shadow-inner">
             <Search className="w-6 h-6" />
@@ -670,11 +678,11 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
                         {/* Product Info */}
                         <td className="py-3.5 px-4 sm:px-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-[#EAF5EE] overflow-hidden shrink-0 border border-[#DCEFE3] relative">
+                            <div className="w-12 h-12 rounded-none bg-transparent overflow-hidden shrink-0 border-0 relative flex items-center justify-center">
                               <img
                                 src={product.image || (product.images && product.images[0]) || ''}
                                 alt={product.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                className="w-full h-full object-contain rounded-none group-hover:scale-105 transition-transform duration-300 bg-transparent"
                                 loading="lazy"
                               />
                             </div>

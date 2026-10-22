@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { HerbalProduct, SiteSettings, ProductVariant } from '../types/pharmacy';
 import { ProductMonographTabs } from "./ProductMonographTabs";
 import { CustomDetailsRenderer } from './CustomDetailsRenderer';
+import { ProgressiveImage } from './ProgressiveImage';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
@@ -303,14 +304,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     onClick={() => setIsZoomed(true)}
                     title="Click to view full photo in popup"
                   >
-                    <img
+                    <ProgressiveImage
                       src={activeMedia.url}
                       alt={`${product.name} - view ${currentMediaIndex + 1}`}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103 bg-transparent"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                      }}
                     />
 
                     {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}

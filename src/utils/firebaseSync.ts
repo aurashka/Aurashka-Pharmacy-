@@ -1,6 +1,6 @@
 import { HerbalProduct, SiteSettings } from '../types/pharmacy';
 import { rtdb } from '../firebase';
-import { ref, set, get, remove } from 'firebase/database';
+import { ref, set, get, remove, onValue, Unsubscribe } from 'firebase/database';
 
 /**
  * Strips undefined properties to guarantee strict compatibility with Firebase RTDB SDK
@@ -298,3 +298,129 @@ export const getOrAutoSeedFirebaseData = async (
     };
   }
 };
+
+/**
+ * Real-time live listener for products from Firebase Realtime Database
+ */
+export const subscribeToFirebaseProducts = (
+  onProductsUpdate: (products: HerbalProduct[]) => void,
+  onError?: (err: any) => void
+): Unsubscribe => {
+  const pRef = ref(rtdb, 'products');
+  return onValue(
+    pRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          const list: HerbalProduct[] = Object.values(data);
+          if (list.length > 0) {
+            onProductsUpdate(list);
+          }
+        }
+      }
+    },
+    (error) => {
+      console.warn('[Firebase RTDB] Products live listener notice:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+
+/**
+ * Real-time live listener for site settings & contacts from Firebase Realtime Database
+ */
+export const subscribeToFirebaseSiteSettings = (
+  onSettingsUpdate: (settings: SiteSettings) => void,
+  onError?: (err: any) => void
+): Unsubscribe => {
+  const sRef = ref(rtdb, 'site_settings');
+  return onValue(
+    sRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        if (data && typeof data === 'object' && (data.brandName || data.heroTitle || data.contacts)) {
+          // Normalize object-shaped arrays from Firebase RTDB
+          const phones = Array.isArray(data.contacts?.phones)
+            ? data.contacts.phones
+            : (data.contacts?.phones && typeof data.contacts.phones === 'object'
+              ? Object.values(data.contacts.phones)
+              : undefined);
+
+          const whatsapps = Array.isArray(data.contacts?.whatsapps)
+            ? data.contacts.whatsapps
+            : (data.contacts?.whatsapps && typeof data.contacts.whatsapps === 'object'
+              ? Object.values(data.contacts.whatsapps)
+              : undefined);
+
+          const emails = Array.isArray(data.contacts?.emails)
+            ? data.contacts.emails
+            : (data.contacts?.emails && typeof data.contacts.emails === 'object'
+              ? Object.values(data.contacts.emails)
+              : undefined);
+
+          const peopleList = Array.isArray(data.peopleList)
+            ? data.peopleList
+            : (data.peopleList && typeof data.peopleList === 'object'
+              ? Object.values(data.peopleList)
+              : undefined);
+
+          const normalizedSettings = {
+            ...data,
+            contacts: {
+              ...data.contacts,
+              ...(phones ? { phones } : {}),
+              ...(whatsapps ? { whatsapps } : {}),
+              ...(emails ? { emails } : {}),
+            },
+            ...(peopleList ? { peopleList } : {}),
+          } as SiteSettings;
+
+          onSettingsUpdate(normalizedSettings);
+        }
+      }
+    },
+    (error) => {
+      console.warn('[Firebase RTDB] Site settings live listener notice:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+
+/**
+ * Real-time live listener for dynamic categories and forms from Firebase Realtime Database
+ */
+export const subscribeToFirebaseCatalogMeta = (
+  onMetaUpdate: (meta: { categories: { id: string; label: string }[]; forms: string[] }) => void,
+  onError?: (err: any) => void
+): Unsubscribe => {
+  const mRef = ref(rtdb, 'catalog_meta');
+  return onValue(
+    mRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          const rawCats = data.categories;
+          const rawForms = data.forms;
+          const categories = Array.isArray(rawCats)
+            ? rawCats
+            : (rawCats && typeof rawCats === 'object' ? Object.values(rawCats) : []);
+          const forms = Array.isArray(rawForms)
+            ? rawForms
+            : (rawForms && typeof rawForms === 'object' ? Object.values(rawForms) : []);
+
+          if (categories.length > 0 || forms.length > 0) {
+            onMetaUpdate({ categories: categories as any[], forms: forms as any[] });
+          }
+        }
+      }
+    },
+    (error) => {
+      console.warn('[Firebase RTDB] Catalog meta live listener notice:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+

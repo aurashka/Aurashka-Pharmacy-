@@ -31,6 +31,7 @@ interface HeaderProps {
   forms?: string[];
   onSelectCategory?: (category: string) => void;
   onSelectForm?: (form: string) => void;
+  isLiveConnected?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminPanel,
   onOpenSearch,
   siteSettings,
+  isLiveConnected = false,
 }) => {
   const { currentUser, isAdmin, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -355,6 +357,17 @@ export const Header: React.FC<HeaderProps> = ({
               <LogIn className="w-3.5 h-3.5 text-[#1E6B47]" />
               <span>Sign In</span>
             </button>
+          )}
+
+          {/* Real-time Firebase Live Sync Pill */}
+          {isLiveConnected && (
+            <div 
+              className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold text-emerald-800 bg-[#E8F6EE] border border-[#CDE5D7] shadow-2xs select-none"
+              title="Firebase Live Realtime Database Connected - Changes sync instantaneously"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Firebase</span>
+            </div>
           )}
 
           {/* Search Button (Next to Cart Bag) */}

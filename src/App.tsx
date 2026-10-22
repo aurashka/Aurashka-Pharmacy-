@@ -31,7 +31,10 @@ import {
   fetchSiteSettingsFromFirebase,
   backupCatalogMetaToFirebase,
   fetchCatalogMetaFromFirebase,
-  getOrAutoSeedFirebaseData
+  getOrAutoSeedFirebaseData,
+  subscribeToFirebaseProducts,
+  subscribeToFirebaseSiteSettings,
+  subscribeToFirebaseCatalogMeta
 } from './utils/firebaseSync';
 import { Shield, Settings, Sparkles, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 
@@ -258,6 +261,10 @@ function PharmacyApp() {
   // Inquiry / Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
+  // Live Firebase Sync & Loading State for Shimmer Skeletons
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
+
   // Visible products: customers see only non-draft published products, while logged-in admins can preview drafts
   const visibleProducts = useMemo(() => {
     if (isAdmin) return products;
@@ -304,11 +311,16 @@ function PharmacyApp() {
     return () => window.removeEventListener('hashchange', syncHashToView);
   }, [products, isAdmin]);
 
-  // Sync products, site settings, categories & forms from Firebase Realtime Database on initial mount
-  // If remote is null, auto-create/seed Firebase with initial defaults
+  // Real-time live data synchronization from Firebase Realtime Database
+  // 1. Initial auto-seed or fetch from Firebase
+  // 2. Continuous real-time live subscriptions via onValue (products, site_settings, catalog_meta)
   useEffect(() => {
-    const fetchRemoteData = async () => {
+    let unsubs: (() => void)[] = [];
+    let isMounted = true;
+
+    const setupFirebaseSync = async () => {
       try {
+        // 1. Initial Auto-seed or Fetch
         const synced = await getOrAutoSeedFirebaseData(
           DEFAULT_SITE_SETTINGS,
           DEFAULT_CATEGORIES,
@@ -316,32 +328,84 @@ function PharmacyApp() {
           HERBAL_PRODUCTS
         );
 
-        if (synced.settings) {
-          const normalized = normalizeSiteSettings(synced.settings);
-          setSiteSettings(normalized);
-          localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
+        if (isMounted) {
+          if (synced.settings) {
+            const normalized = normalizeSiteSettings(synced.settings);
+            setSiteSettings(normalized);
+            localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
+          }
+
+          if (Array.isArray(synced.categories) && synced.categories.length > 0) {
+            setCategories(synced.categories);
+            localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(synced.categories));
+          }
+
+          if (Array.isArray(synced.forms) && synced.forms.length > 0) {
+            setForms(synced.forms);
+            localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(synced.forms));
+          }
+
+          if (Array.isArray(synced.products) && synced.products.length > 0) {
+            setProducts(synced.products);
+            localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(synced.products));
+          }
+
+          setIsDataLoading(false);
+          setIsLiveConnected(true);
         }
 
-        if (Array.isArray(synced.categories) && synced.categories.length > 0) {
-          setCategories(synced.categories);
-          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(synced.categories));
-        }
+        // 2. Real-time Live Listeners: update instantaneously when any client or admin edits data
+        const unsubProducts = subscribeToFirebaseProducts((liveProducts) => {
+          if (isMounted && Array.isArray(liveProducts) && liveProducts.length > 0) {
+            setProducts(liveProducts);
+            localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(liveProducts));
+            setIsDataLoading(false);
+            setIsLiveConnected(true);
+          }
+        });
 
-        if (Array.isArray(synced.forms) && synced.forms.length > 0) {
-          setForms(synced.forms);
-          localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(synced.forms));
-        }
+        const unsubSettings = subscribeToFirebaseSiteSettings((liveSettings) => {
+          if (isMounted && liveSettings) {
+            const normalized = normalizeSiteSettings(liveSettings);
+            setSiteSettings(normalized);
+            localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
+            setIsLiveConnected(true);
+          }
+        });
 
-        if (Array.isArray(synced.products) && synced.products.length > 0) {
-          setProducts(synced.products);
-          localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(synced.products));
-        }
+        const unsubMeta = subscribeToFirebaseCatalogMeta(({ categories: liveCats, forms: liveForms }) => {
+          if (isMounted) {
+            if (Array.isArray(liveCats) && liveCats.length > 0) {
+              setCategories(liveCats);
+              localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(liveCats));
+            }
+            if (Array.isArray(liveForms) && liveForms.length > 0) {
+              setForms(liveForms);
+              localStorage.setItem(FORMS_STORAGE_KEY, JSON.stringify(liveForms));
+            }
+            setIsLiveConnected(true);
+          }
+        });
+
+        unsubs = [unsubProducts, unsubSettings, unsubMeta];
       } catch (err) {
         console.warn('Firebase RTDB data sync note:', err);
+        if (isMounted) {
+          setIsDataLoading(false);
+        }
       }
     };
 
-    fetchRemoteData();
+    setupFirebaseSync();
+
+    return () => {
+      isMounted = false;
+      unsubs.forEach((unsub) => {
+        try {
+          unsub();
+        } catch {}
+      });
+    };
   }, []);
 
   // Dynamically sync Document Title, Favicon and OpenGraph/Twitter meta tags with siteSettings (Brand Name & Logo)
@@ -605,6 +669,7 @@ function PharmacyApp() {
           setSelectedForm(form);
           handleNavigateSection('deals-catalog');
         }}
+        isLiveConnected={isLiveConnected}
       />
 
       {/* FOR USER ROLE 'ADMIN': PROMINENT ADMIN ACCESS BAR ON MAIN PAGE (TOP) */}
@@ -716,6 +781,7 @@ function PharmacyApp() {
                 onAddToCart={handleAddToCart}
                 cartProductIds={cartProductIds}
                 isAdmin={isAdmin}
+                isLoading={isDataLoading}
                 onOpenAdminPanel={() => {
                   setProductToEditInAdmin(null);
                   setIsAdminPanelOpen(true);
@@ -739,6 +805,7 @@ function PharmacyApp() {
               onAddToCart={handleAddToCart}
               cartProductIds={cartProductIds}
               isAdmin={isAdmin}
+              isLoading={isDataLoading}
               onOpenAdminPanel={() => {
                 setProductToEditInAdmin(null);
                 setIsAdminPanelOpen(true);
