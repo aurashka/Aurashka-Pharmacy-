@@ -97,35 +97,47 @@ export const ProductGridSkeleton: React.FC<{ count?: number; isModern?: boolean 
 };
 
 /**
- * Horizontal Shelf Shimmer Skeleton
+ * Horizontal Shelf Shimmer Skeleton with full-width 3D wooden shelf base
  */
 export const HorizontalShelfSkeleton: React.FC = () => {
   return (
-    <div className="py-6 space-y-4">
+    <div className="w-full relative py-2">
       {/* Shelf Header Shimmer */}
-      <div className="flex items-center justify-between px-4 sm:px-6">
-        <div className="space-y-1.5">
-          <div className="h-6 bg-[#DCEFE3] rounded-md w-48 animate-shimmer" />
-          <div className="h-3.5 bg-[#EAF5EF] rounded-md w-64 animate-shimmer" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-3">
+        <div className="flex items-center justify-between pb-2.5 border-b border-[#E2EBE5]">
+          <div className="space-y-1.5">
+            <div className="h-4 bg-[#DCEFE3] rounded-full w-28 animate-shimmer" />
+            <div className="h-6 bg-[#DCEFE3] rounded-md w-56 animate-shimmer" />
+            <div className="h-3 bg-[#EAF5EF] rounded-md w-64 animate-shimmer" />
+          </div>
+          <div className="h-8 bg-[#E2EFE7] rounded-full w-24 animate-shimmer" />
         </div>
-        <div className="h-8 bg-[#E2EFE7] rounded-full w-24 animate-shimmer" />
       </div>
 
-      {/* Horizontal Cards Row Shimmer */}
-      <div className="flex gap-4 overflow-x-hidden px-4 sm:px-6">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div 
-            key={index} 
-            className="w-[200px] sm:w-[220px] md:w-[240px] shrink-0 bg-white rounded-3xl border border-[#DCEFE3] overflow-hidden flex flex-col"
-          >
-            <div className="aspect-4/3 w-full bg-[#EBF4EE] animate-shimmer" />
-            <div className="p-3.5 space-y-2">
-              <div className="h-4 bg-[#DCEFE3] rounded-md w-3/4 animate-shimmer" />
-              <div className="h-3 bg-[#EAF5EF] rounded-md w-1/2 animate-shimmer" />
-              <div className="h-5 bg-[#DCEFE3] rounded-md w-20 animate-shimmer mt-2" />
+      {/* Horizontal Cards Row Shimmer with Normal Curved Cards */}
+      <div className="relative w-full">
+        <div className="flex gap-4 sm:gap-5 overflow-x-hidden pt-3 pb-1 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex flex-col items-center shrink-0">
+              <div className="w-[195px] sm:w-[215px] md:w-[230px] bg-white rounded-2xl border border-[#DCEFE3] overflow-hidden flex flex-col p-0 space-y-0 shadow-2xs">
+                <div className="aspect-square w-full rounded-t-2xl bg-[#EBF4EE] animate-shimmer" />
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-[#DCEFE3] rounded-md w-3/4 animate-shimmer" />
+                  <div className="h-3 bg-[#EAF5EF] rounded-md w-1/2 animate-shimmer" />
+                  <div className="h-5 bg-[#DCEFE3] rounded-md w-20 animate-shimmer mt-2" />
+                </div>
+              </div>
+              {/* Floor contact shadow shimmer */}
+              <div className="w-3/4 h-3.5 mt-1.5 ayurvedic-shelf-shadow rounded-full opacity-30" />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* 3D Wooden Shelf Base Platform */}
+        <div className="w-full pointer-events-none select-none mt-0.5">
+          <div className="h-3 sm:h-3.5 w-full ayurvedic-shelf-top" />
+          <div className="h-3.5 sm:h-4 w-full ayurvedic-shelf-front" />
+        </div>
       </div>
     </div>
   );

@@ -3,9 +3,11 @@ import { HerbalProduct, SiteSettings, ProductVariant } from '../types/pharmacy';
 import { ProductMonographTabs } from "./ProductMonographTabs";
 import { CustomDetailsRenderer } from './CustomDetailsRenderer';
 import { ProgressiveImage } from './ProgressiveImage';
+import { ImageLightboxModal } from './ImageLightboxModal';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { 
   X, 
+  ArrowLeft,
   Leaf, 
   ShieldCheck, 
   Clock, 
@@ -786,74 +788,66 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
       </div>
 
-      {/* Fullscreen High-Resolution Lightbox (when user clicks zoom) */}
-      {isZoomed && (
+      {/* Fullscreen High-Resolution Image Lightbox with BACK & SAVE options */}
+      {isZoomed && activeMedia.type === 'image' && (
+        <ImageLightboxModal
+          isOpen={isZoomed}
+          images={imagesList}
+          currentIndex={Math.max(0, imagesList.indexOf(activeMedia.url))}
+          productName={product.name}
+          onClose={() => setIsZoomed(false)}
+          onNavigate={(idx) => {
+            const targetUrl = imagesList[idx];
+            const mediaIndex = mediaList.findIndex((m) => m.url === targetUrl);
+            if (mediaIndex !== -1) setCurrentMediaIndex(mediaIndex);
+          }}
+        />
+      )}
+
+      {/* Fullscreen Video Player (when media is video) */}
+      {isZoomed && activeMedia.type === 'video' && (
         <div 
-          className="fixed inset-0 z-60 bg-black/95 flex flex-col items-center justify-center p-4"
+          className="fixed inset-0 z-60 bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-4"
           onClick={() => setIsZoomed(false)}
         >
-          <div className="absolute top-4 right-4 flex items-center gap-3 text-white">
-            <span className="text-xs text-white/80">
-              Media {currentMediaIndex + 1} of {mediaList.length}
-            </span>
+          <div className="flex items-center justify-between text-white z-20 w-full max-w-5xl mx-auto pt-2 px-1">
             <button
               type="button"
               onClick={() => setIsZoomed(false)}
-              className="p-2 text-white/70 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm backdrop-blur-md transition-all cursor-pointer border border-white/25 shadow-lg"
             >
-              <X className="w-6 h-6" />
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsZoomed(false)}
+              className="p-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/20"
+            >
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           <div 
-            className="relative max-w-4xl max-h-[85vh] flex items-center justify-center w-full"
+            className="w-[90vw] max-w-4xl aspect-16/9 bg-black rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {activeMedia.type === 'video' ? (
-              <div className="w-[90vw] max-w-4xl aspect-16/9 bg-black rounded-lg overflow-hidden flex items-center justify-center shadow-2xl">
-                {activeMedia.videoType === 'youtube' ? (
-                  <iframe
-                    src={getYouTubeEmbedUrl(activeMedia.url, true) || ''}
-                    title="Fullscreen Video"
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : (
-                  <video
-                    src={activeMedia.url}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
-                )}
-              </div>
-            ) : (
-              <img
-                src={activeMedia.url}
-                alt="Zoomed view"
-                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+            {activeMedia.videoType === 'youtube' ? (
+              <iframe
+                src={getYouTubeEmbedUrl(activeMedia.url, true) || ''}
+                title="Fullscreen Video"
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
               />
-            )}
-
-            {mediaList.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={handlePrevMedia}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center cursor-pointer"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextMedia}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center cursor-pointer"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </>
+            ) : (
+              <video
+                src={activeMedia.url}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
             )}
           </div>
         </div>
