@@ -36,7 +36,19 @@ import {
   subscribeToFirebaseSiteSettings,
   subscribeToFirebaseCatalogMeta
 } from './utils/firebaseSync';
-import { Shield, Settings, Sparkles, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { 
+  Shield, 
+  Settings, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  XCircle,
+  Home,
+  Package,
+  Stethoscope,
+  Search,
+  ShoppingBag
+} from 'lucide-react';
 
 const PRODUCTS_STORAGE_KEY = 'aurashka_catalog_products';
 const SITE_SETTINGS_STORAGE_KEY = 'aurashka_site_settings';
@@ -703,9 +715,9 @@ function PharmacyApp() {
       {/* Below Header Marquee Ticker */}
       {renderMarquee('below_header')}
 
-      {/* FLOATING ADMIN ACCESS BUTTON ON MAIN PAGE FRONT (Only for role: admin) */}
+      {/* FLOATING ADMIN ACCESS BUTTON ON MAIN PAGE FRONT (Only for role: admin, hidden on mobile to prevent dock overlap) */}
       {isAdmin && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="hidden sm:flex fixed bottom-6 right-6 z-50">
           <button
             onClick={() => {
               setProductToEditInAdmin(null);
@@ -720,7 +732,7 @@ function PharmacyApp() {
         </div>
       )}
 
-      <main className="flex-1 relative z-10">
+      <main className="flex-1 relative z-10 pb-20 sm:pb-0">
         {currentView === 'contact' ? (
           /* Dedicated Contact Page */
           <ContactPage
@@ -746,6 +758,8 @@ function PharmacyApp() {
               setProductToEditInAdmin(selectedProductForDetail);
               setIsAdminPanelOpen(true);
             }}
+            cartCount={totalCartCount}
+            onOpenCart={() => setIsCartOpen(true)}
           />
         ) : (
           /* Main Storefront Catalog Page */
@@ -906,11 +920,13 @@ function PharmacyApp() {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {/* Floating Quick-Contact Button (WhatsApp + Phone + Consult) */}
-      <FloatingContactWidget
-        onOpenConsultationModal={() => handleOpenConsultationModal()}
-        siteSettings={siteSettings}
-      />
+      {/* Floating Quick-Contact Button (WhatsApp + Phone + Consult) - Only on home/contact to prevent overlapping product view buttons */}
+      {currentView !== 'product' && (
+        <FloatingContactWidget
+          onOpenConsultationModal={() => handleOpenConsultationModal()}
+          siteSettings={siteSettings}
+        />
+      )}
 
       {/* Above Footer Marquee Ticker */}
       {renderMarquee('above_footer')}
@@ -941,6 +957,73 @@ function PharmacyApp() {
           <span className="text-xs font-semibold leading-snug">{toast.message}</span>
         </div>
       )}
+
+      {/* Native Mobile Bottom Navigation Dock (App-like feel for phone screens) */}
+      <nav 
+        aria-label="Mobile Bottom App Bar"
+        className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#DCEFE3] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_24px_rgba(20,50,30,0.08)] select-none"
+      >
+        {/* 1. Home Tab */}
+        <button
+          type="button"
+          onClick={handleBackToHome}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+            currentView === 'home' && !selectedProductForDetail ? 'text-[#1E6B47]' : 'text-[#6B8576] hover:text-[#143B25]'
+          }`}
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-[9.5px] font-bold mt-0.5">Home</span>
+        </button>
+
+        {/* 2. Catalog / Products Tab */}
+        <button
+          type="button"
+          onClick={() => handleNavigateSection('deals-catalog')}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer"
+        >
+          <Package className="w-5 h-5" />
+          <span className="text-[9.5px] font-bold mt-0.5">Products</span>
+        </button>
+
+        {/* 3. Vaidya Free Consult Tab */}
+        <button
+          type="button"
+          onClick={() => handleOpenConsultationModal()}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#143B25] hover:text-[#1E6B47] transition-colors cursor-pointer relative"
+        >
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#143B25] to-[#1E6B47] text-white flex items-center justify-center shadow-md -mt-3.5 ring-2 ring-white">
+            <Stethoscope className="w-4 h-4 text-emerald-200" />
+          </div>
+          <span className="text-[9.5px] font-bold mt-0.5 text-[#143B25]">Consult</span>
+        </button>
+
+        {/* 4. Instant Search Tab */}
+        <button
+          type="button"
+          onClick={() => handleOpenSearchModal()}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer"
+        >
+          <Search className="w-5 h-5" />
+          <span className="text-[9.5px] font-bold mt-0.5">Search</span>
+        </button>
+
+        {/* 5. Cart Tab with Live Counter */}
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer relative"
+        >
+          <div className="relative">
+            <ShoppingBag className="w-5 h-5" />
+            {totalCartCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                {totalCartCount > 9 ? '9+' : totalCartCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[9.5px] font-bold mt-0.5">Bag</span>
+        </button>
+      </nav>
     </div>
   );
 }

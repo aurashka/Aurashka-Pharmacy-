@@ -58,6 +58,8 @@ interface ProductDetailPageProps {
   onUpdateProduct?: (product: HerbalProduct) => void;
   onUpdateSiteSettings?: (settings: SiteSettings) => void;
   onOpenAdminPanel?: () => void;
+  cartCount?: number;
+  onOpenCart?: () => void;
 }
 
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
@@ -73,6 +75,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   onUpdateProduct,
   onUpdateSiteSettings,
   onOpenAdminPanel,
+  cartCount = 0,
+  onOpenCart,
 }) => {
   const { currentUser } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -80,6 +84,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'indications' | 'ingredients' | 'dosage' | 'action' | 'precautions'>('indications');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const heroTouchStartXRef = useRef<number | null>(null);
+  const heroTouchStartYRef = useRef<number | null>(null);
+
+  const handleHeroTouchStart = (e: React.TouchEvent) => {
+    heroTouchStartXRef.current = e.touches[0].clientX;
+    heroTouchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleHeroTouchEnd = (e: React.TouchEvent) => {
+    if (heroTouchStartXRef.current === null || heroTouchStartYRef.current === null) return;
+    const deltaX = heroTouchStartXRef.current - e.changedTouches[0].clientX;
+    const deltaY = heroTouchStartYRef.current - e.changedTouches[0].clientY;
+
+    // Detect horizontal swipe if deltaX > 40 and horizontal distance is greater than vertical distance
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && mediaList.length > 1) {
+      if (deltaX > 0) {
+        // Swiped Left -> Next media
+        setCurrentImageIndex((prev) => (prev + 1) % mediaList.length);
+      } else {
+        // Swiped Right -> Previous media
+        setCurrentImageIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
+      }
+    }
+    heroTouchStartXRef.current = null;
+    heroTouchStartYRef.current = null;
+  };
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (tabsContainerRef.current) {
@@ -209,15 +239,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     }, 1800);
   };
 
-  // Variant Selection State
+  // Variant Selection State & Stepper Quantity
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(() => {
     return product.variants && product.variants.length > 0 ? product.variants[0] : null;
   });
+  const [quantity, setQuantity] = useState(1);
 
   // Scroll to top on product change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentImageIndex(0);
+    setQuantity(1);
     setSelectedVariant(product.variants && product.variants.length > 0 ? product.variants[0] : null);
   }, [product.id, product.variants]);
 
@@ -339,6 +371,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     window.open(buildWhatsAppUrl(primaryWhatsApp.number, fullMessage), '_blank');
   };
 
+  const handleAddToCartWithQuantity = () => {
+    for (let i = 0; i < quantity; i++) {
+      onAddToCart({
+        ...product,
+        price: currentPrice,
+        mrp: currentMrp,
+        resellerPrice: currentReseller,
+        volumeOrWeight: selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight,
+        image: (selectedVariant?.image) || product.image,
+      });
+    }
+  };
+
   // Other product suggestions for bottom horizontal scroll: Priority Same category > other, randomized
   const suggestedProducts = React.useMemo(() => {
     if (!allProducts || allProducts.length === 0) return [];
@@ -364,41 +409,58 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F6FAF7] text-[#142B1F] relative z-10">
-      {/* Top Navigation & Breadcrumb Bar */}
+      {/* 1. Top Navigation Bar: Back, Share, and Cart Icon (Matching Reference Screen 2) */}
       <div className="bg-[#14291D] text-white border-b border-[#234D34] sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-xs font-semibold text-[#A5D6B6] hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Apothecary Catalog</span>
+            <span className="hidden sm:inline">Back to Apothecary Catalog</span>
+            <span className="sm:hidden">Back</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-medium text-white flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10"
               title="Copy direct product link"
             >
               {copiedLink ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-300" />
-                  <span className="text-emerald-300 font-semibold">Link Copied!</span>
+                  <span className="text-emerald-300 font-semibold">Copied!</span>
                 </>
               ) : (
                 <>
                   <Share2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Share Product Link</span>
+                  <span className="hidden sm:inline">Share</span>
                 </>
               )}
             </button>
+
+            {onOpenCart && (
+              <button
+                type="button"
+                onClick={onOpenCart}
+                className="relative w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
+                title="View Dispensary Cart"
+              >
+                <ShoppingBag className="w-4.5 h-4.5 text-amber-300" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-400 text-[#14291D] text-[10px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Breadcrumb Path */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-2">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-1">
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#716858]">
           <button onClick={onBack} className="hover:text-[#14291D] hover:underline">
             Home
@@ -419,7 +481,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <span className="font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-950 border border-amber-400">
               📝 DRAFT PREVIEW
             </span>
-            <span>This formulation is in Draft Mode and only visible to administrators. It is hidden from regular customers.</span>
+            <span>This formulation is in Draft Mode and only visible to administrators.</span>
           </div>
           {isAdmin && onOpenAdminPanel && (
             <button
@@ -432,13 +494,24 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         </div>
       )}
 
-      {/* Main Product Presentation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-          {/* Left Column: Image & Video Gallery */}
-          <div className="lg:col-span-6 space-y-4">
+      {/* 2. Main Product Presentation (Matching Center Screen of Reference) */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6">
+        
+        {/* Top Hero Product Showcase Area: Horizontally Expansive with Touch Swipe & Full Screen Zoom */}
+        <div className="relative w-full flex flex-col items-center">
+          
+          {/* Main Showcase Stage - Expanded horizontally for maximum impact */}
+          <div 
+            className="w-full max-w-full sm:max-w-2xl md:max-w-3xl rounded-3xl bg-linear-to-b from-[#F2F9F5] via-[#EBF6F0]/80 to-white p-3 sm:p-6 md:p-8 flex items-center justify-center relative overflow-hidden shadow-xs border border-[#DCEFE3] group select-none touch-pan-y"
+            onTouchStart={handleHeroTouchStart}
+            onTouchEnd={handleHeroTouchEnd}
+          >
+            {/* Subtle Botanical Glow Backdrop spanning stage */}
+            <div className="absolute inset-4 sm:inset-10 rounded-full bg-radial from-[#DCF3E7]/90 via-[#E8F8F0]/40 to-transparent blur-2xl pointer-events-none" />
+
+            {/* Video vs Image */}
             {activeMedia.type === 'video' ? (
-              <div className="bg-black rounded-2xl border border-[#D5CCBC] overflow-hidden shadow-xs relative aspect-4/3 sm:aspect-square flex items-center justify-center">
+              <div className="w-full aspect-4/3 sm:aspect-16/10 rounded-2xl sm:rounded-3xl overflow-hidden bg-black shadow-md relative flex items-center justify-center z-10">
                 {activeMedia.videoType === 'youtube' ? (
                   <iframe
                     src={getYouTubeEmbedUrl(activeMedia.url, true) || ''}
@@ -456,404 +529,311 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     className="w-full h-full object-contain"
                   />
                 )}
-
-                {/* Video Type Badge */}
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10 pointer-events-none">
-                  <span className="px-2.5 py-1 rounded-md bg-red-600 text-white font-bold text-xs shadow-sm flex items-center gap-1">
-                    <Play className="w-3 h-3 fill-white" />
-                    <span>{activeMedia.videoType === 'youtube' ? 'YouTube Video' : 'Video Player'}</span>
-                  </span>
-                  {activeMedia.label && (
-                    <span className="px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-xs text-white font-semibold text-xs shadow-sm">
-                      {activeMedia.label}
-                    </span>
-                  )}
-                </div>
-
-                {/* Prev / Next arrows */}
-                {mediaList.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentImageIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
-                      }}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentImageIndex((prev) => (prev + 1) % mediaList.length);
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
               </div>
             ) : (
               <div 
-                className="bg-transparent rounded-none border-0 overflow-hidden shadow-none relative group aspect-4/3 sm:aspect-square flex items-center justify-center cursor-zoom-in"
+                className="w-full h-[340px] sm:h-[440px] md:h-[480px] flex items-center justify-center cursor-zoom-in relative z-10 transition-transform duration-300"
                 onClick={() => setIsLightboxOpen(true)}
+                title="Click to view full screen (Zoom & Save)"
               >
                 <ProgressiveImage
                   src={activeImage}
                   alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300 bg-transparent"
+                  className="w-full h-full object-contain max-h-[330px] sm:max-h-[430px] md:max-h-[470px] drop-shadow-[0_20px_35px_rgba(20,50,30,0.18)] group-hover:scale-103 transition-transform duration-300"
                 />
 
-                {/* Optional Configurable Bottom Gradient / Blur Glass Overlay */}
-                {getProductBottomOverlayClasses(product.primaryImageGradient, siteSettings?.productImageGradient) && (
-                  <div className={getProductBottomOverlayClasses(product.primaryImageGradient, siteSettings?.productImageGradient)!} />
-                )}
-
-                {/* Lightbox / View Large button */}
+                {/* Prominent Tap to View Full Screen Pill Button */}
                 <button
                   type="button"
-                  onClick={() => setIsLightboxOpen(true)}
-                  className="absolute top-3 right-3 py-1.5 px-2.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1.5 text-xs shadow-md"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsLightboxOpen(true);
+                  }}
+                  className="absolute top-2 right-2 sm:top-3 sm:right-3 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white text-[#142B1F] border border-[#DCEFE3] shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold backdrop-blur-xs group/btn active:scale-95"
                   title="Click image to open in full screen popup"
                 >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden sm:inline">Tap to View Large</span>
+                  <Maximize2 className="w-3.5 h-3.5 text-[#1E6B47] group-hover/btn:scale-110 transition-transform" />
+                  <span className="text-[11px] font-bold">Full Screen</span>
                 </button>
 
-                {/* Prev / Next Image arrows if multiple */}
-                {mediaList.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentImageIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
-                      }}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentImageIndex((prev) => (prev + 1) % mediaList.length);
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#14291D] shadow-md flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-
-                {/* Badges on main image */}
-                <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                  {!isAvailableInStock && (
-                    <span className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold text-xs shadow-sm">
+                {/* Stock Tag on Hero image */}
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1.5">
+                  {!isAvailableInStock ? (
+                    <span className="px-3 py-1 rounded-full bg-rose-600 text-white font-bold text-xs shadow-xs">
                       OUT OF STOCK
                     </span>
-                  )}
-                  {savings > 0 && isAvailableInStock && (
-                    <span className="px-2.5 py-1 rounded-md bg-[#25D366] text-black font-bold text-xs shadow-sm">
+                  ) : savings > 0 ? (
+                    <span className="px-3 py-1 rounded-full bg-[#143B25] text-white font-bold text-xs shadow-xs">
                       {discountPercent}% OFF
                     </span>
-                  )}
-                  {product.customTag?.text && (
-                    <span
-                      className="px-2.5 py-1 rounded-md font-bold text-xs shadow-sm flex items-center gap-1 w-fit"
-                      style={{
-                        backgroundColor: product.customTag.bgColor || '#14291D',
-                        color: product.customTag.textColor || '#FFFFFF',
-                      }}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{product.customTag.text}</span>
-                    </span>
-                  )}
-                  {product.sortBadge && product.sortBadge !== 'none' && (
-                    <span className="px-2.5 py-0.5 rounded-md bg-[#14291D] text-white font-mono text-[10px] uppercase tracking-wider font-semibold">
-                      {product.sortBadge}
+                  ) : null}
+                  {product.form && (
+                    <span className="px-2.5 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-[#142B1F] border border-[#DCEFE3] text-[10px] font-semibold shadow-2xs">
+                      {product.form}
                     </span>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Thumbnail Strip (Images + Videos) */}
+            {/* Floating Left / Right Arrow buttons for instant click switching */}
             {mediaList.length > 1 && (
-              <div
-                className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin touch-pan-x touch-pan-y"
-                style={{ touchAction: 'pan-x pan-y' }}
-              >
-                {mediaList.map((item, idx) => {
-                  const isSelected = currentImageIndex === idx;
-                  if (item.type === 'video') {
-                    const poster = item.poster || (item.videoType === 'youtube' ? getYouTubeThumbnail(item.url) : null);
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setCurrentImageIndex(idx);
-                          setIsLightboxOpen(false);
-                        }}
-                        className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer bg-black flex items-center justify-center ${
-                          isSelected
-                            ? 'border-red-600 ring-2 ring-red-400/40 scale-102 shadow-md'
-                            : 'border-[#DDD5C5] opacity-75 hover:opacity-100 hover:border-red-500'
-                        }`}
-                        title="Watch Product Video"
-                      >
-                        {poster ? (
-                          <img src={poster} alt="Video thumbnail" className="w-full h-full object-cover opacity-80" />
-                        ) : (
-                          <div className="w-full h-full bg-linear-to-br from-stone-900 to-black flex items-center justify-center">
-                            <Film className="w-6 h-6 text-stone-400" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-                          <div className="w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md">
-                            <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
-                          </div>
-                        </div>
-                        <span className="absolute bottom-0 inset-x-0 bg-red-600/90 text-white text-[8px] font-bold text-center py-0.5">
-                          VIDEO
-                        </span>
-                      </button>
-                    );
-                  }
-
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setCurrentImageIndex(idx);
-                        setIsLightboxOpen(false);
-                      }}
-                      className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-[#2C5E43] ring-2 ring-[#2C5E43]/30 scale-102'
-                          : 'border-[#DDD5C5] opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={item.url} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Quality & Ayush Assurance Box (Configurable from Admin Panel or Secretly in Product View) */}
-            {hasAnyBadgeVisible ? (
-              <div className="relative group p-4 bg-white rounded-xl border border-[#D5CCBC] text-xs transition-all shadow-2xs hover:border-[#2C5E43]/60">
-                <div className={`grid ${isBadge1Visible() && isBadge2Visible() ? 'grid-cols-2 gap-3' : 'grid-cols-1'}`}>
-                  {isBadge1Visible() && (
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#14291D] block">
-                          {product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified'}
-                        </span>
-                        <span className="text-[11px] text-[#716858]">
-                          {product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {isBadge2Visible() && (
-                    <div className="flex items-center gap-2">
-                      <Leaf className="w-5 h-5 text-[#2C5E43] shrink-0" />
-                      <div>
-                        <span className="font-bold text-[#14291D] block">
-                          {product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical'}
-                        </span>
-                        <span className="text-[11px] text-[#716858]">
-                          {product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Secret Admin Edit Trigger Button (In product view secretly) */}
+              <>
                 <button
                   type="button"
-                  onClick={() => {
-                    setBadge1Title(product.assuranceBadges?.badge1Title || siteSettings?.productAssuranceBadges?.badge1Title || 'Ayush & GMP Certified');
-                    setBadge1Subtitle(product.assuranceBadges?.badge1Subtitle || siteSettings?.productAssuranceBadges?.badge1Subtitle || 'Heavy-metal lab verified');
-                    setBadge2Title(product.assuranceBadges?.badge2Title || siteSettings?.productAssuranceBadges?.badge2Title || '100% Pure Botanical');
-                    setBadge2Subtitle(product.assuranceBadges?.badge2Subtitle || siteSettings?.productAssuranceBadges?.badge2Subtitle || 'Zero synthetic fillers');
-                    setShowBadges(isBadgesMasterVisible());
-                    setShowBadge1(isBadge1Visible());
-                    setShowBadge2(isBadge2Visible());
-                    setIsSecretEditOpen(true);
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
                   }}
-                  className={`absolute top-2 right-2 px-2 py-1 rounded-md text-[10px] flex items-center gap-1 transition-all cursor-pointer ${
-                    isAdmin
-                      ? 'opacity-85 group-hover:opacity-100 bg-[#E7EFEA] text-[#14291D] border border-[#A5D6B6] shadow-2xs'
-                      : 'opacity-0 group-hover:opacity-60 hover:opacity-100! text-stone-500 hover:text-stone-800 bg-white/90 border border-stone-200'
-                  }`}
-                  title="Secret Admin Edit: Change Ayush & Quality Assurance Badges"
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white text-[#142B1F] shadow-lg border border-[#DCEFE3] flex items-center justify-center transition-all cursor-pointer z-20 active:scale-90"
+                  aria-label="Previous image"
+                  title="Previous image"
                 >
-                  <Edit3 className="w-3 h-3 text-[#2C5E43]" />
-                  <span className="font-semibold">Edit Badges</span>
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-[#1E6B47]" />
                 </button>
-              </div>
-            ) : (
-              isAdmin && (
-                <div className="relative group p-3 bg-stone-50/80 rounded-xl border border-dashed border-stone-300 text-xs flex items-center justify-between text-[#716858]">
-                  <span className="text-[11px] italic">Quality Assurance Badges: Currently Hidden</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBadges(true);
-                      setShowBadge1(true);
-                      setShowBadge2(true);
-                      setIsSecretEditOpen(true);
-                    }}
-                    className="px-2 py-1 rounded bg-white border border-[#DDD5C5] text-[#14291D] text-[10px] font-semibold flex items-center gap-1 hover:bg-stone-100 cursor-pointer shadow-2xs"
-                  >
-                    <Edit3 className="w-3 h-3 text-[#2C5E43]" />
-                    <span>Show & Configure</span>
-                  </button>
-                </div>
-              )
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex((prev) => (prev + 1) % mediaList.length);
+                  }}
+                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white text-[#142B1F] shadow-lg border border-[#DCEFE3] flex items-center justify-center transition-all cursor-pointer z-20 active:scale-90"
+                  aria-label="Next image"
+                  title="Next image"
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-[#1E6B47]" />
+                </button>
+              </>
+            )}
+
+            {/* Swipe instruction tooltip on mobile */}
+            {mediaList.length > 1 && (
+              <span className="absolute bottom-2 inset-x-0 text-center text-[10px] text-[#6B8576] font-medium pointer-events-none sm:hidden">
+                Swipe left / right to change image
+              </span>
             )}
           </div>
 
-          {/* Right Column: Product Core Details & Actions */}
-          <div className="lg:col-span-6 space-y-6">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="font-mono text-xs uppercase tracking-wider text-[#2C5E43] font-semibold bg-[#E7EFEA] px-2.5 py-0.5 rounded-full">
-                  {product.categoryLabel} · {product.form}
-                </span>
-
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#14291D]">
-                  <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                  <span>{product.rating}</span>
-                  <span className="text-[#7A705E] font-normal">({formatCompactNumber(product.reviewsCount)} reviews)</span>
-                </div>
-              </div>
-
-              <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#14291D] tracking-tight">
-                {product.name}
-              </h1>
-
-              <p className="font-serif italic text-base sm:text-lg text-[#2C5E43] font-medium">
-                {product.sanskritName}
-              </p>
-
-              <p className="text-sm text-[#4E4435] leading-relaxed pt-1">
-                {product.tagline}
-              </p>
+          {/* Dot Pagination Indicator */}
+          {mediaList.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5 my-3">
+              {mediaList.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                    currentImageIndex === idx
+                      ? 'w-7 bg-[#143B25]'
+                      : 'w-2.5 bg-[#DCEFE3] hover:bg-[#A5D6B6]'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
             </div>
+          )}
 
-            {/* Size / Packaging Variants Selection */}
-            {product.variants && product.variants.length > 0 && (
-              <div className="p-3.5 bg-white rounded-xl border border-[#D5CCBC] shadow-xs space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#14291D]">Select Size / Packaging:</span>
-                  <span className="text-[#645A4B] text-[11px] font-medium">
-                    {selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {product.variants.map((v) => {
-                    const isSelected = selectedVariant?.id === v.id;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedVariant(v);
-                          setCurrentImageIndex(0);
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-[#14291D] text-white border-[#14291D] shadow-xs'
-                            : 'bg-[#FAF8F5] text-[#2C2419] border-[#DDD5C5] hover:border-[#14291D]'
-                        }`}
-                      >
-                        <span>{v.size} {v.unit}</span>
-                        {v.price !== undefined && (
-                          <span className={`text-[10px] ${isSelected ? 'text-emerald-300' : 'text-[#2C5E43]'}`}>
-                            {formatPrice(v.price)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Pricing Box */}
-            <div className="p-4 sm:p-5 bg-white rounded-xl border border-[#D5CCBC] shadow-xs space-y-3">
-              <div className="flex items-baseline gap-3">
-                <span className="font-mono font-bold text-3xl sm:text-4xl text-[#14291D]" title={`₹${currentPrice}`}>
-                  {formatPrice(currentPrice)}
-                </span>
-                <span className="font-mono text-base text-[#887E6D] line-through" title={`₹${currentMrp}`}>
-                  {formatPrice(currentMrp)}
-                </span>
-                {savings > 0 && (
-                  <span className="px-2.5 py-0.5 bg-[#E7F8ED] border border-[#A5D6B6] text-[#183624] text-xs font-bold rounded">
-                    Save {formatPrice(savings)} ({discountPercent}% OFF)
-                  </span>
-                )}
-              </div>
-
-              {/* Reseller Rate if active */}
-              {currentReseller !== undefined && currentReseller > 0 && (
-                <div className="p-2.5 bg-[#FAF5EB] rounded-lg border border-[#E8DCC2] flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#B4741E]" />
-                    <span className="font-bold text-[#14291D]">Registered Reseller / B2B Rate:</span>
-                  </div>
-                  <span className="font-mono font-bold text-sm text-[#183624] bg-white px-2 py-0.5 rounded border border-[#D8C7A5]">
-                    {formatPrice(currentReseller)} / unit
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-xs text-[#6A604F] border-t border-[#EAE3D4] pt-2.5">
-                <span>Dispense Pack: <strong className="text-[#14291D] font-mono">{selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}</strong></span>
-                {isAvailableInStock ? (
-                  <span className="flex items-center gap-1.5 text-emerald-800 font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    In Stock & Ready for Dispatch
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5 text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Currently Out of Stock
-                  </span>
-                )}
-              </div>
+          {/* Thumbnail Strip (if multiple images) */}
+          {mediaList.length > 1 && (
+            <div className="flex items-center justify-center gap-2 overflow-x-auto max-w-full pb-1 px-2 mb-2 scrollbar-none">
+              {mediaList.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl p-1 bg-white border-2 overflow-hidden transition-all cursor-pointer shrink-0 ${
+                    currentImageIndex === idx
+                      ? 'border-[#1E6B47] ring-2 ring-[#1E6B47]/20 scale-105 shadow-sm'
+                      : 'border-[#DCEFE3] opacity-70 hover:opacity-100 hover:border-[#1E6B47]/50'
+                  }`}
+                  title={`View angle ${idx + 1}`}
+                >
+                  <img
+                    src={item.type === 'video' ? (item.poster || getYouTubeThumbnail(item.url) || item.url) : item.url}
+                    alt={`Angle ${idx + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                </button>
+              ))}
             </div>
+          )}
 
-            {/* Aurora Glassmorphic Action Hub: Inquiry Cart, WhatsApp Order, Free Routine Advice & External Platforms Availability */}
-            <ProductActionHub
-              product={product}
-              selectedVariant={selectedVariant}
-              currentPrice={currentPrice}
-              currentMrp={currentMrp}
-              currentReseller={currentReseller}
-              isInCart={isInCart}
-              isAvailableInStock={isAvailableInStock}
-              onAddToCart={onAddToCart}
-              onOpenConsultationModal={onOpenConsultationModal}
-              onWhatsAppOrder={handleWhatsAppOrder}
-              siteSettings={siteSettings}
-              className="mt-2"
-            />
+          {/* 3 Round Feature Badges (🌿 100% Pure, 🛡️ Ayush & GMP, 🍃 Lab Verified) */}
+          <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap my-2">
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#DCEFE3] shadow-2xs">
+              <Leaf className="w-3.5 h-3.5 text-[#1E6B47]" />
+              <span className="text-[11px] font-bold text-[#142B1F]">100% Pure Botanical</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#DCEFE3] shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#1E6B47]" />
+              <span className="text-[11px] font-bold text-[#14291D]">Ayush & GMP Certified</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#DCEFE3] shadow-2xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#B4741E]" />
+              <span className="text-[11px] font-bold text-[#14291D]">Lab Verified</span>
+            </div>
           </div>
         </div>
+
+        {/* 3. Unified Hero Commerce Card (Matching Center Screen of Reference) */}
+        <div className="w-full bg-white rounded-3xl sm:rounded-4xl p-5 sm:p-7 border border-[#DCEFE3] shadow-[0_10px_35px_rgba(20,50,30,0.06)] space-y-4">
+          {/* Category & 5-Star Rating Row */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs font-mono uppercase tracking-wider text-[#1E6B47] font-bold bg-[#EAF7EE] px-3 py-1 rounded-full">
+              {product.categoryLabel} · {product.form}
+            </span>
+
+            <div className="flex items-center gap-1 text-xs font-bold text-[#142B1F] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#EDE5D8]">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>{product.rating}</span>
+              <span className="text-[#6B8576] font-normal">({formatCompactNumber(product.reviewsCount)} reviews)</span>
+            </div>
+          </div>
+
+          {/* Product Title & Sanskrit Name */}
+          <div className="space-y-1">
+            <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#142B1F] tracking-tight">
+              {product.name}
+            </h1>
+            {product.sanskritName && (
+              <p className="font-serif italic text-base sm:text-lg text-[#1E6B47] font-medium">
+                {product.sanskritName}
+              </p>
+            )}
+            {product.tagline && (
+              <p className="text-xs sm:text-sm text-[#526B5C] leading-relaxed pt-1">
+                {product.tagline}
+              </p>
+            )}
+          </div>
+
+          {/* Price Stack: Big Bold Price + Strikethrough MRP + Savings Pill */}
+          <div className="flex items-baseline gap-3 pt-1 flex-wrap">
+            <span className="font-mono font-bold text-3xl sm:text-4xl text-[#142B1F]" title={`₹${currentPrice}`}>
+              {formatPrice(currentPrice)}
+            </span>
+            {currentMrp > currentPrice && (
+              <span className="font-mono text-base sm:text-lg text-[#8C8270] line-through" title={`₹${currentMrp}`}>
+                {formatPrice(currentMrp)}
+              </span>
+            )}
+            {savings > 0 && (
+              <span className="px-3 py-1 bg-[#EAF7EE] border border-[#A5D6B6] text-[#143B25] text-xs font-bold rounded-full shadow-2xs">
+                Save {formatPrice(savings)} ({discountPercent}% OFF)
+              </span>
+            )}
+          </div>
+
+          {/* Stepper [- 1 +] & Big Pill Add to Cart Button (Matching Reference Screen 2) */}
+          <div className="flex items-center gap-3 pt-2">
+            {/* Stepper */}
+            <div className="flex items-center border border-[#DCEFE3] bg-[#F4FAF6] rounded-full p-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="w-9 h-9 rounded-full bg-white hover:bg-stone-100 text-[#142B1F] flex items-center justify-center transition-colors cursor-pointer shadow-2xs font-bold text-base"
+                aria-label="Decrease quantity"
+              >
+                -
+              </button>
+              <span className="w-8 text-center font-bold text-sm text-[#142B1F] tabular-nums">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => q + 1)}
+                className="w-9 h-9 rounded-full bg-white hover:bg-stone-100 text-[#142B1F] flex items-center justify-center transition-colors cursor-pointer shadow-2xs font-bold text-base"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Big Pill Add to Cart Button */}
+            <button
+              type="button"
+              disabled={!isAvailableInStock}
+              onClick={handleAddToCartWithQuantity}
+              className={`flex-1 py-3.5 px-6 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-98 ${
+                !isAvailableInStock
+                  ? 'bg-stone-200 text-stone-500 cursor-not-allowed'
+                  : isInCart
+                  ? 'bg-[#1E6B47] text-white hover:bg-[#143B25]'
+                  : 'bg-[#143B25] hover:bg-[#1E6B47] text-white'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4 text-amber-300" />
+              <span>{isInCart ? 'Added in Dispensary Bag' : 'Add to Cart'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4. Registered Reseller / B2B Wholesale Rate Banner (Strictly Preserved!) */}
+        {currentReseller !== undefined && currentReseller > 0 && (
+          <div className="p-3.5 bg-[#FAF5EB] rounded-2xl border border-[#E8DCC2] flex items-center justify-between text-xs shadow-2xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#B4741E]" />
+              <span className="font-bold text-[#14291D]">Registered Reseller / B2B Wholesale Rate:</span>
+            </div>
+            <span className="font-mono font-bold text-sm text-[#143B25] bg-white px-3 py-1 rounded-xl border border-[#D8C7A5]">
+              {formatPrice(currentReseller)} / unit
+            </span>
+          </div>
+        )}
+
+        {/* 5. Size / Packaging Variants Selection */}
+        {product.variants && product.variants.length > 0 && (
+          <div className="p-4 bg-white rounded-2xl border border-[#DCEFE3] shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-[#14291D]">Select Packaging Variant:</span>
+              <span className="text-[#6B8576] font-medium">
+                {selectedVariant ? `${selectedVariant.size} ${selectedVariant.unit}` : product.volumeOrWeight}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {product.variants.map((v) => {
+                const isSelected = selectedVariant?.id === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedVariant(v);
+                      setCurrentImageIndex(0);
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-2 ${
+                      isSelected
+                        ? 'bg-[#143B25] text-white border-[#143B25] shadow-xs'
+                        : 'bg-[#F4FAF6] text-[#142B1F] border-[#DCEFE3] hover:border-[#143B25]'
+                    }`}
+                  >
+                    <span>{v.size} {v.unit}</span>
+                    {v.price !== undefined && (
+                      <span className={`text-[10px] ${isSelected ? 'text-emerald-200' : 'text-[#1E6B47]'}`}>
+                        {formatPrice(v.price)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 6. Action Hub: WhatsApp Order, Free Routine Advice & Marketplace Stores (Amazon, Flipkart, Tata 1mg) */}
+        <ProductActionHub
+          product={product}
+          selectedVariant={selectedVariant}
+          currentPrice={currentPrice}
+          currentMrp={currentMrp}
+          currentReseller={currentReseller}
+          isInCart={isInCart}
+          isAvailableInStock={isAvailableInStock}
+          onAddToCart={onAddToCart}
+          onOpenConsultationModal={onOpenConsultationModal}
+          onWhatsAppOrder={handleWhatsAppOrder}
+          siteSettings={siteSettings}
+        />
 
         {/* Pre-Monograph Custom Detail Highlights (Configured in Product Add, shown above Monograph Tabs) */}
         {product.customDetails && product.customDetails.length > 0 && (

@@ -43,7 +43,7 @@ export const FloatingContactWidget: React.FC<FloatingContactWidgetProps> = ({
   return (
     <aside 
       aria-label="Quick Contact Helpline"
-      className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex flex-col items-end gap-2"
+      className="fixed bottom-20 sm:bottom-5 right-3 sm:right-5 z-40 flex flex-col items-end gap-2"
     >
       {/* Interactive Tooltip Card on Hover / Toggle */}
       {showTooltip && (

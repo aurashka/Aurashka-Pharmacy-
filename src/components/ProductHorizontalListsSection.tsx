@@ -304,20 +304,30 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                           <div className="pt-1.5 border-t border-[#EDF5F0]">
                             <div className="flex items-baseline gap-1.5 flex-wrap">
                               {showPrice && (
-                                <span className="font-bold text-sm sm:text-base text-[#142B1F]">
+                                <span className="font-bold text-sm sm:text-base text-[#142B1F] tabular-nums">
                                   {formatPrice(prod.price)}
                                 </span>
                               )}
                               {showMrpAndOffer && prod.mrp && prod.mrp > prod.price && (
-                                <span className="text-[10.5px] text-[#8EA396] line-through">
+                                <span className="text-[10.5px] text-[#8EA396] line-through tabular-nums">
                                   {formatPrice(prod.mrp)}
+                                </span>
+                              )}
+                              {showMrpAndOffer && discountPercent > 0 && (
+                                <span className="text-[9.5px] font-bold text-[#1E6B47] bg-[#EAF7EE] px-1.5 py-0.2 rounded-full border border-[#BDE8D1]">
+                                  Save {discountPercent}%
                                 </span>
                               )}
                             </div>
 
                             {showResellerPrice && prod.resellerPrice && prod.resellerPrice > 0 && (
-                              <div className="mt-0.5 text-[9.5px] bg-[#EAF5EE] text-[#12452B] px-2 py-0.5 rounded-full font-semibold truncate border border-[#DCEFE3]">
-                                Reseller: {formatPrice(prod.resellerPrice)}
+                              <div className="mt-0.5 text-[9.5px] bg-[#EAF5EE] text-[#12452B] px-2 py-0.5 rounded-lg font-semibold truncate border border-[#DCEFE3] flex items-center justify-between">
+                                <span>Reseller: {formatPrice(prod.resellerPrice)}</span>
+                                {prod.price > prod.resellerPrice && (
+                                  <span className="font-bold text-[#1E6B47]">
+                                    Margin {formatPrice(prod.price - prod.resellerPrice)}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -502,25 +512,33 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                         <div className="pt-1.5 border-t border-[#EDF5F0] space-y-1">
                           <div className="flex items-baseline gap-1.5 flex-wrap">
                             {showPrice && (
-                              <span className="font-bold text-sm sm:text-base text-[#142B1F]">
+                              <span className="font-bold text-sm sm:text-base text-[#142B1F] tabular-nums">
                                 {formatPrice(prod.price)}
                               </span>
                             )}
 
                             {showMrpAndOffer && prod.mrp && prod.mrp > prod.price && (
-                              <span className="text-xs text-[#8EA396] line-through">
+                              <span className="text-xs text-[#8EA396] line-through tabular-nums">
                                 {formatPrice(prod.mrp)}
+                              </span>
+                            )}
+
+                            {showMrpAndOffer && discountPercent > 0 && (
+                              <span className="text-[9.5px] font-bold text-[#1E6B47] bg-[#EAF7EE] px-1.5 py-0.2 rounded-full border border-[#BDE8D1]">
+                                Save {discountPercent}%
                               </span>
                             )}
                           </div>
 
-                          {/* Reseller Wholesale Price */}
+                          {/* Reseller Wholesale Price with Margin */}
                           {showResellerPrice && prod.resellerPrice && prod.resellerPrice > 0 && (
-                            <div className="flex items-center justify-between text-[10px] bg-[#EAF5EE] px-2 py-0.5 rounded-full border border-[#DCEFE3]">
-                              <span className="text-[#1E6B47] font-semibold">Reseller:</span>
-                              <span className="font-bold text-[#12452B]">
-                                {formatPrice(prod.resellerPrice)}
-                              </span>
+                            <div className="flex items-center justify-between text-[10px] bg-[#EAF5EE] px-2 py-0.5 rounded-lg border border-[#DCEFE3]">
+                              <span className="text-[#143B25] font-semibold">Reseller: {formatPrice(prod.resellerPrice)}</span>
+                              {prod.price > prod.resellerPrice && (
+                                <span className="font-bold text-[#1E6B47]">
+                                  Margin {formatPrice(prod.price - prod.resellerPrice)}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>

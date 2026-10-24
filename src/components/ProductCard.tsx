@@ -278,23 +278,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Bottom Area: Pricing & Actions */}
           <div className="mt-2 space-y-1.5">
             {(showPrice || showMrpAndOffer || (showResellerPrice && product.resellerPrice)) && (
-              <div className="pt-1.5 border-t border-[#F2ECE1]">
+              <div className="pt-1.5 border-t border-[#F2ECE1] space-y-1">
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   {showPrice && (
-                    <span className="font-mono font-bold text-sm sm:text-base text-[#14291D]">
+                    <span className="font-bold text-sm sm:text-base text-[#14291D] tabular-nums">
                       {formatPrice(product.price)}
                     </span>
                   )}
                   {showMrpAndOffer && product.mrp > product.price && (
-                    <span className="font-mono text-[10.5px] text-[#8C8270] line-through">
+                    <span className="text-[10.5px] text-[#8C8270] line-through tabular-nums">
                       {formatPrice(product.mrp)}
+                    </span>
+                  )}
+                  {showMrpAndOffer && discountPercent > 0 && (
+                    <span className="text-[9.5px] font-bold text-[#1E6B47] bg-[#EAF7EE] px-1.5 py-0.2 rounded-full border border-[#BDE8D1]">
+                      Save {discountPercent}%
                     </span>
                   )}
                 </div>
 
                 {showResellerPrice && product.resellerPrice && product.resellerPrice > 0 && (
-                  <div className="mt-0.5 text-[9.5px] bg-[#E7EFEA] text-[#183624] px-1.5 py-0.5 rounded font-mono font-semibold truncate border border-[#B5D6C4]/60">
-                    Reseller: {formatPrice(product.resellerPrice)}
+                  <div className="text-[9.5px] bg-[#E8F6EE] text-[#143B25] px-2 py-0.5 rounded-lg font-semibold truncate border border-[#BDE3CC] flex items-center justify-between">
+                    <span>Reseller: {formatPrice(product.resellerPrice)}</span>
+                    {product.price > product.resellerPrice && (
+                      <span className="font-bold text-[#1E6B47]">
+                        Margin {formatPrice(product.price - product.resellerPrice)}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
