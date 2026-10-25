@@ -122,7 +122,10 @@ import {
   FolderPlus,
   Copy,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Database,
+  Download,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { backupAllCatalogToFirebase, backupSiteSettingsToFirebase, backupCatalogMetaToFirebase, backupProductToFirebase } from '../utils/firebaseSync';
@@ -130,6 +133,7 @@ import { DEFAULT_CATEGORIES, DEFAULT_FORMS, SORT_BADGE_OPTIONS, DEFAULT_SITE_SET
 import { detectVideoType, getYouTubeEmbedUrl, getYouTubeThumbnail, isValidVideoUrl } from '../utils/videoHelper';
 import { GRADIENT_OVERLAY_OPTIONS, GradientOverlayStyle, getProductBottomOverlayClasses } from '../utils/gradientHelper';
 import { CustomDetailsBuilder } from './CustomDetailsBuilder';
+import { AdminImportExportHub } from './AdminImportExportHub';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -147,6 +151,14 @@ interface AdminPanelModalProps {
   onUpdateCategories: (categories: CategoryItem[]) => void;
   forms: string[];
   onUpdateForms: (forms: string[]) => void;
+  onImportProducts?: (newProducts: HerbalProduct[], mode: 'merge' | 'replace' | 'append') => Promise<void> | void;
+  onBatchImportFullSite?: (data: {
+    products?: HerbalProduct[];
+    categories?: CategoryItem[];
+    forms?: string[];
+    siteSettings?: SiteSettings;
+    mode: 'merge' | 'replace';
+  }) => Promise<void> | void;
 }
 
 export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
@@ -165,9 +177,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateCategories,
   forms,
   onUpdateForms,
+  onImportProducts,
+  onBatchImportFullSite,
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'products' | 'monograph_tabs' | 'deal_of_week' | 'marquee' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages' | 'product_card_display'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'import_export' | 'monograph_tabs' | 'deal_of_week' | 'marquee' | 'horizontal_lists' | 'categories_forms' | 'contacts' | 'people' | 'site_titles' | 'assurance_badges' | 'messages' | 'product_card_display'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<HerbalProduct | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -2367,6 +2381,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <button
               type="button"
               onClick={() => {
+                setActiveTab('import_export');
+                setIsCreatingNew(false);
+                setEditingProduct(null);
+              }}
+              className={`py-2 px-3 text-xs rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'import_export'
+                  ? 'bg-[#183624] text-white shadow-xs'
+                  : 'bg-white text-[#52493A] hover:bg-[#F2ECE1] border border-[#DDD5C5]'
+              }`}
+            >
+              <Database className={`w-3.5 h-3.5 ${activeTab === 'import_export' ? 'text-amber-300' : 'text-[#1E6B47]'}`} />
+              <span>Import / Export Hub</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                activeTab === 'import_export' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'
+              }`}>
+                CSV · JSON
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 setActiveTab('deal_of_week');
                 setIsCreatingNew(false);
                 setEditingProduct(null);
@@ -2574,6 +2610,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <button onClick={() => setSaveSuccessMsg(null)} className="text-white/80 hover:text-white cursor-pointer">
               <X className="w-3.5 h-3.5" />
             </button>
+          </div>
+        )}
+
+        {/* Tab: Import & Export Hub */}
+        {activeTab === 'import_export' && (
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 pb-28 sm:pb-8">
+            <AdminImportExportHub
+              products={products}
+              categories={categories}
+              forms={forms}
+              siteSettings={siteSettings}
+              onImportProducts={async (newProducts, mode) => {
+                if (onImportProducts) {
+                  await onImportProducts(newProducts, mode);
+                } else if (onBatchImportFullSite) {
+                  await onBatchImportFullSite({ products: newProducts, mode: mode === 'replace' ? 'replace' : 'merge' });
+                }
+              }}
+              onImportCategories={onUpdateCategories}
+              onImportForms={onUpdateForms}
+              onImportSiteSettings={onUpdateSiteSettings}
+              onBatchImportFullSite={onBatchImportFullSite}
+            />
           </div>
         )}
 
@@ -5150,6 +5209,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#645A4B] hover:text-[#14291D] hover:bg-[#EFEAE0] rounded-lg border border-[#DDD5C5] transition-colors cursor-pointer text-center"
                         >
                           Reset Defaults
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('import_export')}
+                          className="flex-1 sm:flex-none px-3 py-1.5 bg-[#EAF7EE] hover:bg-[#DCF3E7] text-[#143B25] border border-[#BDE8D1] rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          title="Import or Export products CSV / JSON"
+                        >
+                          <Database className="w-3.5 h-3.5 text-[#1E6B47]" />
+                          <span>Import / Export</span>
                         </button>
 
                         <button

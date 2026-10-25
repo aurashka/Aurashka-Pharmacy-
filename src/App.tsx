@@ -523,6 +523,93 @@ function PharmacyApp() {
     await backupAllCatalogToFirebase(HERBAL_PRODUCTS);
   };
 
+  const handleImportProducts = async (newProducts: HerbalProduct[], mode: 'merge' | 'replace' | 'append') => {
+    let finalProducts: HerbalProduct[] = [];
+    if (mode === 'replace') {
+      finalProducts = newProducts;
+    } else if (mode === 'append') {
+      const existingIds = new Set(products.map((p) => p.id));
+      const newOnly = newProducts.filter((p) => !existingIds.has(p.id));
+      finalProducts = [...products, ...newOnly];
+    } else {
+      // merge
+      const productMap = new Map<string, HerbalProduct>();
+      products.forEach((p) => productMap.set(p.id, p));
+      newProducts.forEach((p) => productMap.set(p.id, p));
+      finalProducts = Array.from(productMap.values());
+    }
+    saveProducts(finalProducts);
+    await backupAllCatalogToFirebase(finalProducts);
+    showToast(`Catalog updated: ${finalProducts.length} formulations now available!`, 'success');
+  };
+
+  const handleBatchImportFullSite = async (data: {
+    products?: HerbalProduct[];
+    categories?: CategoryItem[];
+    forms?: string[];
+    siteSettings?: SiteSettings;
+    mode: 'merge' | 'replace';
+  }) => {
+    const { mode = 'merge' } = data;
+
+    // 1. Products
+    if (data.products && data.products.length > 0) {
+      let finalProducts: HerbalProduct[] = [];
+      if (mode === 'replace') {
+        finalProducts = data.products;
+      } else {
+        const productMap = new Map<string, HerbalProduct>();
+        products.forEach((p) => productMap.set(p.id, p));
+        data.products.forEach((p) => productMap.set(p.id, p));
+        finalProducts = Array.from(productMap.values());
+      }
+      saveProducts(finalProducts);
+      await backupAllCatalogToFirebase(finalProducts);
+    }
+
+    // 2. Categories
+    if (data.categories && data.categories.length > 0) {
+      let finalCategories: CategoryItem[] = [];
+      if (mode === 'replace') {
+        finalCategories = data.categories;
+      } else {
+        const catMap = new Map<string, CategoryItem>();
+        categories.forEach((c) => catMap.set(c.id, c));
+        data.categories.forEach((c) => catMap.set(c.id, c));
+        finalCategories = Array.from(catMap.values());
+      }
+      await handleUpdateCategories(finalCategories);
+    }
+
+    // 3. Forms
+    if (data.forms && data.forms.length > 0) {
+      let finalForms: string[] = [];
+      if (mode === 'replace') {
+        finalForms = data.forms;
+      } else {
+        const set = new Set([...forms, ...data.forms]);
+        finalForms = Array.from(set);
+      }
+      await handleUpdateForms(finalForms);
+    }
+
+    // 4. Site Settings
+    if (data.siteSettings) {
+      let finalSettings: SiteSettings;
+      if (mode === 'replace') {
+        finalSettings = normalizeSiteSettings(data.siteSettings);
+      } else {
+        finalSettings = normalizeSiteSettings({
+          ...siteSettings,
+          ...data.siteSettings,
+        });
+      }
+      await handleUpdateSiteSettings(finalSettings);
+    }
+
+    showToast('Import completed successfully and synced across pharmacy!', 'success');
+  };
+
   const cartProductIds = useMemo(() => {
     return new Set(cartItems.map((item) => item.product.id));
   }, [cartItems]);
@@ -930,6 +1017,8 @@ function PharmacyApp() {
           onUpdateCategories={handleUpdateCategories}
           forms={forms}
           onUpdateForms={handleUpdateForms}
+          onImportProducts={handleImportProducts}
+          onBatchImportFullSite={handleBatchImportFullSite}
         />
       )}
 
