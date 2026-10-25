@@ -10,15 +10,17 @@ import {
   Tag, 
   Leaf
 } from 'lucide-react';
-import { HerbalProduct, ProductHorizontalList, SiteSettings } from '../types/pharmacy';
+import { HerbalProduct, ProductHorizontalList, SiteSettings, CategoryItem } from '../types/pharmacy';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
 import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
 import { ProgressiveImage } from './ProgressiveImage';
 import { HorizontalShelfSkeleton } from './ShimmerSkeletons';
+import { getCategoryImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
 
 interface ProductHorizontalListsSectionProps {
   lists?: ProductHorizontalList[];
   products: HerbalProduct[];
+  categories?: CategoryItem[];
   siteSettings?: SiteSettings;
   onSelectProduct: (product: HerbalProduct) => void;
   onAddToCart: (product: HerbalProduct) => void;
@@ -31,6 +33,7 @@ interface ProductHorizontalListsSectionProps {
 export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSectionProps> = ({
   lists = [],
   products = [],
+  categories = [],
   siteSettings,
   onSelectProduct,
   onAddToCart,
@@ -64,6 +67,7 @@ export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSecti
           key={list.id}
           list={list}
           allProducts={products}
+          categories={categories}
           siteSettings={siteSettings}
           onSelectProduct={onSelectProduct}
           onAddToCart={onAddToCart}
@@ -79,6 +83,7 @@ export const ProductHorizontalListsSection: React.FC<ProductHorizontalListsSecti
 interface SingleHorizontalShelfProps {
   list: ProductHorizontalList;
   allProducts: HerbalProduct[];
+  categories?: CategoryItem[];
   siteSettings?: SiteSettings;
   onSelectProduct: (product: HerbalProduct) => void;
   onAddToCart: (product: HerbalProduct) => void;
@@ -90,6 +95,7 @@ interface SingleHorizontalShelfProps {
 const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
   list,
   allProducts,
+  categories = [],
   siteSettings,
   onSelectProduct,
   onAddToCart,
@@ -243,7 +249,7 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                     {/* Left Column: Details & Actions */}
                     <div className="flex-1 p-3.5 sm:p-4 flex flex-col justify-between min-w-0 pr-2 bg-white">
                       <div className="space-y-1">
-                        {/* Rating & Badge */}
+                        {/* Rating, Badge & Category */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {showRating && (
                             <div className="flex items-center text-amber-500 bg-[#FEF9EE] px-2 py-0.5 rounded-full border border-[#FDE68A] shadow-2xs">
@@ -262,6 +268,18 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1] capitalize shrink-0">
                               <Tag className="w-2.5 h-2.5 text-[#1E6B47]" />
                               <span>{prod.sortBadge.replace('_', ' ')}</span>
+                            </span>
+                          )}
+
+                          {prod.category && (
+                            <span className="inline-flex items-center text-[9px] font-medium text-[#1E6B47] bg-[#EAF7EE] px-1.5 py-0.5 rounded-full border border-[#BDE8D1]/70 shrink-0">
+                              <MiniBadgeItem
+                                label={prod.categoryLabel || prod.category}
+                                imageUrl={getCategoryImageUrl(prod.category, categories, siteSettings?.categoryAppearance)}
+                                appearance={siteSettings?.categoryAppearance}
+                                fallbackIcon={<Leaf className="w-2.5 h-2.5 text-[#1E6B47]" />}
+                                className="font-medium"
+                              />
                             </span>
                           )}
                         </div>
@@ -464,17 +482,31 @@ const SingleHorizontalShelf: React.FC<SingleHorizontalShelfProps> = ({
 
                     {/* Card Content Details */}
                     <div className="p-3 sm:p-3.5 space-y-1 bg-white">
-                      {/* Rating & Review */}
-                      {showRating && (
-                        <div className="flex items-center gap-1 text-[11px] text-[#526B5C]">
-                          <div className="flex items-center text-amber-500">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            <span className="font-bold text-[#142B1F] ml-0.5">{prod.rating ? prod.rating.toFixed(1) : '4.9'}</span>
+                      {/* Category & Rating */}
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        {prod.category && (
+                          <span className="inline-flex items-center text-[9px] font-medium text-[#1E6B47] bg-[#EAF7EE] px-1.5 py-0.5 rounded-full border border-[#BDE8D1]/70 shrink-0">
+                            <MiniBadgeItem
+                              label={prod.categoryLabel || prod.category}
+                              imageUrl={getCategoryImageUrl(prod.category, categories, siteSettings?.categoryAppearance)}
+                              appearance={siteSettings?.categoryAppearance}
+                              fallbackIcon={<Leaf className="w-2.5 h-2.5 text-[#1E6B47]" />}
+                              className="font-medium"
+                            />
+                          </span>
+                        )}
+
+                        {showRating && (
+                          <div className="flex items-center gap-1 text-[11px] text-[#526B5C] ml-auto">
+                            <div className="flex items-center text-amber-500">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              <span className="font-bold text-[#142B1F] ml-0.5">{prod.rating ? prod.rating.toFixed(1) : '4.9'}</span>
+                            </div>
+                            <span className="text-[#A4B5AC]">·</span>
+                            <span className="text-[10px]">({formatCompactNumber(prod.reviewsCount || 100)})</span>
                           </div>
-                          <span className="text-[#A4B5AC]">·</span>
-                          <span className="text-[10px]">({formatCompactNumber(prod.reviewsCount || 100)})</span>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {/* Product Name */}
                       {showName && (

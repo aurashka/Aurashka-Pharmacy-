@@ -12,6 +12,7 @@ import { HeroSection } from './components/HeroSection';
 import { MarqueeTicker } from './components/MarqueeTicker';
 import { ProductDashboard } from './components/ProductDashboard';
 import { ProductDetailPage } from './components/ProductDetailPage';
+import { AllProductsMasonryPage } from './components/AllProductsMasonryPage';
 import { ContactPage } from './components/ContactPage';
 import { PeopleSection } from './components/PeopleSection';
 import { ProductHorizontalListsSection } from './components/ProductHorizontalListsSection';
@@ -257,7 +258,7 @@ function PharmacyApp() {
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('all');
   const [selectedForm, setSelectedForm] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [currentView, setCurrentView] = useState<'home' | 'contact' | 'product'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'contact' | 'product' | 'all-products'>('home');
   
   // Modals & Drawers state
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<HerbalProduct | null>(null);
@@ -283,7 +284,7 @@ function PharmacyApp() {
     return products.filter((p) => !p.isDraft);
   }, [products, isAdmin]);
 
-  // Hash-based routing to support unique direct links (#product/code or #contact)
+  // Hash-based routing to support unique direct links (#product/code or #contact or #products)
   useEffect(() => {
     const syncHashToView = () => {
       const hash = window.location.hash || '';
@@ -310,6 +311,10 @@ function PharmacyApp() {
         }
       } else if (hash === '#contact' || hash === '#contact-us') {
         setCurrentView('contact');
+        setSelectedProductForDetail(null);
+        return;
+      } else if (hash === '#products' || hash === '#all-products') {
+        setCurrentView('all-products');
         setSelectedProductForDetail(null);
         return;
       } else {
@@ -594,6 +599,13 @@ function PharmacyApp() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleNavigateToAllProducts = () => {
+    setSelectedProductForDetail(null);
+    setCurrentView('all-products');
+    window.location.hash = '#products';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleBackToHome = () => {
     setSelectedProductForDetail(null);
     setCurrentView('home');
@@ -604,6 +616,11 @@ function PharmacyApp() {
   const handleNavigateSection = (sectionId: string) => {
     if (sectionId === 'contact-us') {
       handleNavigateToContact();
+      return;
+    }
+
+    if (sectionId === 'all-products' || sectionId === 'products') {
+      handleNavigateToAllProducts();
       return;
     }
 
@@ -732,7 +749,7 @@ function PharmacyApp() {
         </div>
       )}
 
-      <main className="flex-1 relative z-10 pb-20 sm:pb-0">
+      <main className={`flex-1 relative z-10 ${currentView === 'home' && !selectedProductForDetail ? 'pb-20 sm:pb-0' : ''}`}>
         {currentView === 'contact' ? (
           /* Dedicated Contact Page */
           <ContactPage
@@ -760,6 +777,21 @@ function PharmacyApp() {
             }}
             cartCount={totalCartCount}
             onOpenCart={() => setIsCartOpen(true)}
+            categories={categories}
+          />
+        ) : currentView === 'all-products' ? (
+          /* Dedicated All Products Pinterest-Style Staggered Masonry Page */
+          <AllProductsMasonryPage
+            products={visibleProducts}
+            categories={categories}
+            forms={forms}
+            onSelectProduct={handleSelectProduct}
+            onAddToCart={handleAddToCart}
+            cartProductIds={cartProductIds}
+            onBack={handleBackToHome}
+            cartCount={totalCartCount}
+            onOpenCart={() => setIsCartOpen(true)}
+            siteSettings={siteSettings}
           />
         ) : (
           /* Main Storefront Catalog Page */
@@ -790,6 +822,7 @@ function PharmacyApp() {
               <ProductHorizontalListsSection
                 lists={siteSettings.productHorizontalLists}
                 products={visibleProducts}
+                categories={categories}
                 siteSettings={siteSettings}
                 onSelectProduct={handleSelectProduct}
                 onAddToCart={handleAddToCart}
@@ -832,6 +865,8 @@ function PharmacyApp() {
               forms={forms}
               siteSettings={siteSettings}
               onOpenFullSearch={() => handleOpenSearchModal(searchQuery)}
+              onViewAllProducts={handleNavigateToAllProducts}
+              hideCategoryAndFormStrips={true}
             />
 
             {/* Doctors & Key People Section with Round Images and Text */}
@@ -958,72 +993,74 @@ function PharmacyApp() {
         </div>
       )}
 
-      {/* Native Mobile Bottom Navigation Dock (App-like feel for phone screens) */}
-      <nav 
-        aria-label="Mobile Bottom App Bar"
-        className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#DCEFE3] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_24px_rgba(20,50,30,0.08)] select-none"
-      >
-        {/* 1. Home Tab */}
-        <button
-          type="button"
-          onClick={handleBackToHome}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors cursor-pointer ${
-            currentView === 'home' && !selectedProductForDetail ? 'text-[#1E6B47]' : 'text-[#6B8576] hover:text-[#143B25]'
-          }`}
+      {/* Native Mobile Bottom Navigation Dock (App-like feel for phone screens) - Only shown on Home page */}
+      {currentView === 'home' && !selectedProductForDetail && (
+        <nav 
+          aria-label="Mobile Bottom App Bar"
+          className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#DCEFE3] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_24px_rgba(20,50,30,0.08)] select-none"
         >
-          <Home className="w-5 h-5" />
-          <span className="text-[9.5px] font-bold mt-0.5">Home</span>
-        </button>
+          {/* 1. Home Tab */}
+          <button
+            type="button"
+            onClick={handleBackToHome}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+              currentView === 'home' && !selectedProductForDetail ? 'text-[#1E6B47]' : 'text-[#6B8576] hover:text-[#143B25]'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[9.5px] font-bold mt-0.5">Home</span>
+          </button>
 
-        {/* 2. Catalog / Products Tab */}
-        <button
-          type="button"
-          onClick={() => handleNavigateSection('deals-catalog')}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer"
-        >
-          <Package className="w-5 h-5" />
-          <span className="text-[9.5px] font-bold mt-0.5">Products</span>
-        </button>
+          {/* 2. Catalog / Products Tab - Navigates directly to all products staggered list */}
+          <button
+            type="button"
+            onClick={handleNavigateToAllProducts}
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer"
+          >
+            <Package className="w-5 h-5" />
+            <span className="text-[9.5px] font-bold mt-0.5">Products</span>
+          </button>
 
-        {/* 3. Vaidya Free Consult Tab */}
-        <button
-          type="button"
-          onClick={() => handleOpenConsultationModal()}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#143B25] hover:text-[#1E6B47] transition-colors cursor-pointer relative"
-        >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#143B25] to-[#1E6B47] text-white flex items-center justify-center shadow-md -mt-3.5 ring-2 ring-white">
-            <Stethoscope className="w-4 h-4 text-emerald-200" />
-          </div>
-          <span className="text-[9.5px] font-bold mt-0.5 text-[#143B25]">Consult</span>
-        </button>
+          {/* 3. Vaidya Free Consult Tab */}
+          <button
+            type="button"
+            onClick={() => handleOpenConsultationModal()}
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#143B25] hover:text-[#1E6B47] transition-colors cursor-pointer relative"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#143B25] to-[#1E6B47] text-white flex items-center justify-center shadow-md -mt-3.5 ring-2 ring-white">
+              <Stethoscope className="w-4 h-4 text-emerald-200" />
+            </div>
+            <span className="text-[9.5px] font-bold mt-0.5 text-[#143B25]">Consult</span>
+          </button>
 
-        {/* 4. Instant Search Tab */}
-        <button
-          type="button"
-          onClick={() => handleOpenSearchModal()}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer"
-        >
-          <Search className="w-5 h-5" />
-          <span className="text-[9.5px] font-bold mt-0.5">Search</span>
-        </button>
+          {/* 4. Instant Search Tab */}
+          <button
+            type="button"
+            onClick={() => handleOpenSearchModal()}
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer"
+          >
+            <Search className="w-5 h-5" />
+            <span className="text-[9.5px] font-bold mt-0.5">Search</span>
+          </button>
 
-        {/* 5. Cart Tab with Live Counter */}
-        <button
-          type="button"
-          onClick={() => setIsCartOpen(true)}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer relative"
-        >
-          <div className="relative">
-            <ShoppingBag className="w-5 h-5" />
-            {totalCartCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                {totalCartCount > 9 ? '9+' : totalCartCount}
-              </span>
-            )}
-          </div>
-          <span className="text-[9.5px] font-bold mt-0.5">Bag</span>
-        </button>
-      </nav>
+          {/* 5. Cart Tab with Live Counter */}
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#6B8576] hover:text-[#143B25] transition-colors cursor-pointer relative"
+          >
+            <div className="relative">
+              <ShoppingBag className="w-5 h-5" />
+              {totalCartCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                  {totalCartCount > 9 ? '9+' : totalCartCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[9.5px] font-bold mt-0.5">Bag</span>
+          </button>
+        </nav>
+      )}
     </div>
   );
 }

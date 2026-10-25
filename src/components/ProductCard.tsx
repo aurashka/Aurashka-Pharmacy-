@@ -27,6 +27,7 @@ import {
 } from '../utils/messageFormatter';
 import { getProductOverlayConfig } from '../utils/gradientHelper';
 import { ProgressiveImage } from './ProgressiveImage';
+import { getCategoryImageUrl, getFormImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
 
 interface ProductCardProps {
   product: HerbalProduct;
@@ -48,6 +49,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   siteSettings,
 }) => {
   const { currentUser } = useAuth();
+  const categoryImgUrl = getCategoryImageUrl(product.category, undefined, siteSettings?.categoryAppearance);
+  const formImgUrl = getFormImageUrl(product.form, siteSettings?.categoryAppearance);
   const savings = product.mrp - product.price;
   const discountPercent = Math.round((savings / product.mrp) * 100);
 
@@ -249,6 +252,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 ({product.sanskritName})
               </p>
             )}
+
+            {/* Category & Physical Form Badges */}
+            <div className="flex items-center gap-1.5 text-[10.5px] text-[#6B8576] flex-wrap pt-0.5">
+              <span className="font-semibold text-[#1E6B47] inline-flex items-center">
+                <MiniBadgeItem
+                  label={product.categoryLabel}
+                  imageUrl={categoryImgUrl}
+                  appearance={siteSettings?.categoryAppearance}
+                  sizePx={12}
+                />
+              </span>
+              {product.form && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-[#143B25] font-semibold inline-flex items-center">
+                    <MiniBadgeItem
+                      label={product.form}
+                      imageUrl={formImgUrl}
+                      appearance={siteSettings?.categoryAppearance}
+                      sizePx={11}
+                    />
+                  </span>
+                </>
+              )}
+            </div>
 
             {/* Seller / Brand */}
             {showSeller && (
@@ -536,7 +564,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs text-[#6B8576] flex-wrap">
-            <span className="font-semibold text-[#1E6B47]">{product.categoryLabel}</span>
+            <span className="font-semibold text-[#1E6B47] inline-flex items-center">
+              <MiniBadgeItem
+                label={product.categoryLabel}
+                imageUrl={categoryImgUrl}
+                appearance={siteSettings?.categoryAppearance}
+                sizePx={13}
+              />
+            </span>
             {showVolume && product.volumeOrWeight && (
               <>
                 <span aria-hidden="true">·</span>
@@ -546,7 +581,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.form && (
               <>
                 <span aria-hidden="true">·</span>
-                <span className="text-[#143B25] font-semibold">{product.form}</span>
+                <span className="text-[#143B25] font-semibold inline-flex items-center">
+                  <MiniBadgeItem
+                    label={product.form}
+                    imageUrl={formImgUrl}
+                    appearance={siteSettings?.categoryAppearance}
+                    sizePx={12}
+                  />
+                </span>
               </>
             )}
           </div>

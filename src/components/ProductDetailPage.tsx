@@ -23,7 +23,6 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  Maximize2,
   Calendar,
   Layers,
   Edit3,
@@ -44,6 +43,8 @@ import { backupProductToFirebase, backupSiteSettingsToFirebase } from '../utils/
 import { buildProductMediaList, ProductMediaItem, getYouTubeEmbedUrl, detectVideoType, getYouTubeThumbnail } from '../utils/videoHelper';
 import { getProductBottomOverlayClasses } from '../utils/gradientHelper';
 import { hexToRgba } from '../utils/monographHelper';
+import { getCategoryImageUrl, getFormImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
+import { CategoryItem } from '../types/pharmacy';
 
 interface ProductDetailPageProps {
   product: HerbalProduct;
@@ -60,6 +61,7 @@ interface ProductDetailPageProps {
   onOpenAdminPanel?: () => void;
   cartCount?: number;
   onOpenCart?: () => void;
+  categories?: CategoryItem[];
 }
 
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
@@ -77,8 +79,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   onOpenAdminPanel,
   cartCount = 0,
   onOpenCart,
+  categories = [],
 }) => {
   const { currentUser } = useAuth();
+  const categoryImgUrl = getCategoryImageUrl(product.category, categories, siteSettings?.categoryAppearance);
+  const formImgUrl = getFormImageUrl(product.form, siteSettings?.categoryAppearance);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -466,8 +471,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             Home
           </button>
           <span>/</span>
-          <button onClick={onBack} className="hover:text-[#14291D] hover:underline">
-            {product.categoryLabel}
+          <button onClick={onBack} className="hover:text-[#14291D] hover:underline inline-flex items-center gap-1.5">
+            <MiniBadgeItem
+              label={product.categoryLabel}
+              imageUrl={categoryImgUrl}
+              appearance={siteSettings?.categoryAppearance}
+              sizePx={14}
+            />
           </button>
           <span>/</span>
           <span className="text-[#14291D] font-medium truncate max-w-xs">{product.name}</span>
@@ -500,14 +510,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         {/* Top Hero Product Showcase Area: Horizontally Expansive with Touch Swipe & Full Screen Zoom */}
         <div className="relative w-full flex flex-col items-center">
           
-          {/* Main Showcase Stage - Expanded horizontally for maximum impact */}
+          {/* Main Showcase Stage - Expanded to full holder with minimal padding so image takes full area */}
           <div 
-            className="w-full max-w-full sm:max-w-2xl md:max-w-3xl rounded-3xl bg-linear-to-b from-[#F2F9F5] via-[#EBF6F0]/80 to-white p-3 sm:p-6 md:p-8 flex items-center justify-center relative overflow-hidden shadow-xs border border-[#DCEFE3] group select-none touch-pan-y"
+            className="w-full max-w-full sm:max-w-2xl md:max-w-3xl rounded-3xl bg-linear-to-b from-[#F2F9F5] via-[#EBF6F0]/80 to-white p-1 sm:p-2 md:p-3 flex items-center justify-center relative overflow-hidden shadow-xs border border-[#DCEFE3] group select-none touch-pan-y"
             onTouchStart={handleHeroTouchStart}
             onTouchEnd={handleHeroTouchEnd}
           >
             {/* Subtle Botanical Glow Backdrop spanning stage */}
-            <div className="absolute inset-4 sm:inset-10 rounded-full bg-radial from-[#DCF3E7]/90 via-[#E8F8F0]/40 to-transparent blur-2xl pointer-events-none" />
+            <div className="absolute inset-2 sm:inset-6 rounded-full bg-radial from-[#DCF3E7]/90 via-[#E8F8F0]/40 to-transparent blur-2xl pointer-events-none" />
 
             {/* Video vs Image */}
             {activeMedia.type === 'video' ? (
@@ -532,44 +542,35 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             ) : (
               <div 
-                className="w-full h-[340px] sm:h-[440px] md:h-[480px] flex items-center justify-center cursor-zoom-in relative z-10 transition-transform duration-300"
+                className="w-full min-h-[380px] sm:min-h-[480px] md:min-h-[520px] max-h-[560px] flex items-center justify-center cursor-zoom-in relative z-10 p-2 sm:p-3"
                 onClick={() => setIsLightboxOpen(true)}
-                title="Click to view full screen (Zoom & Save)"
+                title="Click image to open in full screen (Zoom & Save)"
               >
                 <ProgressiveImage
                   src={activeImage}
                   alt={product.name}
-                  className="w-full h-full object-contain max-h-[330px] sm:max-h-[430px] md:max-h-[470px] drop-shadow-[0_20px_35px_rgba(20,50,30,0.18)] group-hover:scale-103 transition-transform duration-300"
+                  className="w-full h-full object-contain max-h-[360px] sm:max-h-[460px] md:max-h-[500px] drop-shadow-[0_20px_35px_rgba(20,50,30,0.18)] group-hover:scale-102 transition-transform duration-300"
                 />
 
-                {/* Prominent Tap to View Full Screen Pill Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsLightboxOpen(true);
-                  }}
-                  className="absolute top-2 right-2 sm:top-3 sm:right-3 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white text-[#142B1F] border border-[#DCEFE3] shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold backdrop-blur-xs group/btn active:scale-95"
-                  title="Click image to open in full screen popup"
-                >
-                  <Maximize2 className="w-3.5 h-3.5 text-[#1E6B47] group-hover/btn:scale-110 transition-transform" />
-                  <span className="text-[11px] font-bold">Full Screen</span>
-                </button>
-
-                {/* Stock Tag on Hero image */}
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1.5">
+                {/* Stock & Discount % Tags directly overlaid on top-left of image */}
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1.5 z-20 pointer-events-none">
                   {!isAvailableInStock ? (
-                    <span className="px-3 py-1 rounded-full bg-rose-600 text-white font-bold text-xs shadow-xs">
+                    <span className="px-3 py-1 rounded-full bg-rose-600 text-white font-bold text-xs shadow-md tracking-wide">
                       OUT OF STOCK
                     </span>
                   ) : savings > 0 ? (
-                    <span className="px-3 py-1 rounded-full bg-[#143B25] text-white font-bold text-xs shadow-xs">
+                    <span className="px-3.5 py-1 rounded-full bg-[#143B25] text-white font-bold text-xs shadow-md tracking-wide border border-emerald-400/30">
                       {discountPercent}% OFF
                     </span>
                   ) : null}
                   {product.form && (
-                    <span className="px-2.5 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-[#142B1F] border border-[#DCEFE3] text-[10px] font-semibold shadow-2xs">
-                      {product.form}
+                    <span className="px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-md text-[#142B1F] border border-[#DCEFE3] text-[11px] font-bold shadow-xs">
+                      <MiniBadgeItem
+                        label={product.form}
+                        imageUrl={formImgUrl}
+                        appearance={siteSettings?.categoryAppearance}
+                        sizePx={13}
+                      />
                     </span>
                   )}
                 </div>
@@ -679,9 +680,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         <div className="w-full bg-white rounded-3xl sm:rounded-4xl p-5 sm:p-7 border border-[#DCEFE3] shadow-[0_10px_35px_rgba(20,50,30,0.06)] space-y-4">
           {/* Category & 5-Star Rating Row */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-xs font-mono uppercase tracking-wider text-[#1E6B47] font-bold bg-[#EAF7EE] px-3 py-1 rounded-full">
-              {product.categoryLabel} · {product.form}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-mono uppercase tracking-wider text-[#1E6B47] font-bold bg-[#EAF7EE] px-3 py-1 rounded-full border border-[#D0EBD8] shadow-2xs">
+                <MiniBadgeItem
+                  label={product.categoryLabel}
+                  imageUrl={categoryImgUrl}
+                  appearance={siteSettings?.categoryAppearance}
+                  sizePx={15}
+                />
+              </span>
+              {product.form && (
+                <span className="text-xs font-mono uppercase tracking-wider text-[#143B25] font-bold bg-[#F4FAF6] px-2.5 py-1 rounded-full border border-[#DCEFE3] shadow-2xs">
+                  <MiniBadgeItem
+                    label={product.form}
+                    imageUrl={formImgUrl}
+                    appearance={siteSettings?.categoryAppearance}
+                    sizePx={14}
+                  />
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center gap-1 text-xs font-bold text-[#142B1F] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#EDE5D8]">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { DEFAULT_CATEGORIES, DEFAULT_FORMS } from '../data/herbalProducts';
 import { formatCompactNumber, formatPrice } from '../utils/numberFormatter';
+import { getCategoryImageUrl, getFormImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
 
 export type SortOptionKey =
   | 'featured'
@@ -151,6 +152,8 @@ interface ProductDashboardProps {
   onSelectForm?: (form: string) => void;
   onOpenFullSearch?: () => void;
   isLoading?: boolean;
+  onViewAllProducts?: () => void;
+  hideCategoryAndFormStrips?: boolean;
 }
 
 export const ProductDashboard: React.FC<ProductDashboardProps> = ({
@@ -172,6 +175,8 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
   onSelectForm: externalOnSelectForm,
   onOpenFullSearch,
   isLoading = false,
+  onViewAllProducts,
+  hideCategoryAndFormStrips = false,
 }) => {
   const [internalSelectedForm, setInternalSelectedForm] = useState<string>('all');
   const selectedForm = externalSelectedForm !== undefined ? externalSelectedForm : internalSelectedForm;
@@ -436,10 +441,23 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
           </p>
         </div>
 
-        <div className="text-xs text-[#635A4B] font-medium flex items-center gap-2">
-          <span className="font-bold text-[#14291D] tabular-nums" title={`${sortedProducts.length} formulations`}>
-            {formatCompactNumber(sortedProducts.length)}
-          </span> formulations available
+        <div className="flex items-center gap-3 shrink-0">
+          {onViewAllProducts && (
+            <button
+              type="button"
+              onClick={onViewAllProducts}
+              className="text-xs sm:text-sm font-semibold text-[#1E6B47] hover:text-[#143B25] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>View all products</span>
+              <span>→</span>
+            </button>
+          )}
+
+          <div className="text-xs text-[#635A4B] font-medium hidden sm:flex items-center gap-1">
+            <span className="font-bold text-[#14291D] tabular-nums" title={`${sortedProducts.length} formulations`}>
+              ({formatCompactNumber(sortedProducts.length)})
+            </span>
+          </div>
         </div>
       </div>
 
@@ -627,207 +645,234 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
           </div>
         </div>
 
-        {/* 1. Category Pills Bar (Horizontal Scroll with native app smooth glide) */}
-        <div className="pt-3 border-t border-[#EDF5F0]">
-          <div className="flex items-center justify-between mb-1.5 px-0.5">
-            <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1.5">
-              <Leaf className="w-3 h-3 text-[#1E6B47]" />
-              <span>Apothecary Categories</span>
-            </span>
-            <span className="text-[10px] text-[#6B8576] font-medium hidden sm:inline">
-              Swipe to explore categories
-            </span>
-          </div>
+        {/* 1, 2, 3 Filter Strips: Category, Form & Quick Sort (Hidden on home page per user request, clean view) */}
+        {!hideCategoryAndFormStrips && (
+          <>
+            {/* 1. Category Pills Bar (Horizontal Scroll with native app smooth glide) */}
+            <div className="pt-3 border-t border-[#EDF5F0]">
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1.5">
+                  <Leaf className="w-3 h-3 text-[#1E6B47]" />
+                  <span>Apothecary Categories</span>
+                </span>
+                <span className="text-[10px] text-[#6B8576] font-medium hidden sm:inline">
+                  Swipe to explore categories
+                </span>
+              </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar touch-pan-x">
-            {/* All Categories Option */}
-            <button
-              type="button"
-              onClick={() => onSelectCategory('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                selectedCategory === 'all'
-                  ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-xs'
-                  : 'bg-white hover:bg-[#F0FAF4] text-[#142B1F] border border-[#DCEFE3] hover:border-[#1E6B47]/40'
-              }`}
-            >
-              <span>All Formulations</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-[#EBF5EE] text-[#1E6B47]'
-              }`}>
-                {products.length}
-              </span>
-            </button>
-
-            {/* Dynamic Categories */}
-            {categories.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              const count = products.filter((p) => p.category === cat.id).length;
-              return (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar touch-pan-x">
+                {/* All Categories Option */}
                 <button
-                  key={cat.id}
                   type="button"
-                  onClick={() => onSelectCategory(cat.id as ProductCategory)}
+                  onClick={() => onSelectCategory('all')}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                    isSelected
+                    selectedCategory === 'all'
                       ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-xs'
                       : 'bg-white hover:bg-[#F0FAF4] text-[#142B1F] border border-[#DCEFE3] hover:border-[#1E6B47]/40'
                   }`}
                 >
-                  <span>{cat.label}</span>
-                  {count > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-[#EBF5EE] text-[#1E6B47]'
-                    }`}>
-                      {count}
-                    </span>
-                  )}
+                  <MiniBadgeItem
+                    label="All Formulations"
+                    imageUrl={getCategoryImageUrl('all', categories, siteSettings?.categoryAppearance)}
+                    appearance={siteSettings?.categoryAppearance}
+                    sizePx={16}
+                  />
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-[#EBF5EE] text-[#1E6B47]'
+                  }`}>
+                    {products.length}
+                  </span>
                 </button>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* 2. Physical Ayurvedic Forms Filter Strip */}
-        {forms && forms.length > 0 && (
-          <div className="pt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none no-scrollbar touch-pan-x">
-            <span className="text-[10.5px] font-bold text-[#6B8576] shrink-0 mr-1 flex items-center gap-1">
-              <Layers className="w-3 h-3 text-[#1E6B47]" />
-              <span>Form:</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedForm('all')}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
-                selectedForm === 'all'
-                  ? 'bg-[#1E6B47] text-white font-bold shadow-2xs'
-                  : 'bg-[#F4FAF6] hover:bg-[#E8F5ED] text-[#2C4836] border border-[#DCEFE3]'
-              }`}
-            >
-              All Forms
-            </button>
-            {forms.map((form) => {
-              const isSelected = selectedForm === form;
-              return (
+                {/* Dynamic Categories */}
+                {categories.map((cat) => {
+                  const isSelected = selectedCategory === cat.id;
+                  const count = products.filter((p) => p.category === cat.id).length;
+                  const catImageUrl = getCategoryImageUrl(cat.id, categories, siteSettings?.categoryAppearance);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => onSelectCategory(cat.id as ProductCategory)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-[#143B25] to-[#1E6B47] text-white shadow-xs'
+                          : 'bg-white hover:bg-[#F0FAF4] text-[#142B1F] border border-[#DCEFE3] hover:border-[#1E6B47]/40'
+                      }`}
+                    >
+                      <MiniBadgeItem
+                        label={cat.label}
+                        imageUrl={catImageUrl}
+                        appearance={siteSettings?.categoryAppearance}
+                        sizePx={16}
+                      />
+                      {count > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-[#EBF5EE] text-[#1E6B47]'
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Physical Ayurvedic Forms Filter Strip */}
+            {forms && forms.length > 0 && (
+              <div className="pt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none no-scrollbar touch-pan-x">
+                <span className="text-[10.5px] font-bold text-[#6B8576] shrink-0 mr-1 flex items-center gap-1">
+                  <Layers className="w-3 h-3 text-[#1E6B47]" />
+                  <span>Form:</span>
+                </span>
                 <button
-                  key={form}
                   type="button"
-                  onClick={() => setSelectedForm(form)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] transition-all shrink-0 cursor-pointer capitalize ${
-                    isSelected
+                  onClick={() => setSelectedForm('all')}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
+                    selectedForm === 'all'
                       ? 'bg-[#1E6B47] text-white font-bold shadow-2xs'
                       : 'bg-[#F4FAF6] hover:bg-[#E8F5ED] text-[#2C4836] border border-[#DCEFE3]'
                   }`}
                 >
-                  {form}
+                  <MiniBadgeItem
+                    label="All Forms"
+                    imageUrl={getFormImageUrl('all', siteSettings?.categoryAppearance)}
+                    appearance={siteSettings?.categoryAppearance}
+                    sizePx={13}
+                  />
                 </button>
-              );
-            })}
-          </div>
+                {forms.map((form) => {
+                  const isSelected = selectedForm === form;
+                  const formImageUrl = getFormImageUrl(form, siteSettings?.categoryAppearance);
+                  return (
+                    <button
+                      key={form}
+                      type="button"
+                      onClick={() => setSelectedForm(form)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] transition-all shrink-0 cursor-pointer capitalize ${
+                        isSelected
+                          ? 'bg-[#1E6B47] text-white font-bold shadow-2xs'
+                          : 'bg-[#F4FAF6] hover:bg-[#E8F5ED] text-[#2C4836] border border-[#DCEFE3]'
+                      }`}
+                    >
+                      <MiniBadgeItem
+                        label={form}
+                        imageUrl={formImageUrl}
+                        appearance={siteSettings?.categoryAppearance}
+                        sizePx={13}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 3. Quick One-Tap Algorithm Sort & Stock Filter Chips (App-like pills) */}
+            <div className="pt-2 border-t border-[#EDF5F0] flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none no-scrollbar touch-pan-x">
+              <span className="text-[10.5px] font-bold text-[#6B8576] shrink-0 mr-1 flex items-center gap-1">
+                <Filter className="w-3 h-3 text-[#1E6B47]" />
+                <span>Quick:</span>
+              </span>
+
+              {/* Quick Best Deals */}
+              <button
+                type="button"
+                onClick={() => setSortBy(sortBy === 'deals' ? 'featured' : 'deals')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  sortBy === 'deals'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-[#FEF9EE] hover:bg-[#FEF3C7] text-amber-900 border border-amber-200'
+                }`}
+              >
+                <Flame className="w-3 h-3" />
+                <span>Best Deals</span>
+              </button>
+
+              {/* Quick Trending */}
+              <button
+                type="button"
+                onClick={() => setSortBy(sortBy === 'trending' ? 'featured' : 'trending')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  sortBy === 'trending'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'bg-[#EAF7EE] hover:bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
+                }`}
+              >
+                <TrendingUp className="w-3 h-3" />
+                <span>Trending</span>
+              </button>
+
+              {/* Quick Top Sellers */}
+              <button
+                type="button"
+                onClick={() => setSortBy(sortBy === 'top_seller' ? 'featured' : 'top_seller')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  sortBy === 'top_seller'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-[#FEF9EE] hover:bg-[#FEF3C7] text-amber-900 border border-amber-200'
+                }`}
+              >
+                <Trophy className="w-3 h-3" />
+                <span>Top Sellers</span>
+              </button>
+
+              {/* Quick Highest Rated */}
+              <button
+                type="button"
+                onClick={() => setSortBy(sortBy === 'rating' ? 'featured' : 'rating')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  sortBy === 'rating'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-[#FEF9EE] hover:bg-[#FEF3C7] text-amber-900 border border-amber-200'
+                }`}
+              >
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span>4.8★+ Rated</span>
+              </button>
+
+              {/* Quick Reseller Margin Tier */}
+              <button
+                type="button"
+                onClick={() => setSortBy(sortBy === 'reseller' ? 'featured' : 'reseller')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  sortBy === 'reseller'
+                    ? 'bg-[#143B25] text-white shadow-2xs'
+                    : 'bg-[#EBF5EE] hover:bg-[#DCF3E7] text-[#143B25] border border-[#CCE8D6]'
+                }`}
+              >
+                <BadgePercent className="w-3 h-3 text-[#1E6B47]" />
+                <span>B2B Margin</span>
+              </button>
+
+              {/* In Stock Only Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowInStockOnly(!showInStockOnly)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  showInStockOnly
+                    ? 'bg-[#1E6B47] text-white shadow-2xs'
+                    : 'bg-white hover:bg-[#F0FAF4] text-[#142B1F] border border-[#DCEFE3]'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${showInStockOnly ? 'bg-white' : 'bg-emerald-500'}`} />
+                <span>In Stock Only</span>
+              </button>
+
+              {/* Reset button if active */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shrink-0 cursor-pointer flex items-center gap-1 ml-auto"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset</span>
+                </button>
+              )}
+            </div>
+          </>
         )}
-
-        {/* 3. Quick One-Tap Algorithm Sort & Stock Filter Chips (App-like pills) */}
-        <div className="pt-2 border-t border-[#EDF5F0] flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none no-scrollbar touch-pan-x">
-          <span className="text-[10.5px] font-bold text-[#6B8576] shrink-0 mr-1 flex items-center gap-1">
-            <Filter className="w-3 h-3 text-[#1E6B47]" />
-            <span>Quick:</span>
-          </span>
-
-          {/* Quick Best Deals */}
-          <button
-            type="button"
-            onClick={() => setSortBy(sortBy === 'deals' ? 'featured' : 'deals')}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-              sortBy === 'deals'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'bg-[#FEF9EE] hover:bg-[#FEF3C7] text-amber-900 border border-amber-200'
-            }`}
-          >
-            <Flame className="w-3 h-3" />
-            <span>Best Deals</span>
-          </button>
-
-          {/* Quick Trending */}
-          <button
-            type="button"
-            onClick={() => setSortBy(sortBy === 'trending' ? 'featured' : 'trending')}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-              sortBy === 'trending'
-                ? 'bg-emerald-700 text-white shadow-2xs'
-                : 'bg-[#EAF7EE] hover:bg-[#DCF3E7] text-[#12452B] border border-[#BDE8D1]'
-            }`}
-          >
-            <TrendingUp className="w-3 h-3" />
-            <span>Trending</span>
-          </button>
-
-          {/* Quick Top Sellers */}
-          <button
-            type="button"
-            onClick={() => setSortBy(sortBy === 'top_seller' ? 'featured' : 'top_seller')}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-              sortBy === 'top_seller'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'bg-[#FEF9EE] hover:bg-[#FEF3C7] text-amber-900 border border-amber-200'
-            }`}
-          >
-            <Trophy className="w-3 h-3" />
-            <span>Top Sellers</span>
-          </button>
-
-          {/* Quick Highest Rated */}
-          <button
-            type="button"
-            onClick={() => setSortBy(sortBy === 'rating' ? 'featured' : 'rating')}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-              sortBy === 'rating'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'bg-[#FEF9EE] hover:bg-[#FEF3C7] text-amber-900 border border-amber-200'
-            }`}
-          >
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            <span>4.8★+ Rated</span>
-          </button>
-
-          {/* Quick Reseller Margin Tier */}
-          <button
-            type="button"
-            onClick={() => setSortBy(sortBy === 'reseller' ? 'featured' : 'reseller')}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-              sortBy === 'reseller'
-                ? 'bg-[#143B25] text-white shadow-2xs'
-                : 'bg-[#EBF5EE] hover:bg-[#DCF3E7] text-[#143B25] border border-[#CCE8D6]'
-            }`}
-          >
-            <BadgePercent className="w-3 h-3 text-[#1E6B47]" />
-            <span>B2B Margin</span>
-          </button>
-
-          {/* In Stock Only Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowInStockOnly(!showInStockOnly)}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-              showInStockOnly
-                ? 'bg-[#1E6B47] text-white shadow-2xs'
-                : 'bg-white hover:bg-[#F0FAF4] text-[#142B1F] border border-[#DCEFE3]'
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${showInStockOnly ? 'bg-white' : 'bg-emerald-500'}`} />
-            <span>In Stock Only</span>
-          </button>
-
-          {/* Reset button if active */}
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-2.5 py-1 rounded-full text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shrink-0 cursor-pointer flex items-center gap-1 ml-auto"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Active Filter Chips & Formulation Count Row */}
@@ -837,8 +882,13 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
             Showing <span className="text-[#1E6B47] font-bold">{sortedProducts.length}</span> formulations
           </span>
           {selectedCategory !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#12452B] border border-[#BDE8D1] text-[11px] font-medium">
-              <span>Category: {categories.find(c => c.id === selectedCategory)?.label || selectedCategory}</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#12452B] border border-[#BDE8D1] text-[11px] font-medium shadow-2xs">
+              <MiniBadgeItem
+                label={`Category: ${categories.find(c => c.id === selectedCategory)?.label || selectedCategory}`}
+                imageUrl={getCategoryImageUrl(selectedCategory, categories, siteSettings?.categoryAppearance)}
+                appearance={siteSettings?.categoryAppearance}
+                sizePx={13}
+              />
               <button
                 type="button"
                 onClick={() => onSelectCategory('all')}
@@ -850,8 +900,13 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
             </span>
           )}
           {selectedForm !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#12452B] border border-[#BDE8D1] text-[11px] font-medium">
-              <span>Form: {selectedForm}</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#12452B] border border-[#BDE8D1] text-[11px] font-medium shadow-2xs">
+              <MiniBadgeItem
+                label={`Form: ${selectedForm}`}
+                imageUrl={getFormImageUrl(selectedForm, siteSettings?.categoryAppearance)}
+                appearance={siteSettings?.categoryAppearance}
+                sizePx={13}
+              />
               <button
                 type="button"
                 onClick={() => setSelectedForm('all')}
@@ -903,15 +958,28 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
           )}
         </div>
 
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="text-[11px] font-semibold text-[#1E6B47] hover:underline cursor-pointer shrink-0"
-          >
-            Clear All
-          </button>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          {onViewAllProducts && (
+            <button
+              type="button"
+              onClick={onViewAllProducts}
+              className="text-xs font-semibold text-[#1E6B47] hover:text-[#143B25] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>View all products</span>
+              <span>→</span>
+            </button>
+          )}
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-[11px] font-semibold text-[#1E6B47] hover:underline cursor-pointer"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Product Display: Shimmer Skeleton during live load OR Clean Table / Grid View */}
@@ -979,11 +1047,27 @@ export const ProductDashboard: React.FC<ProductDashboardProps> = ({
                               <div className="font-bold text-[#142B1F] group-hover:text-[#1E6B47] transition-colors truncate max-w-xs">
                                 {product.name}
                               </div>
-                              <div className="text-[11px] text-[#6B8576] italic truncate">
-                                {product.sanskritName || product.categoryLabel || product.category}
+                              <div className="text-[11px] text-[#6B8576] flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <MiniBadgeItem
+                                  label={product.categoryLabel || product.category}
+                                  imageUrl={getCategoryImageUrl(product.category, categories, siteSettings?.categoryAppearance)}
+                                  appearance={siteSettings?.categoryAppearance}
+                                  sizePx={12}
+                                />
+                                {product.sanskritName && (
+                                  <span className="italic text-[#1E6B47]">({product.sanskritName})</span>
+                                )}
                               </div>
-                              <div className="text-[10px] text-[#8EA396] mt-0.5">
-                                {product.volumeOrWeight} • {product.form}
+                              <div className="text-[10px] text-[#8EA396] mt-0.5 flex items-center gap-1.5">
+                                {product.volumeOrWeight && <span>{product.volumeOrWeight} •</span>}
+                                {product.form && (
+                                  <MiniBadgeItem
+                                    label={product.form}
+                                    imageUrl={getFormImageUrl(product.form, siteSettings?.categoryAppearance)}
+                                    appearance={siteSettings?.categoryAppearance}
+                                    sizePx={11}
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>

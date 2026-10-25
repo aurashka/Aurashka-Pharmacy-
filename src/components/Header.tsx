@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { SiteSettings, CategoryItem } from '../types/pharmacy';
 import { formatCompactNumber } from '../utils/numberFormatter';
+import { getCategoryImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
 
 interface HeaderProps {
   cartCount: number;
@@ -44,6 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSearch,
   siteSettings,
   isLiveConnected = false,
+  categories = [],
+  onSelectCategory,
 }) => {
   const { currentUser, isAdmin, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -288,6 +291,39 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </div>
                   </button>
+
+                  {/* 4. Apothecary Categories in Menu */}
+                  {categories.length > 0 && onSelectCategory && (
+                    <div className="pt-2 mt-1 border-t border-[#EAF4ED] space-y-1">
+                      <div className="px-2.5 pb-1 flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1">
+                          <Leaf className="w-2.5 h-2.5 text-[#1E6B47]" />
+                          <span>Categories</span>
+                        </span>
+                        <span className="text-[9.5px] text-[#6B8576] font-medium">
+                          {categories.length} botanical groups
+                        </span>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-0.5 scrollbar-thin pr-1">
+                        {categories.map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => handleNavAction(() => onSelectCategory(cat.id))}
+                            className="w-full flex items-center justify-between p-1.5 px-2 rounded-xl hover:bg-[#F0FAF4] border border-transparent hover:border-[#DCEFE3] text-left transition-all cursor-pointer group text-xs text-[#142B1F]"
+                          >
+                            <MiniBadgeItem
+                              label={cat.label}
+                              imageUrl={getCategoryImageUrl(cat.id, categories, siteSettings?.categoryAppearance)}
+                              appearance={siteSettings?.categoryAppearance}
+                              sizePx={16}
+                            />
+                            <ChevronRight className="w-3 h-3 text-[#A4B5AC] group-hover:text-[#1E6B47] group-hover:translate-x-0.5 transition-all shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -527,6 +563,38 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <ChevronRight className="w-4 h-4 text-[#6B8576] group-hover:text-[#14291D] group-hover:translate-x-0.5 transition-all shrink-0" />
           </button>
+
+          {/* Apothecary Categories in Mobile Menu */}
+          {categories.length > 0 && onSelectCategory && (
+            <div className="pt-2 border-t border-[#EAF4ED] space-y-1">
+              <div className="px-1 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#143B25] flex items-center gap-1">
+                  <Leaf className="w-2.5 h-2.5 text-[#1E6B47]" />
+                  <span>Explore Categories</span>
+                </span>
+                <span className="text-[9.5px] text-[#6B8576]">
+                  {categories.length} groups
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleNavAction(() => onSelectCategory(cat.id))}
+                    className="flex items-center gap-1.5 p-2 rounded-xl bg-[#F6FAF7] hover:bg-[#EAF6EE] border border-[#DCEFE3] text-left transition-all cursor-pointer text-xs text-[#142B1F]"
+                  >
+                    <MiniBadgeItem
+                      label={cat.label}
+                      imageUrl={getCategoryImageUrl(cat.id, categories, siteSettings?.categoryAppearance)}
+                      appearance={siteSettings?.categoryAppearance}
+                      sizePx={16}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quick Admin Access & User Account in Mobile Menu */}
           <div className="pt-2 flex items-center gap-2 border-t border-[#EAF4ED]">

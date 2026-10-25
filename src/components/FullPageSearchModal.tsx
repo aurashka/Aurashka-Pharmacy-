@@ -31,6 +31,7 @@ import {
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
 import { AuroraGlowBackground } from './AuroraGlowBackground';
+import { getCategoryImageUrl, getFormImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
 
 interface FullPageSearchModalProps {
   isOpen: boolean;
@@ -319,7 +320,7 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
               )}
             </div>
 
-            {/* Category Trigger Pill (Matches Reference Screen 1) */}
+            {/* Category Trigger Pill (Matches Reference Screen 1, displaying uploaded small image) */}
             <div className="relative" ref={categoryMenuRef}>
               <button
                 type="button"
@@ -334,12 +335,17 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
                 }`}
                 title="Select category"
               >
-                <Layers className="w-3.5 h-3.5 text-[#1E6B47]" />
-                <span className="hidden sm:inline max-w-[100px] truncate">
-                  {selectedCategory === 'all'
-                    ? 'Categories'
-                    : categories.find((c) => c.id === selectedCategory)?.label || selectedCategory}
-                </span>
+                <MiniBadgeItem
+                  label={
+                    selectedCategory === 'all'
+                      ? 'Categories'
+                      : categories.find((c) => c.id === selectedCategory)?.label || selectedCategory
+                  }
+                  imageUrl={getCategoryImageUrl(selectedCategory, categories, siteSettings?.categoryAppearance)}
+                  appearance={siteSettings?.categoryAppearance}
+                  sizePx={16}
+                  imgClassName="border-white/20"
+                />
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isCategoryMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -363,7 +369,12 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
                           : 'hover:bg-[#F0FAF4] text-[#142B1F]'
                       }`}
                     >
-                      <span>All Formulations</span>
+                      <MiniBadgeItem
+                        label="All Formulations"
+                        imageUrl={getCategoryImageUrl('all', categories, siteSettings?.categoryAppearance)}
+                        appearance={siteSettings?.categoryAppearance}
+                        sizePx={18}
+                      />
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-inherit font-bold">
                         {products.length}
                       </span>
@@ -384,7 +395,12 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
                               : 'hover:bg-[#F0FAF4] text-[#142B1F]'
                           }`}
                         >
-                          <span className="truncate">{cat.label}</span>
+                          <MiniBadgeItem
+                            label={cat.label}
+                            imageUrl={getCategoryImageUrl(cat.id, categories, siteSettings?.categoryAppearance)}
+                            appearance={siteSettings?.categoryAppearance}
+                            sizePx={18}
+                          />
                           <span className={`text-[10px] px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[#EAF7EE] text-[#1E6B47]'} font-bold`}>
                             {categoryCounts[cat.id] || 0}
                           </span>
@@ -458,26 +474,36 @@ export const FullPageSearchModal: React.FC<FullPageSearchModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setSelectedForm('all')}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border cursor-pointer ${
                             selectedForm === 'all'
                               ? 'bg-[#143B25] text-white border-[#143B25]'
                               : 'bg-white text-[#142B1F] border-[#DCEFE3]'
                           }`}
                         >
-                          All
+                          <MiniBadgeItem
+                            label="All"
+                            imageUrl={getFormImageUrl('all', siteSettings?.categoryAppearance)}
+                            appearance={siteSettings?.categoryAppearance}
+                            sizePx={13}
+                          />
                         </button>
-                        {forms.slice(0, 6).map((f) => (
+                        {forms.map((f) => (
                           <button
                             key={f}
                             type="button"
                             onClick={() => setSelectedForm(f)}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border cursor-pointer ${
                               selectedForm === f
                                 ? 'bg-[#143B25] text-white border-[#143B25]'
                                 : 'bg-white text-[#142B1F] border-[#DCEFE3]'
                             }`}
                           >
-                            {f.split(' ')[0]}
+                            <MiniBadgeItem
+                              label={f.split(' ')[0]}
+                              imageUrl={getFormImageUrl(f, siteSettings?.categoryAppearance)}
+                              appearance={siteSettings?.categoryAppearance}
+                              sizePx={13}
+                            />
                           </button>
                         ))}
                       </div>
@@ -675,10 +701,15 @@ const SearchProductCard: React.FC<SearchProductCardProps> = ({
             </span>
           )}
 
-          {/* Form Tag */}
+          {/* Form Tag with small uploaded image */}
           {product.form && (
-            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-[#142B1F] border border-[#DCEFE3] text-[9px] font-semibold shadow-2xs">
-              {product.form}
+            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-xs text-[#142B1F] border border-[#DCEFE3] text-[9.5px] font-semibold shadow-2xs">
+              <MiniBadgeItem
+                label={product.form}
+                imageUrl={getFormImageUrl(product.form, siteSettings?.categoryAppearance)}
+                appearance={siteSettings?.categoryAppearance}
+                sizePx={12}
+              />
             </span>
           )}
 
@@ -689,8 +720,16 @@ const SearchProductCard: React.FC<SearchProductCardProps> = ({
           </div>
         </div>
 
-        {/* Product Title & Sanskrit Subtitle */}
+        {/* Product Title, Category & Sanskrit Subtitle */}
         <div className="space-y-0.5">
+          <div className="text-[10px] font-semibold text-[#1E6B47] inline-flex items-center">
+            <MiniBadgeItem
+              label={product.categoryLabel || product.category}
+              imageUrl={getCategoryImageUrl(product.category, undefined, siteSettings?.categoryAppearance)}
+              appearance={siteSettings?.categoryAppearance}
+              sizePx={12}
+            />
+          </div>
           <h4 className="font-serif text-xs sm:text-sm font-bold text-[#14291D] group-hover:text-[#1E6B47] transition-colors line-clamp-1 leading-tight">
             {product.name}
           </h4>

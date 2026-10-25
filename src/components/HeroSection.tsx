@@ -20,9 +20,10 @@ import {
   getPrimaryPhone, 
   getPrimaryWhatsApp, 
   formatCustomMessage, 
-  DEFAULT_MESSAGE_TEMPLATES,
+  DEFAULT_MESSAGE_TEMPLATES, 
   buildWhatsAppUrl 
 } from '../utils/messageFormatter';
+import { getCategoryImageUrl, MiniBadgeItem } from '../utils/categoryImageHelper';
 
 interface HeroSectionProps {
   onOpenConsultationModal: () => void;
@@ -539,6 +540,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                           </div>
 
                           <div className="col-span-8 space-y-1">
+                            <div className="text-[10px] font-semibold text-[#1E6B47] inline-flex items-center">
+                              <MiniBadgeItem
+                                label={product.categoryLabel || product.category}
+                                imageUrl={getCategoryImageUrl(product.category, undefined, siteSettings?.categoryAppearance)}
+                                appearance={siteSettings?.categoryAppearance}
+                                sizePx={12}
+                              />
+                            </div>
                             <h3 className="font-serif text-lg font-bold text-[#14291D] group-hover:text-[#2C5E43] transition-colors line-clamp-1">
                               {deal.customTitle || product.name}
                             </h3>
